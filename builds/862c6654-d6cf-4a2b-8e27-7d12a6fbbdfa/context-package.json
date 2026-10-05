@@ -1,0 +1,74 @@
+{
+  "mode": "create",
+  "generation": "695e99ce-1328-4f4e-8a8a-9515be5b32e3",
+  "planRevision": 1,
+  "approvals": [],
+  "inputs": [],
+  "screenMap": [],
+  "requirements": "user: Nueva capacidad (guion Luma)\n- ¿Dónde necesitas incorporar la nueva capacidad? App móvil\n- ¿Qué tipo de capacidad? Consulta\n- ¿Sobre qué dominio? Pagos\n- ¿Qué necesitas construir? Frontend\n- Patrones disponibles API REST\n- ¿Qué stack? Recomiéndame\n- ¿Qué integración? Ninguna\n- ¿Persistencia? No requiere\n- ¿Qué pruebas? Estándar completo\n\nConstruye una microapp React interactiva y accesible que represente esta capacidad con datos ficticios en memoria. Lista de todos que debes ejecutar en orden:\n- [T01-read-context] Leer context-package.json, SGC-CONTEXT.json y los requisitos (acepta: Requisitos y restricciones citados en el resumen final)\n- [T02-ui] Implementar la interfaz de App móvil para \"Consulta\" sobre Pagos en src/App.tsx y src/styles.css (acepta: src/App.tsx y src/styles.css modificados)\n- [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)\n- [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)\n- [T05-tests] Plan de pruebas (Estándar completo) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)\n- [T06-docs] Documentar decisiones: capa Frontend, patrón API REST, stack Recomiéndame, integración Ninguna, persistencia No requiere (acepta: README del resultado publicado)\n- [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)\n\nCriterio de aceptación: debe existir un botón accesible llamado \"Probar capacidad\" que al pulsarlo muestre exactamente el texto \"Capacidad simulada\".",
+  "asIs": [],
+  "toBe": {
+    "architecture": "Typed React in-memory screen, bundled MCP App; no external backend",
+    "redesign": true,
+    "matrix": []
+  },
+  "allowedPaths": [
+    "src/App.tsx",
+    "src/styles.css"
+  ],
+  "budgetMs": 240000,
+  "sourceInventory": [],
+  "instructionManifest": {
+    "mode": "create",
+    "framework": null,
+    "activation": "explicit-adapter-embedding",
+    "nativeDiscovery": false,
+    "delegatedAgents": false,
+    "resources": [
+      {
+        "path": ".github/agents/microapp-builder.agent.md",
+        "hash": "2e04be1680fb7b8e11346e386a7a5c3fd39b7e4a4090a533fb46d355b2034c78"
+      },
+      {
+        "path": ".github/agents/react-increment-builder.agent.md",
+        "hash": "f8ed880dfd32c308782f3c49d850bc7f7b1f14ef2461baf2594e98c49b7395d5"
+      },
+      {
+        "path": ".github/skills/react-increment/SKILL.md",
+        "hash": "6b043cb845c699b9f586d00cd868c4c5248ea565c58feaaa74dca775e59ecdf4"
+      },
+      {
+        "path": ".github/skills/modern-ui-ux/SKILL.md",
+        "hash": "314816a6e62b26d59b2db465799f5a6e37e24fec70a2a5e2ba4353ea1387c607"
+      },
+      {
+        "path": ".github/skills/validate-increment/SKILL.md",
+        "hash": "ab665b7bb3ce56c030e6fe007420475fa8571998f5eec11485b86826f54ddc20"
+      },
+      {
+        "path": ".github/skills/react-new-app/SKILL.md",
+        "hash": "377f8cbae5d3f7bc80b29962dbdce47913fd8f7cbac06b06e7a20dfcc12b4a72"
+      }
+    ]
+  },
+  "executionPolicy": "local-bounded",
+  "authorization": {
+    "id": "local-bounded-create-angular-migrate-20261004",
+    "origin": "explicit-user-message",
+    "authorizedAt": "2026-10-04T13:42:24.582-05:00",
+    "userText": "Quitar aprobación humana para estos flujos locales autorizados por mensaje actual sin fabricate human approvals ni global approveAll: policy optin local bounded creation+migration inputs validated, mantener prohibiciones external secret/deploy BD.",
+    "paths": [
+      "src/App.tsx",
+      "src/styles.css"
+    ],
+    "scope": "Explicit local opt-in: new React in-memory screen or validated Angular/AngularJS source migration to one React screen. No source execution, secrets, external integrations, database, shell, new generated dependencies, deploy or delegation.",
+    "maxTextBytes": 80000,
+    "maxFileBytes": 40000,
+    "humanDecisions": false,
+    "hash": "58b9845440f725c050065f6130f25f14704f06014cd8eca2d2136b67cb956e35",
+    "generation": "695e99ce-1328-4f4e-8a8a-9515be5b32e3",
+    "mode": "create",
+    "inputHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "framework": null
+  }
+}

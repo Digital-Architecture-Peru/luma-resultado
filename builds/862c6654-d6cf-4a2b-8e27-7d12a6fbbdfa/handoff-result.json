@@ -1,0 +1,41 @@
+{
+  "status": "candidate",
+  "generation": "695e99ce-1328-4f4e-8a8a-9515be5b32e3",
+  "planRevision": 1,
+  "files": [
+    {
+      "path": "src/App.tsx",
+      "hash": "87a8f8579042d7b531068f4daa64b9e6612fdc552573bace86f717a8e5d9781e"
+    },
+    {
+      "path": "src/styles.css",
+      "hash": "52e9d60f3330a06b070e7cb762e27bb39b020c15e9d3631c7106026054494b89"
+    }
+  ],
+  "validations": [
+    {
+      "kind": "build",
+      "elapsedMs": 3821.9997000000003,
+      "passed": true
+    },
+    {
+      "passed": true,
+      "kind": "browser-interaction",
+      "check": {
+        "buttonName": "Probar capacidad",
+        "expectedText": "Capacidad simulada"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "screenshot": {
+        "path": "evidence/preview.png",
+        "hash": "c134894240690c6a36cefb68086c14401ade259ce8b962ee6bba51621446af20"
+      },
+      "elapsedMs": 507.35999999998603
+    }
+  ],
+  "deviations": [],
+  "agentSessionId": "58c2c7a1-dc40-4651-9d0d-4db36c3b1ff9"
+}

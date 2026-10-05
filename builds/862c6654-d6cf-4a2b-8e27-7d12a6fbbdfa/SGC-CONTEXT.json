@@ -1,0 +1,19 @@
+{
+  "answers": {
+    "type": "Consulta",
+    "pattern": "API REST",
+    "where": "App móvil",
+    "stack": "Recomiéndame",
+    "integration": "Ninguna",
+    "tests": "Estándar completo",
+    "layer": "Frontend",
+    "domain": "Pagos",
+    "persistence": "No requiere"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "fetch failed",
+    "host": "sgc-mcp:10000"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
