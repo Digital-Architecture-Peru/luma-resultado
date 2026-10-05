@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "persistence": "No requiere",
+    "stack": "Python + FastAPI",
+    "layer": "Backend",
+    "type": "Consulta",
+    "domain": "Cuentas",
+    "where": "Banca por Internet",
+    "pattern": "API REST",
+    "integration": "Ninguna",
+    "tests": "Unitarias + API"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
