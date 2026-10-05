@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "where": "Portal web",
+    "pattern": "Componentes",
+    "integration": "Datos mock",
+    "tests": "Navegador",
+    "type": "Formulario",
+    "layer": "Frontend",
+    "persistence": "En memoria",
+    "domain": "Clientes",
+    "stack": "React + TypeScript"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
