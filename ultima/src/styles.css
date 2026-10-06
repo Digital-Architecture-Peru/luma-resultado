@@ -1,0 +1,235 @@
+:root {
+  color-scheme: light;
+  --color-bg: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-border: #d7dde8;
+  --color-text: #1b2230;
+  --color-muted: #566078;
+  --color-primary: #1d4ed8;
+  --color-primary-contrast: #ffffff;
+  --color-selected-bg: #e8edff;
+  --color-selected-border: #1d4ed8;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --space-xs: 0.4rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.25rem;
+  --space-lg: 2rem;
+  --focus-ring: 3px solid #93b4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+}
+
+.app-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.capability-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+}
+
+.status-message {
+  margin: 0;
+  min-height: 1.5em;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.capability-check > button {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-weight: 600;
+  transition: filter 0.15s ease;
+}
+
+.capability-check > button:hover {
+  filter: brightness(1.08);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 var(--space-xs);
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 0 0 var(--space-sm);
+}
+
+.banner {
+  margin: 0 0 var(--space-md);
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.filters {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 180px;
+  flex: 1 1 200px;
+}
+
+.field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.field input,
+.field select {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.query-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .query-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.account-card {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--color-text);
+}
+
+.account-card--selected {
+  background: var(--color-selected-bg);
+  border-color: var(--color-selected-border);
+}
+
+.account-alias {
+  font-weight: 700;
+}
+
+.account-meta {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.balance {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.empty-state {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.detail-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+}
+
+.detail-panel--empty {
+  color: var(--color-muted);
+}
+
+.detail-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem var(--space-sm);
+}
+
+.detail-list dt {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.detail-list dd {
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .app-shell {
+    padding: var(--space-md) var(--space-sm);
+  }
+
+  .capability-check {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

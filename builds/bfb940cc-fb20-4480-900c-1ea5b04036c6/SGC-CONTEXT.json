@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "where": "Banca por Internet",
+    "type": "Consulta",
+    "domain": "Cuentas",
+    "layer": "Frontend",
+    "pattern": "Feature-Sliced Design",
+    "stack": "React + TypeScript",
+    "integration": "Ninguna",
+    "persistence": "PostgreSQL",
+    "tests": "Unitarias"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
