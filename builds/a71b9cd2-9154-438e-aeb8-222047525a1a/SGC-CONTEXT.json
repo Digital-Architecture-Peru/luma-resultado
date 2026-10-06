@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "domain": "Pagos",
+    "persistence": "No requiere",
+    "where": "App móvil",
+    "integration": "API externa",
+    "stack": "Python + FastAPI",
+    "layer": "Backend",
+    "pattern": "API REST",
+    "tests": "Unitarias + API",
+    "type": "Consulta"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
