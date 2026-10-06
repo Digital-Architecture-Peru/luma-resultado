@@ -1,0 +1,11 @@
+{
+  "answers": {
+    "stack": "react",
+    "layer": "frontend"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

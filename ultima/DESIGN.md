@@ -2,87 +2,82 @@
 
 ## Hechos (respuestas del guion)
 - ¿Qué necesitas construir? frontend
-- ¿Qué stack? angular
+- ¿Qué stack? react
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en angular (capa frontend) para "sin definir" sobre sin definir en sin definir, patrón sin definir.
-- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
-- Integración sin definir y persistencia sin definir detrás de interfaces; configuración por variables de entorno, sin secretos.
-- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
+- Microapp React/TypeScript para "sin definir" sobre sin definir en sin definir, capa frontend.
+- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
+- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
+- Accesible (etiquetas, foco, contraste) y responsive.
 
 ## Hipótesis
-- El código se genera en angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
-- Integración (sin definir), persistencia (sin definir) y pruebas (sin definir) se implementan como candidate y requieren build real en CI.
+- Stack (react), patrón (sin definir), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
 
 ## Aceptación
-- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
+- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento (Angular, capa frontend)
+# DESIGN · Refinamiento
 
-> Complementa el diseño base y respeta sus criterios de aceptación.
+> Complementa el diseño base y no cambia sus criterios de aceptación. Los dominios marcados como "sin definir" se tratan como **hipótesis**.
 
 ## Decisiones de arquitectura
 
 | ID | Decisión | Justificación |
 |---|---|---|
-| D1 | Componentes *standalone* con `app.config.ts` y `provideRouter`/`provideHttpClient`, sin NgModules | Es el modelo idiomático del Angular actual y reduce el código repetitivo. |
-| D2 | Estado local con *signals* en un store por feature, sin NgRx | El alcance es pequeño e indefinido. NgRx añadiría una dependencia sin justificación. |
-| D3 | Patrón Repository: interfaz más `InjectionToken`. Implementación por defecto `InMemory…Repository`; adaptador HTTP opcional | La integración y la persistencia están sin definir. El adaptador se cambia sin tocar las páginas. |
-| D4 | Rutas *lazy* por feature (`loadComponent`) | Aísla las features y facilita añadir dominio después. |
-| D5 | Configuración no sensible en `environments/*.ts` (build) o `assets/config.json` (runtime) | Angular no lee variables de entorno en el navegador. Así se cumple "configuración por entorno" sin secretos, porque todo lo que va al bundle es público. |
-| D6 | TypeScript `strict` y plantillas con control flow (`@if`/`@for`) | Detecta más errores en el futuro build de CI y mantiene la sintaxis moderna. |
-| D7 | Specs junto al código (`*.spec.ts`) con el runner por defecto del CLI fijado | No introduce herramientas extra (ver H4). |
-| D8 | UI accesible con HTML semántico, estados vacío/carga/error y CSS propio, sin librería de componentes | No hay requisito de diseño. Evita dependencias pesadas. |
+| AD1 | Usar el scaffold existente de React + TypeScript + Vite, sin dependencias nuevas | La aceptación exige `tsc` y `vite build`. Añadir librerías no aporta valor a una sola interacción y aumenta el riesgo de que el build falle. |
+| AD2 | Gestionar el estado con `useState` dentro de `App`, sin store global ni router | Solo existe un flujo (botón → estado). Redux, Context o un router serían sobreingeniería. |
+| AD3 | Mantener los datos ficticios en un módulo constante y usar una función pura `simulateCapability()` | No hay red ni BD. La función es determinista, fácil de razonar y de sustituir más adelante por una integración real. |
+| AD4 | Montar el contenedor `role="status"` (con `aria-live="polite"`) **siempre**, vacío al inicio, y rellenarlo al pulsar | Si la región viva se monta en el mismo render que su contenido, algunos lectores de pantalla no anuncian el cambio. |
+| AD5 | Usar `<button type="button">` nativo con `:focus-visible` explícito | El botón nativo ya ofrece teclado, foco y rol. Evitar `div` clicables. |
+| AD6 | Definir los textos "Probar capacidad" y "Capacidad simulada" como constantes exportadas | La aceptación valida las cadenas exactas. Una única fuente evita divergencias entre la UI, las pruebas y la documentación. |
+| AD7 | Escribir CSS plano en `src/styles.css`, *mobile-first*, con custom properties de color y contraste AA (≥ 4.5:1) | Cumple "responsive y accesible" sin depender de una librería de UI. |
+| AD8 | Hacer la interacción idempotente: pulsar varias veces mantiene "Capacidad simulada" | El resultado es predecible para la validación en navegador. |
 
 ## Estructura de módulos
 
 ```
-package.json · angular.json · tsconfig*.json · README.md
 src/
-  main.ts · index.html · styles.css
-  environments/environment.ts · environment.development.ts
-  app/
-    app.config.ts · app.routes.ts · app.component.ts
-    core/            # config, manejo de errores, interceptor HTTP (no-op)
-    shared/ui/       # componentes presentacionales (empty-state, spinner)
-    features/items/  # feature ejemplo (H1)
-      models/item.model.ts
-      data/items.repository.ts            # interfaz + InjectionToken
-      data/in-memory-items.repository.ts  # datos ficticios (por defecto)
-      data/http-items.repository.ts       # candidate, no conectado
-      state/items.store.ts                # signals
-      pages/items-list.page.ts · item-detail.page.ts
-      *.spec.ts
-  testing/fixtures/items.fixture.ts       # datos ficticios marcados como tales
+├─ main.tsx              # punto de entrada (existente, sin cambios salvo import de styles.css si falta)
+├─ App.tsx               # T02/T03: layout, botón, región role=status, useState
+├─ styles.css            # T02: tokens, layout responsive, foco visible, contraste
+└─ data/
+   └─ capability.ts      # datos ficticios + constantes de texto + simulateCapability()
 ```
+
+- `App.tsx` solo importa de `data/capability.ts`. No hay dependencias cruzadas adicionales.
+- Si el builder prefiere no crear `data/`, el contenido puede vivir en `App.tsx`. Las tareas T02 y T03 se cumplen igualmente.
 
 ## Hipótesis explícitas
 
-- **H1 Dominio:** como está sin definir, se usa una feature genérica `items` (listar y ver detalle; CRUD solo en memoria). Debe renombrarse cuando se defina el dominio.
-- **H2 Integración:** no hay backend. `http-items.repository.ts` queda como contrato candidate, apuntando a una `apiBaseUrl` ficticia y sin uso por defecto.
-- **H3 Persistencia:** memoria de sesión, con `localStorage` opcional detrás de la misma interfaz. No hay persistencia real.
-- **H4 Versión y runner:** se usa la versión estable vigente del CLI, que se fijará en `package.json`. El runner de pruebas será el que traiga ese CLI por defecto (Vitest o Karma/Jasmine según versión). No está verificado.
-- **H5 Patrón:** como no se definió, se aplica *feature-sliced* con presentación separada de datos (D3/D4).
+- **H1:** Ya existe un scaffold Vite + React + TS con scripts `build` (tsc + vite build) y `preview`.
+- **H2:** La capacidad, el patrón, la integración y la persistencia siguen **sin definir**. Por eso la UI es genérica: título neutro, descripción breve y el botón. Las etiquetas de dominio se centralizan en `capability.ts` para reemplazarlas sin tocar la lógica.
+- **H3:** La integración es nula, simulada en memoria. La persistencia también: el estado se pierde al recargar y eso es aceptable.
+- **H4:** El SGC está en *fallback*. No se han verificado restricciones organizativas (marca, librerías aprobadas, normas de accesibilidad internas). Aplican WCAG 2.1 AA como referencia por defecto.
+- **H5:** El idioma de la UI es español y `lang="es"` se declara en `index.html`.
+- **H6:** El plan de pruebas (T05) es manual o basado en evidencias: build, smoke HTTP 200 del preview e interacción en navegador. No se añade un framework de test para no introducir dependencias.
 
 ## Riesgos
 
-| Riesgo | Mitigación |
-|---|---|
-| Sin `ng build` ni `node_modules` en el host: los errores de tipos y de plantillas no se detectan | Solo se valida sintaxis (T03). El resumen de T06 lista lo no verificado y exige build en CI. |
-| Dominio indefinido: posible retrabajo | Los cambios se aíslan en `features/items` y el repositorio es intercambiable. |
-| Desfase de versiones entre `package.json` y las APIs usadas | Usar solo APIs estables. Documentar la versión en el README. |
-| Que se filtren secretos al bundle | Prohibir claves en `environments`. Advertirlo en el README. |
-| Confundir fixtures con datos reales | Nombres y datos claramente ficticios, en `testing/fixtures`. |
+| Riesgo | Impacto | Mitigación |
+|---|---|---|
+| El dominio está sin definir y la UI no representa la capacidad real | Medio | Documentar H2 en el README (T06). Las etiquetas son parametrizables. |
+| La región `role=status` se monta de forma condicional y el cambio no se anuncia | Medio | Aplicar AD4 y verificar que el nodo existe en el DOM antes del clic. |
+| Una diferencia de texto (mayúsculas, espacios, tildes) hace fallar la validación | Alto | Usar las constantes de AD6 y copiar las cadenas del criterio de aceptación literalmente. |
+| `tsc` en modo estricto falla por tipos implícitos | Medio | Tipar explícitamente el estado (`string \| null`) y los handlers. |
+| El preview no devuelve 200 por `base` o puerto | Medio | No modificar `base` de Vite. El smoke se ejecuta contra la URL que imprime `vite preview`. |
+| El handoff se presenta como apto para producción | Alto | T07 declara el estado `candidate` y deja explícito que los datos son ficticios y no hay integración real. |
 
 ## Trazabilidad con las tareas
 
-- **T02:** D1–D6, D8.
-- **T04:** D7, con specs de store, repositorio en memoria y página de lista.
-- **T05:** el README documenta `npm install`, `ng serve`, `ng test`, `ng build` y explica H2/H3 como candidate.
-- **T06:** el resumen se entrega como candidate, sin afirmar compilación ni producción.
+- **T01:** recoger H1–H6 y el estado *fallback* del SGC en el resumen final.
+- **T02 y T03:** AD2 a AD8 en `App.tsx`, `styles.css` y `capability.ts`.
+- **T04:** AD1.
+- **T05:** H6 y los riesgos de la tabla como checklist en `TODOS.json` y `handoff-result.json`.
+- **T06:** documentar capa frontend, patrón, stack react, integración y persistencia, con H2 y H3 en el README.
+- **T07:** cierre como `candidate`.
