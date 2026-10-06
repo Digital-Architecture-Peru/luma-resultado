@@ -1,83 +1,108 @@
 # DESIGN
 
 ## Hechos (respuestas del guion)
-- ¿Qué necesitas construir? frontend
-- ¿Qué stack? react
+- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
+- ¿Qué tipo de capacidad? Consulta
+- ¿Sobre qué dominio? Tarjetas
+- ¿Qué necesitas construir? Frontend
+- Patrones disponibles Component-based (Atomic Design)
+- ¿Qué stack? Vue 3 + TypeScript
+- ¿Qué integración? Ninguna
+- ¿Persistencia? No requiere
+- ¿Qué pruebas? Estándar completo
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "sin definir" sobre sin definir en sin definir, capa frontend.
-- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
-- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
-- Accesible (etiquetas, foco, contraste) y responsive.
+- Solución en Vue 3 + TypeScript (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
+- Integración Ninguna y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- Stack (react), patrón (sin definir), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
+- El código se genera en Vue 3 + TypeScript sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- Integración (Ninguna), persistencia (No requiere) y pruebas (Estándar completo) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
-- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento
+# DESIGN — Refinamiento: Consulta de Tarjetas (Banca por Internet · Vue 3 + TS)
 
-> Complementa el diseño base y no cambia sus criterios de aceptación. Los dominios marcados como "sin definir" se tratan como **hipótesis**.
+> Complementa el diseño base y mantiene sus Hechos y su Aceptación. Contexto SGC en **fallback**: nada de este documento se sustenta en estándares corporativos confirmados.
 
 ## Decisiones de arquitectura
 
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| AD1 | Usar el scaffold existente de React + TypeScript + Vite, sin dependencias nuevas | La aceptación exige `tsc` y `vite build`. Añadir librerías no aporta valor a una sola interacción y aumenta el riesgo de que el build falle. |
-| AD2 | Gestionar el estado con `useState` dentro de `App`, sin store global ni router | Solo existe un flujo (botón → estado). Redux, Context o un router serían sobreingeniería. |
-| AD3 | Mantener los datos ficticios en un módulo constante y usar una función pura `simulateCapability()` | No hay red ni BD. La función es determinista, fácil de razonar y de sustituir más adelante por una integración real. |
-| AD4 | Montar el contenedor `role="status"` (con `aria-live="polite"`) **siempre**, vacío al inicio, y rellenarlo al pulsar | Si la región viva se monta en el mismo render que su contenido, algunos lectores de pantalla no anuncian el cambio. |
-| AD5 | Usar `<button type="button">` nativo con `:focus-visible` explícito | El botón nativo ya ofrece teclado, foco y rol. Evitar `div` clicables. |
-| AD6 | Definir los textos "Probar capacidad" y "Capacidad simulada" como constantes exportadas | La aceptación valida las cadenas exactas. Una única fuente evita divergencias entre la UI, las pruebas y la documentación. |
-| AD7 | Escribir CSS plano en `src/styles.css`, *mobile-first*, con custom properties de color y contraste AA (≥ 4.5:1) | Cumple "responsive y accesible" sin depender de una librería de UI. |
-| AD8 | Hacer la interacción idempotente: pulsar varias veces mantiene "Capacidad simulada" | El resultado es predecible para la validación en navegador. |
+| D1 | Vite + Vue 3 SFC (`<script setup lang="ts">`), TS `strict` y `vue-tsc` | Es el toolchain idiomático de Vue 3. El tipado estricto detecta errores sin ejecutar la app. |
+| D2 | Carpetas Atomic Design: `atoms → molecules → organisms → templates → pages` | Es el patrón pedido. Regla de dependencia: cada nivel solo importa niveles inferiores. |
+| D3 | Sin Pinia ni vue-router. El estado vive en el composable `useCardQuery`. | Una consulta de una sola vista no justifica esas dependencias (anti-patrón: dependencias sin motivo). |
+| D4 | Puerto `CardRepository` con adaptador `InMemoryCardRepository` (datos ficticios), inyectado vía `provide/inject` | Integración = Ninguna, pero se deja la costura para una API futura. Las pruebas usan el mismo puerto. |
+| D5 | Solo lectura y sin almacenamiento: no se usa `localStorage`, `sessionStorage` ni cookies | Persistencia = No requiere. Además reduce la exposición de datos de tarjeta. |
+| D6 | El PAN nunca se modela completo. El dominio solo tiene `last4`; la UI muestra `•••• 1234`. | Minimiza datos sensibles desde el tipo, no solo desde la vista. |
+| D7 | Montos y fechas se formatean con `Intl` y locale/moneda tomados de `VITE_LOCALE` y `VITE_CURRENCY` | Así no se fija el país en el código. Se configura por entorno y sin secretos. |
+| D8 | Cuatro estados explícitos: `loading`, `empty`, `error`, `success`, con `aria-live` | La UX es predecible y accesible. Cada estado es comprobable en las pruebas. |
+| D9 | Pruebas con Vitest + @vue/test-utils + jsdom | Es el stack de pruebas nativo de Vite y no requiere navegador real. |
 
 ## Estructura de módulos
 
 ```
 src/
-├─ main.tsx              # punto de entrada (existente, sin cambios salvo import de styles.css si falta)
-├─ App.tsx               # T02/T03: layout, botón, región role=status, useState
-├─ styles.css            # T02: tokens, layout responsive, foco visible, contraste
-└─ data/
-   └─ capability.ts      # datos ficticios + constantes de texto + simulateCapability()
+  domain/        card.ts (Card, CardStatus, CardType), cardRepository.ts (puerto)
+  infrastructure/ inMemoryCardRepository.ts, fixtures/cards.ts (ficticios)
+  composables/   useCardQuery.ts, useFormatters.ts
+  components/
+    atoms/       BaseBadge, BaseAmount, MaskedPan, BaseSpinner
+    molecules/   CardSummaryItem, BalanceRow, StatusMessage
+    organisms/   CardList, CardDetailPanel
+    templates/   QueryLayout
+  pages/         CardsQueryPage.vue
+  App.vue, main.ts, env.d.ts
+tests/unit/ · tests/component/ · tests/integration/
+package.json, vite.config.ts, tsconfig.json, .env.example, README.md
 ```
 
-- `App.tsx` solo importa de `data/capability.ts`. No hay dependencias cruzadas adicionales.
-- Si el builder prefiere no crear `data/`, el contenido puede vivir en `App.tsx`. Las tareas T02 y T03 se cumplen igualmente.
+**Contrato de dominio** (hipótesis de campos):
 
-## Hipótesis explícitas
-
-- **H1:** Ya existe un scaffold Vite + React + TS con scripts `build` (tsc + vite build) y `preview`.
-- **H2:** La capacidad, el patrón, la integración y la persistencia siguen **sin definir**. Por eso la UI es genérica: título neutro, descripción breve y el botón. Las etiquetas de dominio se centralizan en `capability.ts` para reemplazarlas sin tocar la lógica.
-- **H3:** La integración es nula, simulada en memoria. La persistencia también: el estado se pierde al recargar y eso es aceptable.
-- **H4:** El SGC está en *fallback*. No se han verificado restricciones organizativas (marca, librerías aprobadas, normas de accesibilidad internas). Aplican WCAG 2.1 AA como referencia por defecto.
-- **H5:** El idioma de la UI es español y `lang="es"` se declara en `index.html`.
-- **H6:** El plan de pruebas (T05) es manual o basado en evidencias: build, smoke HTTP 200 del preview e interacción en navegador. No se añade un framework de test para no introducir dependencias.
+```ts
+Card {
+  id, last4, brand, type: 'CREDITO'|'DEBITO', status: 'ACTIVA'|'BLOQUEADA'|'CANCELADA',
+  holderName, creditLimit?, availableBalance, statementBalance?, dueDate?
+}
+```
 
 ## Riesgos
 
-| Riesgo | Impacto | Mitigación |
-|---|---|---|
-| El dominio está sin definir y la UI no representa la capacidad real | Medio | Documentar H2 en el README (T06). Las etiquetas son parametrizables. |
-| La región `role=status` se monta de forma condicional y el cambio no se anuncia | Medio | Aplicar AD4 y verificar que el nodo existe en el DOM antes del clic. |
-| Una diferencia de texto (mayúsculas, espacios, tildes) hace fallar la validación | Alto | Usar las constantes de AD6 y copiar las cadenas del criterio de aceptación literalmente. |
-| `tsc` en modo estricto falla por tipos implícitos | Medio | Tipar explícitamente el estado (`string \| null`) y los handlers. |
-| El preview no devuelve 200 por `base` o puerto | Medio | No modificar `base` de Vite. El smoke se ejecuta contra la URL que imprime `vite preview`. |
-| El handoff se presenta como apto para producción | Alto | T07 declara el estado `candidate` y deja explícito que los datos son ficticios y no hay integración real. |
+| Riesgo | Mitigación |
+|---|---|
+| No hay compilación ni ejecución en este host; las versiones de las dependencias no se verifican | Usar versiones con rango `^` documentadas y exigir `npm ci && vue-tsc && vitest` en CI. Resultado: **candidate**. |
+| Se desconoce el design system o los tokens del banco | Estilos con variables CSS en un único archivo de tokens, reemplazable. |
+| Se desconoce cómo se integra con el shell de Banca por Internet (micro-frontend, iframe o monolito) | La página es autocontenida y `main.ts` es el único punto de montaje. |
+| Datos sensibles mostrados por error | Se cubre con D6 y una prueba que verifica que ningún render contenga más de 4 dígitos consecutivos del PAN. |
+| La interpretación de "Estándar completo" no coincide con la esperada | Se explicita la hipótesis H3 y queda para validar con el solicitante. |
 
-## Trazabilidad con las tareas
+## Hipótesis (no confirmadas)
 
-- **T01:** recoger H1–H6 y el estado *fallback* del SGC en el resumen final.
-- **T02 y T03:** AD2 a AD8 en `App.tsx`, `styles.css` y `capability.ts`.
-- **T04:** AD1.
-- **T05:** H6 y los riesgos de la tabla como checklist en `TODOS.json` y `handoff-result.json`.
-- **T06:** documentar capa frontend, patrón, stack react, integración y persistencia, con H2 y H3 en el README.
-- **T07:** cierre como `candidate`.
+- **H1.** El alcance de "Consulta" es el listado de tarjetas del cliente más el detalle de saldo y estado. Movimientos, bloqueo y pagos quedan fuera.
+- **H2.** La vista es una sola página dentro de una sesión ya autenticada por el shell. La autenticación queda fuera de alcance.
+- **H3.** "Estándar completo" significa:
+  - pruebas unitarias de formateadores y composable;
+  - pruebas de componentes para átomos y organismos;
+  - una prueba de integración de la página con el repositorio en memoria.
+
+  E2E y umbral de cobertura quedan como recomendación para CI.
+- **H4.** El locale por defecto es `es-PE` / `PEN`, sobrescribible por entorno. El país no está confirmado.
+- **H5.** El objetivo de accesibilidad es WCAG 2.1 AA y no está validado con auditoría.
+
+## Trazabilidad con los todos
+
+- **T01:** Hechos, Contexto SGC (fallback) y H1–H5 citados en el resumen final.
+- **T02:** Archivos de la estructura de módulos anterior.
+- **T03:** Verificación sintáctica de `.ts`/`.json` con el validador local. Los `.vue` quedan **sin verificar** si no hay parser disponible.
+- **T04:** Contenido de `tests/unit`, `tests/component` y `tests/integration`.
+- **T05:** README con instalación, `dev`/`build`/`test`, variables de `.env.example`, una nota de "Integración: Ninguna (puerto D4)" y otra de "Persistencia: No requiere (D5)".
+- **T06:** Resumen candidate que lista lo no verificado: build, ejecución de pruebas, compatibilidad de versiones y H1–H5.
