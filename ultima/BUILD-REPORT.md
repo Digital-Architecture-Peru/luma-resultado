@@ -1,30 +1,35 @@
-# Build 1821614d-894d-4569-a1f6-0fe449df489c
+# Build 1f47ca65-38aa-4fe8-8435-5fbef697f1e3
 
-Stack: vue · capa frontend
+Stack: angular · capa frontend
 
 Candidate generada por Microapp Builder; no es producción.
 
-20 archivos; sintaxis verificada en 13/13; sin validador local: 7; pruebas incluidas; README incluido. No se compiló ni ejecutó el código generado (candidate).
+25 archivos; sintaxis verificada en 22/22; sin validador local: 3; pruebas incluidas; README incluido. No se compiló ni ejecutó el código generado (candidate).
 
 Compilación: OK (dist/ incluido)
 
-- index.html: sin verificar (sin validador local)
+- angular.json: sintaxis OK (JSON.parse)
 - package.json: sintaxis OK (JSON.parse)
 - README.md: sin verificar (sin validador local)
-- src/App.vue: sin verificar (sin validador local)
-- src/env.d.ts: sintaxis OK (typescript.createSourceFile)
-- src/features/tasks/adapters/inMemoryTaskGateway.ts: sintaxis OK (typescript.transpileModule)
-- src/features/tasks/components/TaskCounter.vue: sin verificar (sin validador local)
-- src/features/tasks/components/TaskForm.vue: sin verificar (sin validador local)
-- src/features/tasks/components/TaskList.vue: sin verificar (sin validador local)
-- src/features/tasks/domain/task.ts: sintaxis OK (typescript.transpileModule)
-- src/features/tasks/ports/TaskGateway.ts: sintaxis OK (typescript.transpileModule)
-- src/features/tasks/useTasks.ts: sintaxis OK (typescript.transpileModule)
+- src/app/app.component.ts: sintaxis OK (typescript.transpileModule)
+- src/app/app.config.ts: sintaxis OK (typescript.transpileModule)
+- src/app/app.routes.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/data/customers.repository.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/data/http-customers.repository.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/data/in-memory-customers.repository.spec.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/data/in-memory-customers.repository.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/models/customer.model.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/pages/customer-form.page.spec.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/pages/customer-form.page.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/pages/customers-list.page.spec.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/pages/customers-list.page.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/state/customers.store.spec.ts: sintaxis OK (typescript.transpileModule)
+- src/app/features/customers/state/customers.store.ts: sintaxis OK (typescript.transpileModule)
+- src/environments/environment.ts: sintaxis OK (typescript.transpileModule)
+- src/index.html: sin verificar (sin validador local)
 - src/main.ts: sintaxis OK (typescript.transpileModule)
-- src/mocks/tasks.fixture.ts: sintaxis OK (typescript.transpileModule)
 - src/styles.css: sin verificar (sin validador local)
-- tests/components/App.spec.ts: sintaxis OK (typescript.transpileModule)
-- tests/unit/inMemoryTaskGateway.spec.ts: sintaxis OK (typescript.transpileModule)
-- tests/unit/task.spec.ts: sintaxis OK (typescript.transpileModule)
+- src/testing/fixtures/customers.fixture.ts: sintaxis OK (typescript.transpileModule)
+- tsconfig.app.json: sintaxis OK (JSON.parse)
 - tsconfig.json: sintaxis OK (JSON.parse)
-- vite.config.ts: sintaxis OK (typescript.transpileModule)
+- tsconfig.spec.json: sintaxis OK (JSON.parse)

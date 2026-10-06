@@ -1,58 +1,76 @@
-# Lista de tareas — Vue 3 + Vite + TypeScript
+# Gestión de clientes
 
-Microaplicación frontend para crear, completar y eliminar tareas. Muestra tareas pendientes, completadas y el total en un contador accesible (`role="status"`). Incluye datos de ejemplo; no hay servidor ni llamadas de red.
+Aplicación de ejemplo Angular 19 para listar, buscar, crear, editar y eliminar clientes. Utiliza componentes standalone, rutas lazy, formularios reactivos y un store basado en signals. Los registros incluidos son ficticios.
+
+> **Estado: candidate.** No se han ejecutado instalación, build ni pruebas en este entorno; los comandos de abajo son instrucciones, no resultados verificados.
 
 ## Requisitos
 
-- Node.js y npm instalados (se recomienda una versión LTS compatible con Vite 5).
-- No se incluye un archivo de lock en el proyecto. `npm install` resolverá las versiones permitidas por `package.json`; para instalaciones reproducibles, genere y conserve `package-lock.json` y luego use `npm ci`.
+- Node.js 20.19+ o 22 y npm compatible con la versión elegida.
+- Chrome o Chromium para las pruebas Karma en modo headless.
 
-## Instalar, ejecutar y probar
+## Instalar, ejecutar y compilar
 
 Desde la raíz del proyecto:
 
-```sh
+```bash
 npm install
-npm run dev
+npm start
 ```
 
-Vite imprime la dirección local para abrir la aplicación. Para generar el build de producción:
+Abre <http://localhost:4200>. `npm start` ejecuta `ng serve` en modo desarrollo.
 
-```sh
+```bash
 npm run build
-npm run preview
 ```
 
-`npm run build` primero ejecuta `vue-tsc --noEmit` y después genera los archivos estáticos en `dist/`. `npm run preview` sirve ese build localmente; no es un servidor de producción.
+El build de producción se escribe en `dist/clientes-app` (según `angular.json`). Para compilar en desarrollo:
 
-Ejecutar las pruebas automatizadas:
+```bash
+npx ng build --configuration development
+```
 
-```sh
+## Probar
+
+```bash
 npm test
 ```
 
-Vitest ejecuta las pruebas una vez en el entorno `jsdom`. El código fuente no se ha ejecutado ni validado durante la preparación de esta documentación.
+El script usa `ng test --watch=false --browsers=ChromeHeadless`, con Jasmine y Karma. Requiere un Chrome/Chromium compatible disponible para el launcher. Las pruebas existentes cubren repositorio en memoria, store y páginas de formulario/listado. No se ha comprobado aquí que compilen ni que pasen.
 
-## Estructura y responsabilidades
+## Funcionalidad y rutas
 
-- `src/App.vue`: composición de pantalla, crea el adaptador en memoria y carga los datos al montar.
-- `src/features/tasks/domain/task.ts`: tipos de tarea, validación del título (recorte, normalización de espacios y máximo de 120 caracteres) y cálculo de contadores.
-- `src/features/tasks/ports/TaskGateway.ts`: contrato asíncrono de acceso a tareas (`list`, `create`, `toggle`, `remove`).
-- `src/features/tasks/adapters/inMemoryTaskGateway.ts`: implementación en memoria del contrato; entrega copias de los datos y rechaza títulos o identificadores inválidos.
-- `src/features/tasks/useTasks.ts`: composable Vue que coordina carga, operaciones, estado de carga y errores.
-- `src/features/tasks/components/`: formulario, lista y contador.
-- `src/mocks/tasks.fixture.ts`: conjunto ficticio inicial.
-- `tests/unit/`: validación, conteo y comportamiento del adaptador.
-- `tests/components/`: validaciones del formulario e interacciones de la aplicación.
+- `/clientes`: listado y búsqueda por nombre, correo, teléfono o ciudad; búsqueda sin distinguir mayúsculas ni acentos.
+- `/clientes/nuevo`: alta.
+- `/clientes/:id/editar`: edición.
+- Eliminación desde el listado con confirmación en línea.
+- Validación de nombre y ciudad requeridos, correo válido, teléfono de 7–20 caracteres y correo único (sin distinguir mayúsculas).
 
-## Integración y persistencia
+## Organización e integración
 
-Actualmente la integración es local: no existe API, autenticación, sincronización ni almacenamiento en navegador. El adaptador guarda el estado únicamente mientras la instancia de la aplicación está activa; al recargar, vuelve a cargarse la fixture ficticia. Los cambios no se conservan entre sesiones.
+La UI consume `CustomersRepository`, definido en `src/app/features/customers/data/customers.repository.ts`; `CustomersStore` coordina las operaciones y estado. La implementación se elige en `src/app/app.config.ts` mediante `CUSTOMERS_REPOSITORY` y la configuración de `src/environments/environment.ts`.
 
-Para conectar un backend, implemente `TaskGateway` con un adaptador HTTP y selecciónelo desde el punto de composición (`src/App.vue`). Mantenga las operaciones asíncronas y traduzca los errores del servicio a mensajes presentables sin exponer detalles internos. Defina y documente antes el contrato del backend (esquema de tarea, validaciones, códigos de error y estrategia de identidad). Las URL públicas pueden configurarse con variables `VITE_*` en el build; cualquier valor `VITE_*` queda expuesto al cliente y nunca debe contener secretos. No hay variables de entorno configuradas ni integración HTTP implementada hoy.
+Por defecto se usa `InMemoryCustomersRepository`, sembrado con datos ficticios. Para seleccionar el adaptador HTTP, cambiar en `environment.ts`:
 
-Para persistencia, el backend debería ser la fuente de verdad si se requiere compartir datos entre usuarios o dispositivos. Una alternativa puramente local podría implementar el mismo puerto con `localStorage` o IndexedDB, considerando versionado, recuperación ante datos corruptos y límites del almacenamiento; no está implementada. No introduzca credenciales en el frontend.
+```ts
+repository: 'http',
+apiBaseUrl: 'https://api.example.invalid/v1',
+```
 
-## Cobertura y límites conocidos
+Sustituye la URL de ejemplo por el origen/base path de tu servicio antes de integrar. `HttpCustomersRepository` implementa este contrato REST asumido:
 
-Las pruebas existentes cubren normalización y límites de títulos, contadores, operaciones del gateway (incluidos identificadores desconocidos), validación del formulario y operaciones principales de la interfaz. No prueban integración con servicios externos porque no existe dicha integración. La compilación y las pruebas deben ejecutarse localmente con los comandos anteriores; no se afirma que hayan pasado.
+| Operación | Petición | Respuesta esperada |
+|---|---|---|
+| Listar | `GET {apiBaseUrl}/customers` | `Customer[]` |
+| Obtener | `GET {apiBaseUrl}/customers/{id}` | `Customer`; `404` se traduce a `undefined` |
+| Crear | `POST {apiBaseUrl}/customers` con `CustomerDraft` | `Customer` creado |
+| Actualizar | `PUT {apiBaseUrl}/customers/{id}` con `CustomerDraft` | `Customer` actualizado |
+| Eliminar | `DELETE {apiBaseUrl}/customers/{id}` | respuesta vacía compatible con `void` |
+
+El formato del modelo `Customer` es `{ id, name, email, phone, city, createdAt }`; `createdAt` es una fecha ISO 8601. `CustomerDraft` contiene `name`, `email`, `phone` y `city`. El adaptador codifica el ID en la ruta. El backend debe implementar validación y unicidad del correo; el control de unicidad del repositorio en memoria no sustituye esa garantía. Definir autenticación, autorización, CORS, paginación, errores y políticas de reintento con el backend real: no están implementados por este adaptador. No se envían credenciales ni se deben incluir secretos en la configuración del frontend.
+
+## Persistencia
+
+El modo predeterminado almacena cambios únicamente en memoria de la pestaña y los pierde al recargar; no escribe en localStorage ni en una base de datos. En modo HTTP, la persistencia y sus garantías dependen del servicio conectado. Si se requiere otro almacenamiento, implementar `CustomersRepository` y registrar la implementación en `app.config.ts`, manteniendo la UI desacoplada del mecanismo de datos.
+
+Toda configuración de `src/environments/` termina en el bundle público del navegador. No guardar claves, tokens privados ni cadenas de conexión allí; los secretos deben permanecer en el backend.

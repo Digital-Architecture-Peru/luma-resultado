@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-source",
-    "title": "Implementar la capa frontend en vue para \"sin definir\" sobre sin definir con patrón sin definir",
+    "title": "Implementar la capa frontend en angular para \"sin definir\" sobre sin definir con patrón sin definir",
     "dependsOn": [
       "T01-read-context"
     ],

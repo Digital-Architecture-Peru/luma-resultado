@@ -1,24 +1,35 @@
 {
-  "name": "tareas-vue",
+  "name": "clientes-app",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "test": "vitest run"
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "ng test --watch=false --browsers=ChromeHeadless"
   },
   "dependencies": {
-    "vue": "^3.4.27"
+    "@angular/common": "~19.2.0",
+    "@angular/compiler": "~19.2.0",
+    "@angular/core": "~19.2.0",
+    "@angular/forms": "~19.2.0",
+    "@angular/platform-browser": "~19.2.0",
+    "@angular/router": "~19.2.0",
+    "rxjs": "~7.8.1",
+    "tslib": "^2.6.3",
+    "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.4",
-    "@vue/test-utils": "^2.4.6",
-    "jsdom": "^24.1.0",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.12",
-    "vitest": "^1.6.0",
-    "vue-tsc": "^2.0.19"
+    "@angular-devkit/build-angular": "~19.2.0",
+    "@angular/cli": "~19.2.0",
+    "@angular/compiler-cli": "~19.2.0",
+    "@types/jasmine": "~5.1.4",
+    "jasmine-core": "~5.4.0",
+    "karma": "~6.4.4",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "karma-coverage": "~2.2.1",
+    "typescript": "~5.7.2"
   }
 }
