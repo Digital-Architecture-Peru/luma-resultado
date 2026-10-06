@@ -1,26 +1,6 @@
 {
-  "name": "banca-internet-consulta-tarjetas",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
-  "dependencies": {
-    "vue": "^3.4.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
-    "@vue/test-utils": "^2.4.0",
-    "jsdom": "^24.0.0",
-    "typescript": "~5.4.0",
-    "vite": "^5.2.0",
-    "vitest": "^1.5.0",
-    "vue-tsc": "^2.0.0"
-  }
+  "name": "approved-react-increment", "private": true, "type": "module",
+  "scripts": { "build": "tsc --noEmit && vite build", "dev": "vite" },
+  "dependencies": { "react": "^19.1.0", "react-dom": "^19.1.0" },
+  "devDependencies": { "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0", "typescript": "^5.9.0", "vite": "^7.1.0" }
 }

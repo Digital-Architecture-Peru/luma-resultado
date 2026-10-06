@@ -1,0 +1,41 @@
+{
+  "status": "candidate",
+  "generation": "49a516a7-7e6b-47af-9b73-1dad80ab33aa",
+  "planRevision": 1,
+  "files": [
+    {
+      "path": "src/App.tsx",
+      "hash": "ef685a77af0f8efbbe1687ff973528013b533ae73fc3561444121dfa9857eaf0"
+    },
+    {
+      "path": "src/styles.css",
+      "hash": "0e0a0ea82eb4f59e7071722e367303d8e7a97e6e5a27081bf3d0d9155fc42b7f"
+    }
+  ],
+  "validations": [
+    {
+      "kind": "build",
+      "elapsedMs": 4059.403799999971,
+      "passed": true
+    },
+    {
+      "passed": true,
+      "kind": "browser-interaction",
+      "check": {
+        "buttonName": "Probar capacidad",
+        "expectedText": "Consulta de Cuentas"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "screenshot": {
+        "path": "evidence/preview.png",
+        "hash": "4ccfedb19b512f6fa185a31c7712525ed84e76e7abc639ed77f90b6f57d76ecd"
+      },
+      "elapsedMs": 654.2303999997675
+    }
+  ],
+  "deviations": [],
+  "agentSessionId": "2b2ae3a0-0770-43f2-8f65-2c6e66f2fa74"
+}
