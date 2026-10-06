@@ -1,7 +1,14 @@
 {
   "answers": {
-    "stack": "react",
-    "layer": "frontend"
+    "where": "Banca por Internet",
+    "type": "Consulta",
+    "domain": "Tarjetas",
+    "layer": "Frontend",
+    "stack": "Vue 3 + TypeScript",
+    "pattern": "Component-based (Atomic Design)",
+    "persistence": "No requiere",
+    "integration": "Ninguna",
+    "tests": "Estándar completo"
   },
   "sgc": {
     "status": "fallback",
