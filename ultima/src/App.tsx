@@ -1,321 +1,397 @@
 import { useMemo, useState } from 'react';
 
-type Estado = 'Pendiente' | 'Procesada' | 'Rechazada';
+type Canal = 'Email' | 'SMS' | 'Push';
+type Evento =
+  | 'Saldo bajo'
+  | 'Depósito recibido'
+  | 'Pago programado'
+  | 'Intento de acceso';
 
-interface Transaccion {
+interface ReglaNotificacion {
   id: string;
-  beneficiario: string;
-  cuenta: string;
-  monto: number;
-  concepto: string;
-  estado: Estado;
-  fecha: string;
+  cuentaAlias: string;
+  cuentaNumero: string;
+  evento: Evento;
+  canal: Canal;
+  umbral?: number;
+  activa: boolean;
 }
 
-const ESTADOS: Estado[] = ['Pendiente', 'Procesada', 'Rechazada'];
+interface FormState {
+  cuentaAlias: string;
+  cuentaNumero: string;
+  evento: Evento;
+  canal: Canal;
+  umbral: string;
+  activa: boolean;
+}
 
-let secuencia = 3;
+const EVENTOS: Evento[] = [
+  'Saldo bajo',
+  'Depósito recibido',
+  'Pago programado',
+  'Intento de acceso',
+];
+const CANALES: Canal[] = ['Email', 'SMS', 'Push'];
 
-const datosIniciales: Transaccion[] = [
-  { id: 'TRX-0001', beneficiario: 'Ana Rojas', cuenta: '1234567890', monto: 150000, concepto: 'Pago de arriendo', estado: 'Procesada', fecha: '2026-10-01' },
-  { id: 'TRX-0002', beneficiario: 'Comercial Andina SAS', cuenta: '9988776655', monto: 420000, concepto: 'Pago proveedor', estado: 'Pendiente', fecha: '2026-10-03' },
-  { id: 'TRX-0003', beneficiario: 'Carlos Pérez', cuenta: '5566778899', monto: 75000, concepto: 'Transferencia personal', estado: 'Rechazada', fecha: '2026-10-05' },
+const DATOS_INICIALES: ReglaNotificacion[] = [
+  {
+    id: 'r1',
+    cuentaAlias: 'Cuenta Nómina',
+    cuentaNumero: '**** 4521',
+    evento: 'Saldo bajo',
+    canal: 'Email',
+    umbral: 50000,
+    activa: true,
+  },
+  {
+    id: 'r2',
+    cuentaAlias: 'Cuenta Ahorros',
+    cuentaNumero: '**** 8830',
+    evento: 'Depósito recibido',
+    canal: 'Push',
+    activa: true,
+  },
+  {
+    id: 'r3',
+    cuentaAlias: 'Cuenta Nómina',
+    cuentaNumero: '**** 4521',
+    evento: 'Intento de acceso',
+    canal: 'SMS',
+    activa: false,
+  },
 ];
 
-const moneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const FORM_VACIO: FormState = {
+  cuentaAlias: '',
+  cuentaNumero: '',
+  evento: 'Saldo bajo',
+  canal: 'Email',
+  umbral: '',
+  activa: true,
+};
 
-function validarCuenta(cuenta: string): string | null {
-  if (!/^\d{8,12}$/.test(cuenta)) return 'La cuenta debe tener entre 8 y 12 dígitos.';
-  return null;
-}
-
-function validarMonto(monto: number): string | null {
-  if (!Number.isFinite(monto) || monto <= 0) return 'El monto debe ser mayor a cero.';
-  if (monto > 50000000) return 'El monto supera el límite permitido (50.000.000).';
-  return null;
+let contadorId = DATOS_INICIALES.length;
+function nuevoId(): string {
+  contadorId += 1;
+  return `r${contadorId}`;
 }
 
 export default function App() {
-  const [transacciones, setTransacciones] = useState<Transaccion[]>(datosIniciales);
-  const [beneficiario, setBeneficiario] = useState('');
-  const [cuenta, setCuenta] = useState('');
-  const [monto, setMonto] = useState('');
-  const [concepto, setConcepto] = useState('');
-  const [errores, setErrores] = useState<Record<string, string>>({});
+  const [reglas, setReglas] = useState<ReglaNotificacion[]>(DATOS_INICIALES);
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<'Todos' | Estado>('Todos');
-  const [idAConfirmar, setIdAConfirmar] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState('');
-  const [capacidadMensaje, setCapacidadMensaje] = useState('');
+  const [form, setForm] = useState<FormState>(FORM_VACIO);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [mensajeLista, setMensajeLista] = useState<string>('');
+  const [estadoPrueba, setEstadoPrueba] = useState<string>('');
 
-  const listaFiltrada = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
-    return transacciones.filter((t) => {
-      const coincideTexto =
-        texto === '' ||
-        t.beneficiario.toLowerCase().includes(texto) ||
-        t.cuenta.includes(texto) ||
-        t.id.toLowerCase().includes(texto);
-      const coincideEstado = filtroEstado === 'Todos' || t.estado === filtroEstado;
-      return coincideTexto && coincideEstado;
-    });
-  }, [transacciones, busqueda, filtroEstado]);
+  const reglasFiltradas = useMemo(() => {
+    const termino = busqueda.trim().toLowerCase();
+    if (!termino) return reglas;
+    return reglas.filter((r) =>
+      [r.cuentaAlias, r.cuentaNumero, r.evento, r.canal]
+        .join(' ')
+        .toLowerCase()
+        .includes(termino)
+    );
+  }, [reglas, busqueda]);
 
-  function crearTransaccion(e: React.FormEvent) {
+  function manejarProbarCapacidad() {
+    setEstadoPrueba(
+      `Notificación de Cuentas: prueba enviada correctamente a ${reglas.filter((r) => r.activa).length} regla(s) activa(s).`
+    );
+  }
+
+  function limpiarFormulario() {
+    setForm(FORM_VACIO);
+    setEditandoId(null);
+    setErrorForm(null);
+  }
+
+  function validarFormulario(f: FormState): string | null {
+    if (!f.cuentaAlias.trim()) return 'El alias de la cuenta es obligatorio.';
+    if (!f.cuentaNumero.trim()) return 'El número de cuenta es obligatorio.';
+    if (f.umbral.trim() && Number.isNaN(Number(f.umbral))) {
+      return 'El umbral debe ser un número válido.';
+    }
+    return null;
+  }
+
+  function manejarEnviarFormulario(e: React.FormEvent) {
     e.preventDefault();
-    const nuevosErrores: Record<string, string> = {};
-    if (beneficiario.trim().length < 3) nuevosErrores.beneficiario = 'Ingresa el nombre completo del beneficiario.';
-    const errorCuenta = validarCuenta(cuenta.trim());
-    if (errorCuenta) nuevosErrores.cuenta = errorCuenta;
-    const montoNumerico = Number(monto);
-    const errorMonto = validarMonto(montoNumerico);
-    if (errorMonto) nuevosErrores.monto = errorMonto;
-    if (concepto.trim().length < 3) nuevosErrores.concepto = 'Describe el concepto del pago.';
-
-    setErrores(nuevosErrores);
-    if (Object.keys(nuevosErrores).length > 0) {
-      setMensaje('No se pudo registrar: revisa los campos marcados.');
+    const error = validarFormulario(form);
+    if (error) {
+      setErrorForm(error);
       return;
     }
+    const umbralNumero = form.umbral.trim() ? Number(form.umbral) : undefined;
+    if (editandoId) {
+      setReglas((prev) =>
+        prev.map((r) =>
+          r.id === editandoId
+            ? {
+                ...r,
+                cuentaAlias: form.cuentaAlias.trim(),
+                cuentaNumero: form.cuentaNumero.trim(),
+                evento: form.evento,
+                canal: form.canal,
+                umbral: umbralNumero,
+                activa: form.activa,
+              }
+            : r
+        )
+      );
+      setMensajeLista(`Regla de "${form.cuentaAlias.trim()}" actualizada.`);
+    } else {
+      const nueva: ReglaNotificacion = {
+        id: nuevoId(),
+        cuentaAlias: form.cuentaAlias.trim(),
+        cuentaNumero: form.cuentaNumero.trim(),
+        evento: form.evento,
+        canal: form.canal,
+        umbral: umbralNumero,
+        activa: form.activa,
+      };
+      setReglas((prev) => [...prev, nueva]);
+      setMensajeLista(`Regla de "${nueva.cuentaAlias}" creada.`);
+    }
+    limpiarFormulario();
+  }
 
-    secuencia += 1;
-    const nueva: Transaccion = {
-      id: `TRX-${String(secuencia).padStart(4, '0')}`,
-      beneficiario: beneficiario.trim(),
-      cuenta: cuenta.trim(),
-      monto: montoNumerico,
-      concepto: concepto.trim(),
-      estado: 'Pendiente',
-      fecha: new Date().toISOString().slice(0, 10),
-    };
-    setTransacciones((prev) => [nueva, ...prev]);
-    setBeneficiario('');
-    setCuenta('');
-    setMonto('');
-    setConcepto('');
-    setMensaje(`Transacción ${nueva.id} registrada como Pendiente.`);
+  function manejarEditar(regla: ReglaNotificacion) {
+    setEditandoId(regla.id);
+    setConfirmandoId(null);
+    setErrorForm(null);
+    setForm({
+      cuentaAlias: regla.cuentaAlias,
+      cuentaNumero: regla.cuentaNumero,
+      evento: regla.evento,
+      canal: regla.canal,
+      umbral: regla.umbral != null ? String(regla.umbral) : '',
+      activa: regla.activa,
+    });
+  }
+
+  function manejarAlternarActiva(id: string) {
+    setReglas((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, activa: !r.activa } : r))
+    );
   }
 
   function pedirConfirmacionEliminar(id: string) {
-    setIdAConfirmar(id);
+    setConfirmandoId(id);
   }
 
   function cancelarEliminar() {
-    setIdAConfirmar(null);
+    setConfirmandoId(null);
   }
 
   function confirmarEliminar(id: string) {
-    setTransacciones((prev) => prev.filter((t) => t.id !== id));
-    setIdAConfirmar(null);
-    setMensaje(`Transacción ${id} eliminada.`);
-  }
-
-  function cambiarEstado(id: string, estado: Estado) {
-    setTransacciones((prev) => prev.map((t) => (t.id === id ? { ...t, estado } : t)));
-    setMensaje(`Transacción ${id} marcada como ${estado}.`);
-  }
-
-  function probarCapacidad() {
-    setCapacidadMensaje('Transacción de Pagos');
+    const regla = reglas.find((r) => r.id === id);
+    setReglas((prev) => prev.filter((r) => r.id !== id));
+    setConfirmandoId(null);
+    if (editandoId === id) limpiarFormulario();
+    setMensajeLista(
+      regla ? `Regla de "${regla.cuentaAlias}" eliminada.` : 'Regla eliminada.'
+    );
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
         <div>
-          <p className="app-eyebrow">Banca por Internet · Pagos</p>
-          <h1>Transacción de Pagos</h1>
-          <p className="app-subtitle">Registra, busca y gestiona transacciones de pago en memoria (datos ficticios).</p>
-        </div>
-        <div className="capacidad-demo">
-          <button type="button" className="btn btn-ghost" onClick={probarCapacidad}>
-            Probar capacidad
-          </button>
-          <p role="status" aria-live="polite" className="capacidad-status">
-            {capacidadMensaje}
+          <h1>Notificación de Cuentas</h1>
+          <p className="app-subtitle">
+            Banca por Internet · Configuración de alertas sobre tus cuentas
           </p>
         </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={manejarProbarCapacidad}
+        >
+          Probar capacidad
+        </button>
       </header>
 
-      <section className="card" aria-labelledby="form-titulo">
-        <h2 id="form-titulo">Nueva transacción</h2>
-        <form onSubmit={crearTransaccion} noValidate>
-          <div className="form-grid">
-            <div className="field">
-              <label htmlFor="beneficiario">Beneficiario</label>
-              <input
-                id="beneficiario"
-                type="text"
-                value={beneficiario}
-                onChange={(e) => setBeneficiario(e.target.value)}
-                aria-invalid={Boolean(errores.beneficiario)}
-                aria-describedby={errores.beneficiario ? 'error-beneficiario' : undefined}
-              />
-              {errores.beneficiario && (
-                <span id="error-beneficiario" className="error-texto" role="alert">
-                  {errores.beneficiario}
-                </span>
-              )}
-            </div>
+      <p role="status" className="status-banner" aria-live="polite">
+        {estadoPrueba}
+      </p>
 
-            <div className="field">
-              <label htmlFor="cuenta">Cuenta destino</label>
-              <input
-                id="cuenta"
-                type="text"
-                inputMode="numeric"
-                value={cuenta}
-                onChange={(e) => setCuenta(e.target.value)}
-                aria-invalid={Boolean(errores.cuenta)}
-                aria-describedby={errores.cuenta ? 'error-cuenta' : undefined}
-              />
-              {errores.cuenta && (
-                <span id="error-cuenta" className="error-texto" role="alert">
-                  {errores.cuenta}
-                </span>
-              )}
-            </div>
-
-            <div className="field">
-              <label htmlFor="monto">Monto (COP)</label>
-              <input
-                id="monto"
-                type="number"
-                min="1"
-                value={monto}
-                onChange={(e) => setMonto(e.target.value)}
-                aria-invalid={Boolean(errores.monto)}
-                aria-describedby={errores.monto ? 'error-monto' : undefined}
-              />
-              {errores.monto && (
-                <span id="error-monto" className="error-texto" role="alert">
-                  {errores.monto}
-                </span>
-              )}
-            </div>
-
-            <div className="field">
-              <label htmlFor="concepto">Concepto</label>
-              <input
-                id="concepto"
-                type="text"
-                value={concepto}
-                onChange={(e) => setConcepto(e.target.value)}
-                aria-invalid={Boolean(errores.concepto)}
-                aria-describedby={errores.concepto ? 'error-concepto' : undefined}
-              />
-              {errores.concepto && (
-                <span id="error-concepto" className="error-texto" role="alert">
-                  {errores.concepto}
-                </span>
-              )}
-            </div>
+      <section className="panel" aria-labelledby="titulo-form">
+        <h2 id="titulo-form">
+          {editandoId ? 'Editar regla de notificación' : 'Nueva regla de notificación'}
+        </h2>
+        <form onSubmit={manejarEnviarFormulario} className="form-grid">
+          <div className="field">
+            <label htmlFor="alias">Alias de la cuenta</label>
+            <input
+              id="alias"
+              type="text"
+              value={form.cuentaAlias}
+              onChange={(e) => setForm({ ...form, cuentaAlias: e.target.value })}
+              placeholder="Cuenta Nómina"
+            />
           </div>
+          <div className="field">
+            <label htmlFor="numero">Número de cuenta</label>
+            <input
+              id="numero"
+              type="text"
+              value={form.cuentaNumero}
+              onChange={(e) => setForm({ ...form, cuentaNumero: e.target.value })}
+              placeholder="**** 1234"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="evento">Evento</label>
+            <select
+              id="evento"
+              value={form.evento}
+              onChange={(e) => setForm({ ...form, evento: e.target.value as Evento })}
+            >
+              {EVENTOS.map((ev) => (
+                <option key={ev} value={ev}>
+                  {ev}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="canal">Canal</label>
+            <select
+              id="canal"
+              value={form.canal}
+              onChange={(e) => setForm({ ...form, canal: e.target.value as Canal })}
+            >
+              {CANALES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="umbral">Umbral (opcional)</label>
+            <input
+              id="umbral"
+              type="text"
+              inputMode="numeric"
+              value={form.umbral}
+              onChange={(e) => setForm({ ...form, umbral: e.target.value })}
+              placeholder="Ej. 50000"
+            />
+          </div>
+          <div className="field field-checkbox">
+            <label htmlFor="activa">
+              <input
+                id="activa"
+                type="checkbox"
+                checked={form.activa}
+                onChange={(e) => setForm({ ...form, activa: e.target.checked })}
+              />
+              Regla activa
+            </label>
+          </div>
+
+          {errorForm && (
+            <p className="error-text" role="alert">
+              {errorForm}
+            </p>
+          )}
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary">
-              Registrar transacción
+              {editandoId ? 'Guardar cambios' : 'Crear regla'}
             </button>
+            {editandoId && (
+              <button type="button" className="btn btn-ghost" onClick={limpiarFormulario}>
+                Cancelar edición
+              </button>
+            )}
           </div>
         </form>
-        <p role="status" aria-live="polite" className="form-status">
-          {mensaje}
-        </p>
       </section>
 
-      <section className="card" aria-labelledby="lista-titulo">
-        <div className="lista-header">
-          <h2 id="lista-titulo">Transacciones registradas</h2>
-          <div className="filtros">
-            <div className="field field-inline">
-              <label htmlFor="busqueda">Buscar</label>
-              <input
-                id="busqueda"
-                type="search"
-                placeholder="Beneficiario, cuenta o ID"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
-            </div>
-            <div className="field field-inline">
-              <label htmlFor="filtro-estado">Estado</label>
-              <select
-                id="filtro-estado"
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value as 'Todos' | Estado)}
-              >
-                <option value="Todos">Todos</option>
-                {ESTADOS.map((estado) => (
-                  <option key={estado} value={estado}>
-                    {estado}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <section className="panel" aria-labelledby="titulo-lista">
+        <div className="panel-header">
+          <h2 id="titulo-lista">Reglas configuradas</h2>
+          <div className="field search-field">
+            <label htmlFor="buscar">Buscar</label>
+            <input
+              id="buscar"
+              type="search"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Cuenta, evento o canal"
+            />
           </div>
         </div>
 
-        {listaFiltrada.length === 0 ? (
-          <p className="empty-state">No hay transacciones que coincidan con la búsqueda.</p>
+        <p role="status" aria-live="polite" className="muted-status">
+          {mensajeLista}
+        </p>
+
+        {reglasFiltradas.length === 0 ? (
+          <p className="empty-state">No hay reglas que coincidan con la búsqueda.</p>
         ) : (
-          <div className="tabla-wrapper">
+          <div className="table-wrap">
             <table>
-              <caption className="sr-only">Listado de transacciones de pago</caption>
               <thead>
                 <tr>
-                  <th scope="col">ID</th>
-                  <th scope="col">Beneficiario</th>
-                  <th scope="col">Cuenta</th>
-                  <th scope="col">Monto</th>
-                  <th scope="col">Concepto</th>
-                  <th scope="col">Fecha</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Acciones</th>
+                  <th>Cuenta</th>
+                  <th>Evento</th>
+                  <th>Canal</th>
+                  <th>Umbral</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {listaFiltrada.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td>{t.beneficiario}</td>
-                    <td>{t.cuenta}</td>
-                    <td className="num">{moneda.format(t.monto)}</td>
-                    <td>{t.concepto}</td>
-                    <td>{t.fecha}</td>
+                {reglasFiltradas.map((r) => (
+                  <tr key={r.id}>
                     <td>
-                      <label className="sr-only" htmlFor={`estado-${t.id}`}>
-                        Cambiar estado de {t.id}
-                      </label>
-                      <select
-                        id={`estado-${t.id}`}
-                        value={t.estado}
-                        onChange={(e) => cambiarEstado(t.id, e.target.value as Estado)}
-                        className={`badge badge-${t.estado.toLowerCase()}`}
-                      >
-                        {ESTADOS.map((estado) => (
-                          <option key={estado} value={estado}>
-                            {estado}
-                          </option>
-                        ))}
-                      </select>
+                      <div>{r.cuentaAlias}</div>
+                      <div className="muted">{r.cuentaNumero}</div>
                     </td>
+                    <td>{r.evento}</td>
+                    <td>{r.canal}</td>
+                    <td className="num-cell">{r.umbral != null ? r.umbral.toLocaleString('es-CO') : '—'}</td>
                     <td>
-                      {idAConfirmar === t.id ? (
-                        <div className="confirma-grupo">
-                          <span>¿Eliminar {t.id}?</span>
-                          <button type="button" className="btn btn-danger btn-sm" onClick={() => confirmarEliminar(t.id)}>
-                            Confirmar
+                      <button
+                        type="button"
+                        className={`badge ${r.activa ? 'badge-success' : 'badge-muted'}`}
+                        onClick={() => manejarAlternarActiva(r.id)}
+                        aria-pressed={r.activa}
+                      >
+                        {r.activa ? 'Activa' : 'Inactiva'}
+                      </button>
+                    </td>
+                    <td className="acciones-cell">
+                      <button type="button" className="btn btn-secondary" onClick={() => manejarEditar(r)}>
+                        Editar
+                      </button>
+                      {confirmandoId === r.id ? (
+                        <span className="confirm-inline">
+                          <span>¿Eliminar?</span>
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => confirmarEliminar(r.id)}
+                          >
+                            Sí, eliminar
                           </button>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={cancelarEliminar}>
+                          <button type="button" className="btn btn-ghost" onClick={cancelarEliminar}>
                             Cancelar
                           </button>
-                        </div>
+                        </span>
                       ) : (
                         <button
                           type="button"
-                          className="btn btn-danger btn-sm"
-                          onClick={() => pedirConfirmacionEliminar(t.id)}
-                          aria-label={`Eliminar transacción ${t.id}`}
+                          className="btn btn-ghost"
+                          onClick={() => pedirConfirmacionEliminar(r.id)}
                         >
                           Eliminar
                         </button>
@@ -328,10 +404,6 @@ export default function App() {
           </div>
         )}
       </section>
-
-      <footer className="app-footer">
-        <p>Datos ficticios en memoria; se reinician al recargar. Sin red ni persistencia.</p>
-      </footer>
     </main>
   );
 }
