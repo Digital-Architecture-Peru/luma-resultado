@@ -6,91 +6,87 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript
+- ¿Qué stack? Angular
 - ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Consulta" sobre Tarjetas en Banca por Internet, capa Frontend.
-- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
-- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
-- Accesible (etiquetas, foco, contraste) y responsive.
+- Solución en Angular (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
+- Integración sin definir y persistencia sin definir detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
+- El código se genera en Angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- Integración (sin definir), persistencia (sin definir) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
-- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Tarjetas (Banca por Internet)
+# DESIGN · Refinamiento: Consulta de Tarjetas (Angular, Atomic Design)
 
-> Complementa el diseño base y no modifica sus criterios de aceptación: `tsc` y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+> Complementa el diseño base. No modifica sus Hechos ni su Aceptación. SGC en *fallback*: todo lo no confirmado por el guion figura como hipótesis.
 
 ## Decisiones de arquitectura
+
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Separar la UI en `atoms/molecules/organisms`; `App.tsx` actúa como *template/page* | Aplica el patrón Atomic Design elegido y permite reutilizar componentes. |
-| D2 | Poner la lógica de dominio en funciones puras (`domain/`), sin JSX | Se puede probar con pruebas unitarias sin DOM. |
-| D3 | Usar datos ficticios en un módulo `data/` de solo lectura | La persistencia y la integración están sin definir. Sin red ni `localStorage`. |
-| D4 | Mostrar el PAN siempre enmascarado (`•••• 1234`) | Buena práctica PCI aunque los datos sean ficticios. |
-| D5 | Usar `useState` local, sin librería de estado | Alcance pequeño. No se agregan dependencias nuevas. |
-| D6 | Mostrar el feedback en `<p role="status">` y usar `<button>` nativo | Cubre el criterio "Capacidad simulada" y da accesibilidad sin ARIA extra. |
-| D7 | Formatear moneda y fechas con `Intl` | API nativa del navegador. El locale y la moneda vienen en los datos mock. |
+| D1 | Componentes *standalone* con `ChangeDetectionStrategy.OnPush` | Es el estilo idiomático actual de Angular. Reduce el *boilerplate* de NgModules y las re-renderizaciones. |
+| D2 | Carpetas por nivel Atomic: `atoms/molecules/organisms/templates/pages` | Aplica literalmente el patrón del guion. Los átomos y moléculas se pueden reutilizar en otras capacidades de Banca por Internet. |
+| D3 | Acceso a datos tras `TarjetasRepository` (clase abstracta) inyectado por `InjectionToken`. La implementación por defecto es `TarjetasMockRepository` | La integración está sin definir. La interfaz permite sustituir el mock por un cliente HTTP sin tocar la UI. |
+| D4 | Estado con `Observable` y `async` pipe; la *page* orquesta y los niveles inferiores son presentacionales (`@Input`/`@Output`) | Separa la lógica de la vista y facilita las pruebas unitarias con TestBed. |
+| D5 | El número de tarjeta se enmascara en el modelo de vista (`**** 1234`) mediante un pipe `maskPan` | Es una buena práctica de dominio en tarjetas, aunque los datos sean ficticios. Además, la lógica queda probada de forma unitaria. |
+| D6 | Configuración en `environments/environment*.ts`, solo con valores no sensibles (`useMock`, `apiBaseUrl` vacío) | En Angular los entornos se resuelven al compilar. No se incluyen secretos. |
+| D7 | Persistencia: ninguna en cliente (sin `localStorage`) | La persistencia está sin definir y una consulta es de solo lectura. Así se evita guardar datos de tarjeta en el navegador. |
 
-## Estructura de módulos (React + TS)
-```
-src/
-  App.tsx              # template: header, lista, detalle, botón de prueba
-  styles.css           # tokens (color/espaciado), foco visible, responsive
-  data/mockCards.ts    # tarjetas ficticias (id, alias, last4, tipo, límite, disponible, corte, moneda)
-  domain/cards.ts      # maskPan, formatAmount, usagePercent
-  components/
-    atoms/             # Button, Badge, Amount
-    molecules/         # CardSummary
-    organisms/         # CardList, CardDetail, CapabilityProbe
-```
-Si el builder debe limitarse a `App.tsx` y `styles.css`, puede declarar los componentes dentro de `App.tsx` con la misma jerarquía y documentarlo en el README.
+## Estructura de módulos
 
-## Interacción
-1. Al cargar se ven la lista de tarjetas y el botón "Probar capacidad".
-2. Al seleccionar una tarjeta se muestra su detalle (disponible, límite, fecha de corte).
-3. Al pulsar "Probar capacidad", el `role=status` muestra "Capacidad simulada".
+```
+src/app/
+  core/config/app-config.token.ts
+  features/tarjetas/
+    domain/tarjeta.model.ts            # Tarjeta, EstadoTarjeta
+    data/tarjetas.repository.ts        # abstracta + token
+    data/tarjetas-mock.repository.ts   # datos ficticios
+    ui/atoms/{badge-estado,monto}/
+    ui/molecules/tarjeta-resumen/
+    ui/organisms/lista-tarjetas/
+    ui/templates/consulta-layout/
+    ui/pages/consulta-tarjetas.page.ts
+    pipes/mask-pan.pipe.ts
+  app.routes.ts                        # ruta /tarjetas (lazy)
+src/environments/
+*.spec.ts junto a cada pieza
+angular.json, package.json, tsconfig*.json, README.md
+```
+
+## Pruebas unitarias (mínimo)
+
+- `mask-pan.pipe.spec.ts`: enmascara bien y tolera entradas vacías o cortas.
+- `tarjetas-mock.repository.spec.ts`: devuelve la lista ficticia.
+- `tarjeta-resumen.spec.ts`: renderiza los `@Input` y emite la selección.
+- `consulta-tarjetas.page.spec.ts`: cubre los estados de carga, vacío y error usando un repositorio *stub*.
 
 ## Hipótesis
-- **H1:** el SGC está en *fallback*. No hay reglas corporativas de UI ni de seguridad confirmadas. Se aplican buenas prácticas genéricas.
-- **H2:** "Consulta" significa solo lectura: listar tarjetas y ver su detalle. No incluye bloqueos, pagos ni movimientos transaccionales.
-- **H3:** el locale y la moneda son configurables en los mock. El valor concreto no está confirmado.
-- **H4:** las tarjetas mock usan números no válidos. Solo se exponen los últimos 4 dígitos.
-- **H5:** puede no existir un runner de pruebas instalado y no se agregan dependencias. En ese caso, las unitarias se documentan como plan en `TODOS.json` sobre `domain/`.
-- **H6:** la integración futura sería un API de tarjetas. No hay contrato definido.
 
-## Plan de pruebas unitarias (T05)
-- **U1:** `maskPan('4111')` devuelve `•••• 4111`.
-- **U2:** `formatAmount` respeta la moneda del mock.
-- **U3:** `usagePercent` maneja límite 0 sin `NaN`.
-- **U4** (si hay runner con DOM): el clic en el botón muestra "Capacidad simulada" en `role=status`.
+- **H1.** "Consulta" equivale a un listado de tarjetas del cliente con alias, PAN enmascarado, tipo, estado, saldo y límite. El detalle y los movimientos quedan fuera del alcance.
+- **H2.** La versión de Angular es 17 o superior (standalone y control flow `@if/@for`). Si fuera menor, D1 requiere NgModules.
+- **H3.** El runner de pruebas es Jasmine/Karma, el que trae por defecto el CLI. Se puede cambiar a Jest sin afectar el diseño.
+- **H4.** La autenticación y la sesión las provee el *shell* de Banca por Internet y no forman parte de esta capacidad.
+- **H5.** Moneda y formato `es-PE`/PEN como ejemplo. Debe confirmarse.
+- **H6.** No existe una librería de diseño corporativa confirmada, por lo que se usa CSS propio y mínimo con foco en accesibilidad (roles y contraste).
 
 ## Riesgos
+
 | Riesgo | Mitigación |
 |---|---|
-| Se confunden los mock con datos reales | Etiqueta visible "Datos ficticios" y aviso en el README. |
-| Sin runner de pruebas instalado | Aplicar H5 y reportarlo en `handoff-result.json`. |
-| Restricciones SGC no aplicadas (fallback) | Registrarlo como pendiente en el handoff. |
-| Contraste o foco insuficientes | Tokens con contraste AA y `:focus-visible` explícito. |
-| Se interpreta como listo para producción | El handoff se marca como *candidate*. |
-
-## Trazabilidad
-| Tarea | Elementos de diseño |
-|---|---|
-| T01 | H1 |
-| T02 | Estructura de módulos y D1 |
-| T03 | D6 |
-| T04 | D5 y D2 |
-| T05 | U1–U4 |
-| T06 | D1–D7 y H6 |
-| T07 | Riesgo de "producción" |
+| No se compila ni se ejecutan las pruebas en este host | Se entrega como *candidate*. El build y `ng test` quedan pendientes en CI y se declaran como no verificados en el *handoff*. |
+| Desalineación de versiones (H2/H3) | Fijar versiones en `package.json` y documentarlas en el README. |
+| Contrato de API desconocido | Aislarlo en D3 y documentar el contrato supuesto como hipótesis en el README. |
+| Exposición de datos sensibles | Usar el PAN ya enmascarado en el modelo de vista, no persistir nada y no escribir datos en logs. |
+| Sobre-fragmentación del patrón Atomic | Limitarse a los componentes listados y no crear átomos sin uso. |
