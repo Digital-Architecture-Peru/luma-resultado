@@ -1,11 +1,11 @@
 {
   "answers": {
-    "stack": "React + TypeScript",
+    "stack": "Vue 3 + TypeScript",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
-    "type": "Notificación",
-    "domain": "Pagos",
+    "type": "Consulta",
+    "domain": "Tarjetas",
     "layer": "Frontend"
   },
   "sgc": {
