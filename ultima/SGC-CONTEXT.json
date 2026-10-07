@@ -1,9 +1,9 @@
 {
   "answers": {
-    "stack": "React + TypeScript",
-    "tests": "Estándar completo",
+    "stack": "Angular",
+    "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
-    "where": "App móvil",
+    "where": "Portal empresas",
     "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Frontend"
