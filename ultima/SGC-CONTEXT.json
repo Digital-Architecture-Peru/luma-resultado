@@ -1,8 +1,8 @@
 {
   "answers": {
-    "where": "Portal empresas",
-    "type": "Transacción",
-    "domain": "Pagos",
+    "where": "Banca por Internet",
+    "type": "Consulta",
+    "domain": "Tarjetas",
     "layer": "Frontend",
     "stack": "React + TypeScript",
     "pattern": "Feature-Sliced Design",
