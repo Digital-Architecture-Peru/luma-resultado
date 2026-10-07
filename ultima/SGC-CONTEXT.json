@@ -1,12 +1,12 @@
 {
   "answers": {
-    "where": "Banca por Internet",
+    "stack": "React + TypeScript",
+    "tests": "Estándar completo",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "App móvil",
     "type": "Consulta",
     "domain": "Tarjetas",
-    "layer": "Frontend",
-    "pattern": "Component-based (Atomic Design)",
-    "stack": "Angular",
-    "tests": "Unitarias"
+    "layer": "Frontend"
   },
   "sgc": {
     "status": "fallback",
