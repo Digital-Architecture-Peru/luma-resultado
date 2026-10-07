@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "where": "Portal empresas",
+    "type": "Transacción",
+    "domain": "Pagos",
+    "layer": "Frontend",
+    "stack": "React + TypeScript",
+    "pattern": "Feature-Sliced Design",
+    "persistence": "No requiere",
+    "integration": "Ninguna",
+    "tests": "Unitarias"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

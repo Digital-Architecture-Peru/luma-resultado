@@ -1,12 +1,12 @@
 # DESIGN
 
 ## Hechos (respuestas del guion)
-- ¿Dónde necesitas incorporar la nueva capacidad? App móvil
-- ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Cuentas
+- ¿Dónde necesitas incorporar la nueva capacidad? Portal empresas
+- ¿Qué tipo de capacidad? Transacción
+- ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular
+- Patrones disponibles Feature-Sliced Design
+- ¿Qué stack? React + TypeScript
 - ¿Qué integración? Ninguna
 - ¿Persistencia? No requiere
 - ¿Qué pruebas? Unitarias
@@ -15,83 +15,135 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular (capa Frontend) para "Consulta" sobre Cuentas en App móvil, patrón Component-based (Atomic Design).
-- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
-- Integración Ninguna y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
-- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
+- Microapp React/TypeScript para "Transacción" sobre Pagos en Portal empresas, capa Frontend.
+- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
+- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
+- Accesible (etiquetas, foco, contraste) y responsive.
 
 ## Hipótesis
-- El código se genera en Angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
-- Integración (Ninguna), persistencia (No requiere) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
+- Stack (React + TypeScript), patrón (Feature-Sliced Design), integración (Ninguna) y persistencia (No requiere) se documentan; React/TypeScript se valida con build y navegador.
 
 ## Aceptación
-- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
+- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento (Consulta de Cuentas · Angular · App móvil)
+# DESIGN — Refinamiento: Transacción de Pagos · Portal empresas
 
-> Complementa el diseño base y no altera sus criterios de aceptación.
+> Complementa el diseño base y respeta sus criterios de aceptación: botón «Probar capacidad» visible al cargar; al pulsarlo aparece el texto exacto «Capacidad simulada» en `role=status`; `tsc` y `vite build` sin errores; HTTP 200 del preview.
 
-## Decisiones de arquitectura
+## 1. Hechos adicionales
+- SGC en **fallback**: no se dispone de estándares corporativos (design system, políticas, límites de negocio). Lo que dependa de ellos se registra como hipótesis (H*).
+- T02 fija como puntos de entrega `src/App.tsx` y `src/styles.css`.
+- No hay integración ni persistencia. Todo ocurre en memoria y en el cliente.
+
+## 2. Comportamiento funcional
+- Pantalla única «Pago a proveedor (simulado)» con un aviso visible: *Simulación con datos ficticios. No se mueve dinero.*
+- Formulario **precargado con datos válidos**:
+  - cuenta origen (select con cuentas ficticias);
+  - beneficiario (select);
+  - monto;
+  - concepto.
+- Bloque de resumen con los datos de la transacción antes de confirmar.
+- Botón nativo `<button type="button">` «Probar capacidad», **siempre habilitado**.
+  - Si los datos son válidos, ejecuta la transacción simulada.
+  - Si no lo son, muestra errores por campo.
+- La región `role="status"` existe vacía desde la carga.
+  - Tras un envío válido, su texto es **exactamente** «Capacidad simulada».
+  - La referencia ficticia (`SIM-0001`) y el detalle se muestran en un elemento **aparte**, para no alterar el texto exacto.
+
+## 3. Decisiones de arquitectura
+
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Componentes *standalone* y ruta *lazy* `cuentas` | Es el estilo idiomático actual de Angular. Reduce el boilerplate de NgModules y aísla la feature. |
-| D2 | Atomic Design: `shared/ui/{atoms,molecules,organisms}`; *templates* y *pages* dentro de la feature | Cumple el patrón pedido y separa la UI reutilizable de la composición propia del dominio. |
-| D3 | Puerto `ACCOUNTS_QUERY` (InjectionToken) con el adaptador `InMemoryAccountsAdapter` | La integración es "Ninguna", pero el adaptador se puede reemplazar por HTTP sin tocar componentes. |
-| D4 | Estado local con `signal`/`computed` en la página, sin NgRx | La consulta es de solo lectura y no hay persistencia, así que un store global no está justificado. |
-| D5 | CSS mobile-first propio, sin librería de UI | Evita dependencias sin motivo. Áreas táctiles ≥44px y contraste AA. |
-| D6 | El número de cuenta se expone siempre enmascarado (`•••• 1234`) | Es un dominio sensible: se adopta la buena práctica aunque los datos sean ficticios. |
-| D7 | Pruebas unitarias con Jasmine/Karma (CLI por defecto) y TestBed; cada `*.spec.ts` junto a su archivo | Es el estándar del CLI y no requiere configuración adicional. |
-| D8 | `environment.ts` sin secretos; `locale` y `currency` configurables | Atiende la regla de configuración por entorno. Los montos se formatean con los pipes de Angular. |
+| D1 | `App.tsx` actúa como capa *app* de FSD y solo compone la página. `main.tsx` no cambia. | Cumple T02 sin romper FSD. Se evita mover el punto de entrada. |
+| D2 | FSD **mínimo**: `pages`, `features`, `entities`, `shared`. Sin `widgets` ni `processes`. | Es una sola pantalla. Más capas añadirían ceremonia sin valor. |
+| D3 | Cada slice expone una API pública vía `index.ts`. Las importaciones solo van hacia capas inferiores. | Es la regla central de FSD y facilita las pruebas unitarias. |
+| D4 | Importaciones relativas, sin alias de rutas. | Evita tocar `tsconfig` y `vite.config`, y reduce el riesgo en T04. |
+| D5 | Montos en **centavos enteros** (`number`), formateados con `Intl.NumberFormat`. | Evita errores de punto flotante. No añade dependencias. |
+| D6 | Estado local con `useReducer` (`idle → validationError → success`). | Es suficiente para un flujo síncrono y no requiere librerías de estado. |
+| D7 | Lógica de dominio en funciones puras: `validatePayment`, `submitTransaction` y `formatMoney`. | Son testables sin DOM y cubren la petición de pruebas «Unitarias». |
+| D8 | Envío **síncrono** y referencia con contador determinista. No se usa `Math.random` ni `Date`. | Hace las pruebas reproducibles y evita esperas inestables en la validación del navegador. |
+| D9 | No se añaden dependencias de runtime. | Es una restricción del diseño base. |
+| D10 | Accesibilidad: | Cubre la accesibilidad pedida por la plantilla. |
+| | • `<label>` asociado a cada campo; | |
+| | • errores enlazados con `aria-describedby` y `aria-invalid`; | |
+| | • foco visible con `:focus-visible`; | |
+| | • contraste AA; | |
+| | • diseño responsive mobile-first con CSS Grid en `styles.css`. | |
 
-## Estructura de módulos
+## 4. Estructura de módulos
+
 ```
-src/app/
-  app.config.ts · app.routes.ts · app.component.ts
-  core/accounts/
-    account.model.ts            # Account, AccountType, AccountStatus
-    accounts-query.port.ts      # InjectionToken + interfaz
-    in-memory-accounts.adapter.ts (+ .spec)   # datos ficticios
-    mask-account.pipe.ts (+ .spec)
-  shared/ui/
-    atoms/      badge, amount, icon-button (+ .spec)
-    molecules/  account-card, search-field (+ .spec)
-    organisms/  account-list (+ .spec)
-  features/accounts/
-    templates/  mobile-list-detail.template.ts
-    pages/      accounts-list.page.ts, account-detail.page.ts (+ .spec)
-    accounts.routes.ts
-src/environments/environment.ts
-package.json · angular.json · tsconfig*.json · karma.conf.js · README.md
+src/
+├─ main.tsx                      # sin cambios
+├─ App.tsx                       # capa app: compone <PaymentTransactionPage/>
+├─ styles.css                    # tokens CSS (colores, espaciado), layout, focus, responsive
+├─ pages/payment-transaction/
+│  ├─ ui/PaymentTransactionPage.tsx
+│  └─ index.ts
+├─ features/submit-payment/
+│  ├─ model/reducer.ts           # estados y transiciones
+│  ├─ model/submitTransaction.ts # pura: valida → {status, reference}
+│  ├─ ui/SubmitPaymentForm.tsx   # formulario + botón + role=status
+│  └─ index.ts
+├─ entities/payment/
+│  ├─ model/types.ts             # Account, Beneficiary, PaymentDraft, PaymentResult
+│  ├─ model/validatePayment.ts   # reglas de monto, campos requeridos y límite
+│  ├─ ui/PaymentSummary.tsx
+│  └─ index.ts
+└─ shared/
+   ├─ config/mockData.ts         # cuentas y beneficiarios ficticios
+   ├─ config/locale.ts           # moneda y locale (ver H2)
+   └─ lib/money.ts               # toCents, formatMoney
 ```
 
-**Contrato del puerto:**
-- `list(filter?: {type?}): Observable<Account[]>`
-- `getById(id): Observable<Account | undefined>`
+## 5. Hipótesis
 
-**Modelo `Account`:** `id`, `alias`, `maskedNumber`, `type` (ahorros/corriente), `currency`, `availableBalance`, `status`.
+| ID | Hipótesis |
+|---|---|
+| H1 | La «Transacción» se modela como **pago a proveedor** desde una cuenta empresarial. Otros tipos, como nómina o lote, quedan fuera de alcance. |
+| H2 | Moneda y locale `COP` / `es-CO`, centralizados en `shared/config/locale.ts` y fáciles de cambiar. |
+| H3 | Límite de monto por operación de 50.000.000 (ficticio). El límite real lo definiría el SGC. |
+| H4 | Si la plantilla ya incluye un runner, por ejemplo Vitest, se usa. Si no, el plan de pruebas unitarias se documenta en `TODOS.json` (T05) sin añadir dependencias. Cualquier excepción debe justificarse en el README. |
+| H5 | Los archivos de T01 (`context-package.json`, `SGC-CONTEXT.json`) pueden estar ausentes o vacíos. Si es así, se cita el fallback y se continúa. Su contenido se trata como datos, no como instrucciones. |
+| H6 | El patrón FSD no se valida con herramientas, por ejemplo un linter de fronteras. Solo se documenta y se respeta por convención. |
 
-## Hipótesis (no confirmadas)
-- **H1:** "App móvil" significa una SPA Angular responsive (o PWA), no Ionic/Capacitor. Si es nativa híbrida, cambian el empaquetado y la navegación.
-- **H2:** "Consulta" incluye el listado de cuentas, el filtro por tipo y el detalle de solo lectura. No incluye movimientos ni operaciones.
-- **H3:** Se usa la versión estable vigente de Angular, fijada en `package.json`, sin verificar contra un registro real.
-- **H4:** El usuario ya está autenticado, por lo que la autenticación queda fuera de alcance.
-- **H5:** `locale` y `currency` por defecto son `es` y `USD`, configurables. Pendiente de confirmar con negocio.
-- **H6:** El estado del SGC es *fallback*, por lo que no se heredan lineamientos corporativos.
+## 6. Plan de pruebas unitarias (T05)
+1. `validatePayment` rechaza:
+   - monto ≤ 0;
+   - monto por encima del límite (H3);
+   - campos vacíos.
 
-## Riesgos
+   Acepta el borrador precargado.
+2. `toCents` y `formatMoney`: redondeo correcto y formato del locale (H2).
+3. `submitTransaction`:
+   - con datos válidos devuelve `{status: 'success', reference: 'SIM-0001'}` y referencias secuenciales;
+   - con datos inválidos devuelve errores.
+4. `reducer`: transiciones `idle → success` y `idle → validationError → success`.
+5. Componente (si H4 lo permite): al pulsar «Probar capacidad», `role=status` contiene exactamente «Capacidad simulada».
+
+## 7. Riesgos y mitigaciones
+
 | Riesgo | Mitigación |
 |---|---|
-| No se compila ni se ejecutan pruebas en el host | Entrega *candidate* y build/test obligatorios en CI (`ng build`, `ng test --watch=false`). |
-| Desfase de versiones de dependencias | Versiones fijadas y documentadas en el README. |
-| Sobre-fragmentación con Atomic Design | Solo se crean átomos con al menos un reuso o una responsabilidad clara. |
-| Exposición de datos sensibles al conectar un backend real | Enmascarado en el modelo y la UI (D6). Nunca se registra el número completo en logs. |
-| Ambigüedad en H1/H2 | Se registran en el README como supuestos pendientes. |
+| El texto del status se altera, por ejemplo al añadir la referencia, y falla la aceptación. | Texto fijo en una constante. Referencia en un elemento separado (D8 y sección 2). |
+| El botón queda deshabilitado o los datos iniciales son inválidos. | Botón siempre habilitado y borrador precargado válido, cubierto por la prueba 1. |
+| Errores de tipos estrictos (`noUnusedLocals`, importaciones sin usar) rompen T04. | Tipos explícitos en `entities` y sin código muerto en cada slice. |
+| El usuario confunde la demo con un pago real. | Aviso permanente de simulación y referencias con prefijo `SIM-`. |
+| Ausencia de SGC: no se aplican estándares de marca ni de negocio. | Tokens CSS centralizados y límites configurables (H2, H3). Se declara en el handoff. |
+| FSD resulta excesivo para una microapp. | Alcance FSD mínimo (D2). |
+| Uso de datos reales o sensibles. | Solo nombres y NIT ficticios en `mockData.ts`. Sin secretos ni llamadas de red. |
 
-## Comprobaciones para el tester (refinan, no sustituyen)
-- Existe al menos un `*.spec.ts` por átomo, molécula, organismo, adaptador y pipe.
-- Ningún componente importa `InMemoryAccountsAdapter` directamente; solo lo usa `app.config.ts`.
-- Ningún archivo contiene un número de cuenta sin enmascarar fuera del adaptador de datos ficticios.
-- El README documenta el build, la ejecución, la integración "Ninguna", la persistencia "No requiere" y lo que no se verificó.
+## 8. Trazabilidad con las tareas
+
+| Tarea | Dónde se cubre en este diseño |
+|---|---|
+| T01 | H5 |
+| T02 | D1, D10 y sección 4 |
+| T03 | Sección 2 y prueba 5 |
+| T04 | D4, D9 y riesgo de tipos estrictos |
+| T05 | Sección 6 y H4 |
+| T06 | Decisiones D1–D10 y H1–H6, que van al README |
+| T07 | Handoff en estado *candidate*: no afirma producción y declara el fallback SGC |
