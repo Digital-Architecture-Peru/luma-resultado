@@ -1,10 +1,10 @@
 {
   "answers": {
-    "stack": "Vue 3 + TypeScript",
-    "tests": "Estándar completo",
+    "stack": "Svelte",
+    "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
-    "where": "Portal empresas",
-    "type": "Transacción",
+    "where": "Banca por Internet",
+    "type": "Notificación",
     "domain": "Tarjetas",
     "layer": "Frontend"
   },
