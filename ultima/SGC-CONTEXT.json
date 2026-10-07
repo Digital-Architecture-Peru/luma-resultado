@@ -1,6 +1,6 @@
 {
   "answers": {
-    "stack": "Java + Spring Boot",
+    "stack": "Java + Quarkus",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
