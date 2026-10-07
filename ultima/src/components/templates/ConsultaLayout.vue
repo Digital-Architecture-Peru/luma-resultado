@@ -3,11 +3,8 @@ defineProps<{ title: string }>()
 </script>
 
 <template>
-  <main class="layout">
-    <h1>{{ title }}</h1>
-    <div class="layout__grid">
-      <aside><slot name="list" /></aside>
-      <div><slot name="detail" /></div>
-    </div>
-  </main>
+  <div class="layout">
+    <header class="layout__header"><h1>{{ title }}</h1></header>
+    <main class="layout__main"><slot /></main>
+  </div>
 </template>

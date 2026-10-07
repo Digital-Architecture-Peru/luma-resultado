@@ -1,7 +1,5 @@
-<script setup lang="ts">
-import TarjetasConsultaPage from './pages/TarjetasConsultaPage.vue'
-</script>
+<script setup lang="ts"></script>
 
 <template>
-  <TarjetasConsultaPage />
+  <router-view />
 </template>

@@ -1,17 +1,34 @@
-export type CardKind = 'credito' | 'debito'
-export type CardStatus = 'activa' | 'bloqueada' | 'vencida'
+export type CardNetwork = 'VISA' | 'MASTERCARD'
+export type CardType = 'credit' | 'debit'
+export type CardStatus = 'active' | 'blocked' | 'expired'
 
-export interface Card {
+export interface CardSummary {
   id: string
   alias: string
-  brand: string
-  kind: CardKind
-  /** Solo los ultimos 4 digitos; el PAN completo nunca existe en el front. */
+  network: CardNetwork
+  type: CardType
   last4: string
   status: CardStatus
   currency: string
   availableBalance: number
-  creditLimit?: number
-  /** Formato MM/AA */
-  expiry: string
+}
+
+export interface Card extends CardSummary {
+  holder: string
+  creditLimit: number
+  currentBalance: number
+  /** Fecha ISO yyyy-mm-dd */
+  cutoffDate: string
+  dueDate: string
+  minimumPayment: number
+}
+
+export interface Movement {
+  id: string
+  /** Fecha ISO yyyy-mm-dd */
+  date: string
+  description: string
+  /** Negativo = cargo, positivo = abono */
+  amount: number
+  currency: string
 }
