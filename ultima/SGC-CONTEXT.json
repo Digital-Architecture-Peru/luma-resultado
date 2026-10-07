@@ -5,7 +5,7 @@
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
     "type": "Consulta",
-    "domain": "Tarjetas",
+    "domain": "Cuentas",
     "layer": "Frontend"
   },
   "sgc": {
