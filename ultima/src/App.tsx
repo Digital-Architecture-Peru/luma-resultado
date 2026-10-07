@@ -1,68 +1,48 @@
 import { useMemo, useState } from 'react';
 
-type EstadoTarjeta = 'Activa' | 'Bloqueada' | 'Vencida';
+type EstadoTarjeta = 'Activa' | 'Bloqueada';
 
 interface Tarjeta {
   id: string;
+  alias: string;
   titular: string;
   numeroEnmascarado: string;
   tipo: 'Débito' | 'Crédito';
-  estado: EstadoTarjeta;
   saldoDisponible: number;
   limite: number;
-  ultimoMovimiento: string;
+  estado: EstadoTarjeta;
 }
 
 const TARJETAS_INICIALES: Tarjeta[] = [
   {
-    id: 'tj-1001',
-    titular: 'María Fernanda Londoño',
+    id: 'tj-001',
+    alias: 'Tarjeta Nómina',
+    titular: 'María Fernanda Ríos',
     numeroEnmascarado: '**** **** **** 4821',
-    tipo: 'Crédito',
+    tipo: 'Débito',
+    saldoDisponible: 4_250_300,
+    limite: 6_000_000,
     estado: 'Activa',
-    saldoDisponible: 3250000,
-    limite: 5000000,
-    ultimoMovimiento: '2026-10-05',
   },
   {
-    id: 'tj-1002',
-    titular: 'Carlos Andrés Pérez',
+    id: 'tj-002',
+    alias: 'Tarjeta Viajes',
+    titular: 'María Fernanda Ríos',
     numeroEnmascarado: '**** **** **** 1190',
-    tipo: 'Débito',
+    tipo: 'Crédito',
+    saldoDisponible: 1_820_000,
+    limite: 5_000_000,
     estado: 'Activa',
-    saldoDisponible: 980000,
-    limite: 980000,
-    ultimoMovimiento: '2026-10-06',
   },
   {
-    id: 'tj-1003',
-    titular: 'Luisa Fernanda Rojas',
-    numeroEnmascarado: '**** **** **** 7734',
+    id: 'tj-003',
+    alias: 'Tarjeta Respaldo',
+    titular: 'Jorge Andrés Peña',
+    numeroEnmascarado: '**** **** **** 7733',
     tipo: 'Crédito',
+    saldoDisponible: 0,
+    limite: 3_000_000,
     estado: 'Bloqueada',
-    saldoDisponible: 0,
-    limite: 2000000,
-    ultimoMovimiento: '2026-09-28',
-  },
-  {
-    id: 'tj-1004',
-    titular: 'Jorge Iván Martínez',
-    numeroEnmascarado: '**** **** **** 2290',
-    tipo: 'Débito',
-    estado: 'Vencida',
-    saldoDisponible: 0,
-    limite: 450000,
-    ultimoMovimiento: '2026-07-14',
-  },
-  {
-    id: 'tj-1005',
-    titular: 'Ana Sofía Gutiérrez',
-    numeroEnmascarado: '**** **** **** 6603',
-    tipo: 'Crédito',
-    estado: 'Activa',
-    saldoDisponible: 7120000,
-    limite: 9000000,
-    ultimoMovimiento: '2026-10-07',
   },
 ];
 
@@ -72,236 +52,203 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 });
 
-function formatearFecha(fechaIso: string): string {
-  const fecha = new Date(`${fechaIso}T00:00:00`);
-  return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }).format(fecha);
-}
-
-type FiltroEstado = 'Todas' | EstadoTarjeta;
-
 export default function App() {
-  const [tarjetas] = useState<Tarjeta[]>(TARJETAS_INICIALES);
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('Todas');
-  const [tarjetaSeleccionadaId, setTarjetaSeleccionadaId] = useState<string | null>(null);
-  const [confirmandoBloqueoId, setConfirmandoBloqueoId] = useState<string | null>(null);
-  const [mensajeAccion, setMensajeAccion] = useState('');
   const [capacidadProbada, setCapacidadProbada] = useState(false);
+  const [tarjetas, setTarjetas] = useState<Tarjeta[]>(TARJETAS_INICIALES);
+  const [busqueda, setBusqueda] = useState('');
+  const [idSeleccionada, setIdSeleccionada] = useState<string | null>(TARJETAS_INICIALES[0]?.id ?? null);
+  const [idPendienteConfirmar, setIdPendienteConfirmar] = useState<string | null>(null);
+  const [mensajeAccion, setMensajeAccion] = useState('');
 
   const tarjetasFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
-    return tarjetas.filter((tarjeta) => {
-      const coincideBusqueda =
-        termino.length === 0 ||
-        tarjeta.titular.toLowerCase().includes(termino) ||
-        tarjeta.numeroEnmascarado.toLowerCase().includes(termino) ||
-        tarjeta.id.toLowerCase().includes(termino);
-      const coincideEstado = filtroEstado === 'Todas' || tarjeta.estado === filtroEstado;
-      return coincideBusqueda && coincideEstado;
-    });
-  }, [tarjetas, busqueda, filtroEstado]);
+    if (!termino) return tarjetas;
+    return tarjetas.filter((tarjeta) =>
+      [tarjeta.alias, tarjeta.titular, tarjeta.numeroEnmascarado, tarjeta.tipo, tarjeta.estado]
+        .join(' ')
+        .toLowerCase()
+        .includes(termino),
+    );
+  }, [tarjetas, busqueda]);
 
-  const tarjetaSeleccionada = tarjetas.find((tarjeta) => tarjeta.id === tarjetaSeleccionadaId) ?? null;
+  const tarjetaSeleccionada = useMemo(
+    () => tarjetas.find((tarjeta) => tarjeta.id === idSeleccionada) ?? null,
+    [tarjetas, idSeleccionada],
+  );
 
-  function manejarProbarCapacidad() {
-    setCapacidadProbada(true);
-  }
+  const tarjetaPendiente = useMemo(
+    () => tarjetas.find((tarjeta) => tarjeta.id === idPendienteConfirmar) ?? null,
+    [tarjetas, idPendienteConfirmar],
+  );
 
-  function manejarSolicitarBloqueo(id: string) {
-    setConfirmandoBloqueoId(id);
+  function pedirCambioEstado(id: string) {
+    setIdPendienteConfirmar(id);
     setMensajeAccion('');
   }
 
-  function manejarCancelarBloqueo() {
-    setConfirmandoBloqueoId(null);
+  function cancelarCambioEstado() {
+    setIdPendienteConfirmar(null);
   }
 
-  function manejarConfirmarBloqueo(tarjeta: Tarjeta) {
-    setConfirmandoBloqueoId(null);
-    setMensajeAccion(`Solicitud de bloqueo simulada para la tarjeta ${tarjeta.numeroEnmascarado} de ${tarjeta.titular}.`);
+  function confirmarCambioEstado() {
+    if (!tarjetaPendiente) return;
+    const nuevoEstado: EstadoTarjeta = tarjetaPendiente.estado === 'Activa' ? 'Bloqueada' : 'Activa';
+    setTarjetas((previas) =>
+      previas.map((tarjeta) =>
+        tarjeta.id === tarjetaPendiente.id ? { ...tarjeta, estado: nuevoEstado } : tarjeta,
+      ),
+    );
+    setMensajeAccion(
+      `${tarjetaPendiente.alias} ahora está ${nuevoEstado === 'Activa' ? 'activa' : 'bloqueada'}.`,
+    );
+    setIdPendienteConfirmar(null);
   }
 
   return (
-    <main className="pagina">
-      <header className="encabezado">
-        <p className="eyebrow">Banca por Internet</p>
-        <h1>Consulta de Tarjetas</h1>
-        <p className="subtitulo">Revisa el estado, saldo y movimientos recientes de las tarjetas asociadas.</p>
-        <button type="button" className="boton boton-primario" onClick={manejarProbarCapacidad}>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="app-header__texto">
+          <p className="app-header__eyebrow">Banca por Internet · Tarjetas</p>
+          <h1>Consulta de Tarjetas</h1>
+          <p className="app-header__descripcion">
+            Revisa tus tarjetas, busca por alias o titular y gestiona el bloqueo o desbloqueo con
+            confirmación. Datos de demostración en memoria.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="boton boton--primario"
+          onClick={() => setCapacidadProbada(true)}
+        >
           Probar capacidad
         </button>
-        <p role="status" className="estado-capacidad">
-          {capacidadProbada ? 'Consulta de Tarjetas' : ''}
-        </p>
       </header>
 
-      <section className="panel" aria-labelledby="titulo-filtros">
-        <h2 id="titulo-filtros" className="titulo-seccion">
-          Buscar y filtrar
-        </h2>
-        <div className="controles">
-          <div className="campo">
-            <label htmlFor="campo-busqueda">Buscar por titular, número o ID</label>
-            <input
-              id="campo-busqueda"
-              type="search"
-              value={busqueda}
-              onChange={(evento) => setBusqueda(evento.target.value)}
-              placeholder="Ej. María, 4821, tj-1001"
-              autoComplete="off"
-            />
-          </div>
-          <div className="campo">
-            <label htmlFor="campo-estado">Estado</label>
-            <select
-              id="campo-estado"
-              value={filtroEstado}
-              onChange={(evento) => setFiltroEstado(evento.target.value as FiltroEstado)}
-            >
-              <option value="Todas">Todas</option>
-              <option value="Activa">Activa</option>
-              <option value="Bloqueada">Bloqueada</option>
-              <option value="Vencida">Vencida</option>
-            </select>
-          </div>
-        </div>
-        <p className="resultado-conteo" aria-live="polite">
-          {tarjetasFiltradas.length} {tarjetasFiltradas.length === 1 ? 'tarjeta encontrada' : 'tarjetas encontradas'}
-        </p>
-      </section>
+      <p role="status" aria-live="polite" className="estado-capacidad">
+        {capacidadProbada ? 'Consulta de Tarjetas' : ''}
+      </p>
 
-      <section className="panel" aria-labelledby="titulo-listado">
-        <h2 id="titulo-listado" className="titulo-seccion">
-          Tarjetas
-        </h2>
-        {tarjetasFiltradas.length === 0 ? (
-          <p className="estado-vacio">No hay tarjetas que coincidan con la búsqueda o el filtro aplicado.</p>
-        ) : (
-          <div className="tabla-contenedor">
-            <table className="tabla-tarjetas">
-              <thead>
-                <tr>
-                  <th scope="col">Titular</th>
-                  <th scope="col">Número</th>
-                  <th scope="col">Tipo</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col" className="columna-numerica">
-                    Saldo disponible
-                  </th>
-                  <th scope="col">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tarjetasFiltradas.map((tarjeta) => (
-                  <tr key={tarjeta.id}>
-                    <td>{tarjeta.titular}</td>
-                    <td>{tarjeta.numeroEnmascarado}</td>
-                    <td>{tarjeta.tipo}</td>
-                    <td>
-                      <span className={`insignia insignia-${tarjeta.estado.toLowerCase()}`}>{tarjeta.estado}</span>
-                    </td>
-                    <td className="columna-numerica">{formatoMoneda.format(tarjeta.saldoDisponible)}</td>
-                    <td className="celda-acciones">
-                      <button
-                        type="button"
-                        className="boton boton-secundario"
-                        onClick={() => setTarjetaSeleccionadaId(tarjeta.id)}
-                      >
-                        Ver detalle
-                      </button>
-                      <button
-                        type="button"
-                        className="boton boton-peligro"
-                        onClick={() => manejarSolicitarBloqueo(tarjeta.id)}
-                        disabled={tarjeta.estado === 'Bloqueada'}
-                      >
-                        Bloquear
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <main className="app-contenido">
+        <section className="panel" aria-labelledby="titulo-buscador">
+          <h2 id="titulo-buscador">Buscar tarjetas</h2>
+          <label htmlFor="busqueda-tarjetas" className="etiqueta">
+            Alias, titular, tipo o estado
+          </label>
+          <input
+            id="busqueda-tarjetas"
+            type="search"
+            className="campo-texto"
+            placeholder="Ej: Viajes, Jorge, Crédito, Bloqueada"
+            value={busqueda}
+            onChange={(evento) => setBusqueda(evento.target.value)}
+          />
 
-      {mensajeAccion && (
-        <p role="status" className="mensaje-accion">
-          {mensajeAccion}
-        </p>
-      )}
-
-      {tarjetaSeleccionada && (
-        <section className="panel panel-detalle" aria-labelledby="titulo-detalle">
-          <div className="detalle-encabezado">
-            <h2 id="titulo-detalle" className="titulo-seccion">
-              Detalle de la tarjeta
-            </h2>
-            <button type="button" className="boton boton-fantasma" onClick={() => setTarjetaSeleccionadaId(null)}>
-              Cerrar
-            </button>
-          </div>
-          <dl className="lista-detalle">
-            <div className="fila-detalle">
-              <dt>Titular</dt>
-              <dd>{tarjetaSeleccionada.titular}</dd>
-            </div>
-            <div className="fila-detalle">
-              <dt>Número</dt>
-              <dd>{tarjetaSeleccionada.numeroEnmascarado}</dd>
-            </div>
-            <div className="fila-detalle">
-              <dt>Tipo</dt>
-              <dd>{tarjetaSeleccionada.tipo}</dd>
-            </div>
-            <div className="fila-detalle">
-              <dt>Estado</dt>
-              <dd>{tarjetaSeleccionada.estado}</dd>
-            </div>
-            <div className="fila-detalle">
-              <dt>Saldo disponible</dt>
-              <dd>{formatoMoneda.format(tarjetaSeleccionada.saldoDisponible)}</dd>
-            </div>
-            <div className="fila-detalle">
-              <dt>Límite</dt>
-              <dd>{formatoMoneda.format(tarjetaSeleccionada.limite)}</dd>
-            </div>
-            <div className="fila-detalle">
-              <dt>Último movimiento</dt>
-              <dd>{formatearFecha(tarjetaSeleccionada.ultimoMovimiento)}</dd>
-            </div>
-          </dl>
+          <ul className="lista-tarjetas" aria-label="Resultados de tarjetas">
+            {tarjetasFiltradas.length === 0 && (
+              <li className="lista-tarjetas__vacio">No hay tarjetas que coincidan con la búsqueda.</li>
+            )}
+            {tarjetasFiltradas.map((tarjeta) => (
+              <li key={tarjeta.id}>
+                <button
+                  type="button"
+                  className={
+                    'tarjeta-item' + (tarjeta.id === idSeleccionada ? ' tarjeta-item--activa' : '')
+                  }
+                  onClick={() => setIdSeleccionada(tarjeta.id)}
+                  aria-pressed={tarjeta.id === idSeleccionada}
+                >
+                  <span className="tarjeta-item__alias">{tarjeta.alias}</span>
+                  <span className="tarjeta-item__numero">{tarjeta.numeroEnmascarado}</span>
+                  <span
+                    className={
+                      'badge ' +
+                      (tarjeta.estado === 'Activa' ? 'badge--exito' : 'badge--peligro')
+                    }
+                  >
+                    {tarjeta.estado}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
-      )}
 
-      {confirmandoBloqueoId && (
-        <div className="superposicion" role="presentation">
-          <div className="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="titulo-confirmacion">
-            <h2 id="titulo-confirmacion">Confirmar bloqueo</h2>
-            <p>
-              ¿Confirmas el bloqueo simulado de la tarjeta{' '}
-              {tarjetas.find((t) => t.id === confirmandoBloqueoId)?.numeroEnmascarado}? Esta acción es ficticia y no
-              afecta datos reales.
-            </p>
-            <div className="dialogo-acciones">
-              <button type="button" className="boton boton-fantasma" onClick={manejarCancelarBloqueo}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="boton boton-peligro"
-                onClick={() => {
-                  const tarjeta = tarjetas.find((t) => t.id === confirmandoBloqueoId);
-                  if (tarjeta) manejarConfirmarBloqueo(tarjeta);
-                }}
-              >
-                Confirmar bloqueo
-              </button>
+        <section className="panel" aria-labelledby="titulo-detalle">
+          <h2 id="titulo-detalle">Detalle de la tarjeta</h2>
+          {!tarjetaSeleccionada && <p className="texto-muted">Selecciona una tarjeta para ver su detalle.</p>}
+          {tarjetaSeleccionada && (
+            <div className="detalle-tarjeta">
+              <dl className="detalle-tarjeta__grid">
+                <div>
+                  <dt>Titular</dt>
+                  <dd>{tarjetaSeleccionada.titular}</dd>
+                </div>
+                <div>
+                  <dt>Número</dt>
+                  <dd>{tarjetaSeleccionada.numeroEnmascarado}</dd>
+                </div>
+                <div>
+                  <dt>Tipo</dt>
+                  <dd>{tarjetaSeleccionada.tipo}</dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>
+                    <span
+                      className={
+                        'badge ' +
+                        (tarjetaSeleccionada.estado === 'Activa' ? 'badge--exito' : 'badge--peligro')
+                      }
+                    >
+                      {tarjetaSeleccionada.estado}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Saldo disponible</dt>
+                  <dd className="valor-numerico">{formatoMoneda.format(tarjetaSeleccionada.saldoDisponible)}</dd>
+                </div>
+                <div>
+                  <dt>Límite</dt>
+                  <dd className="valor-numerico">{formatoMoneda.format(tarjetaSeleccionada.limite)}</dd>
+                </div>
+              </dl>
+
+              {idPendienteConfirmar === tarjetaSeleccionada.id ? (
+                <div className="confirmacion" role="alertdialog" aria-labelledby="titulo-confirmacion">
+                  <p id="titulo-confirmacion">
+                    ¿Confirmas {tarjetaSeleccionada.estado === 'Activa' ? 'bloquear' : 'desbloquear'}{' '}
+                    {tarjetaSeleccionada.alias}?
+                  </p>
+                  <div className="confirmacion__acciones">
+                    <button type="button" className="boton boton--peligro" onClick={confirmarCambioEstado}>
+                      Sí, confirmar
+                    </button>
+                    <button type="button" className="boton boton--secundario" onClick={cancelarCambioEstado}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={
+                    'boton ' +
+                    (tarjetaSeleccionada.estado === 'Activa' ? 'boton--peligro' : 'boton--primario')
+                  }
+                  onClick={() => pedirCambioEstado(tarjetaSeleccionada.id)}
+                >
+                  {tarjetaSeleccionada.estado === 'Activa' ? 'Bloquear tarjeta' : 'Desbloquear tarjeta'}
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-      )}
-    </main>
+          )}
+
+          <p role="status" aria-live="polite" className="mensaje-accion">
+            {mensajeAccion}
+          </p>
+        </section>
+      </main>
+    </div>
   );
 }
