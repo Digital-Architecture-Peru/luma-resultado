@@ -1,60 +1,59 @@
-# Notificaciones de tarjetas
+# Consulta de Tarjetas
 
-Aplicación web móvil de notificaciones in-app, construida con Svelte 4 y Vite. La interfaz usa componentes organizados por Atomic Design y actualmente trabaja con datos ficticios; no realiza llamadas de red.
+Frontend de consulta construido con Vue 3, TypeScript y Vite. Estado de entrega: **candidate**. El código se revisó mediante lectura; no se ejecutaron build, pruebas ni servidor en este entorno.
 
 ## Requisitos
 
-- Node.js 18 o superior
-- npm
+- Node.js compatible con Vite 5 (Node.js 18+ recomendado).
+- npm.
 
-## Instalar, ejecutar y probar
-
-Desde la raíz del proyecto:
+## Instalar, compilar y ejecutar
 
 ```sh
 npm install
+npm run typecheck
+npm run build
 npm run dev
 ```
 
-Vite mostrará la dirección local (normalmente `http://localhost:5173`). Para generar y revisar localmente el build de producción:
+Vite muestra la URL local (normalmente `http://localhost:5173`). Para servir el artefacto compilado localmente:
 
 ```sh
-npm run build
 npm run preview
 ```
 
-Para ejecutar las pruebas unitarias y de componentes:
+Scripts disponibles: `dev` inicia Vite; `typecheck` ejecuta `vue-tsc --noEmit`; `build` tipa y genera el build de Vite; `preview` sirve ese build. No hay lockfile listado, por lo que `npm install` resuelve las versiones admitidas por los rangos de `package.json`.
+
+## Pruebas
 
 ```sh
-npm test
+npm test              # Vitest unitarias y de componentes
+npm run test:watch    # Vitest interactivo
+npm run test:e2e      # Playwright: tests/e2e
 ```
 
-Vitest ejecuta el conjunto una vez. Las pruebas usan datos deterministas y no necesitan servicios externos.
+La configuración de Vitest incluye `tests/unit/**/*.spec.ts` y `tests/component/**/*.spec.ts` en jsdom. La prueba E2E usa `@playwright/test` y espera el servidor en `http://localhost:5173`; iniciar `npm run dev` en otra terminal antes de correrla. La configuración no levanta servidor automáticamente. No se han ejecutado estas pruebas durante esta entrega.
 
-## Configuración
+## Arquitectura e integración
 
-`VITE_MAX_ITEMS` es una variable opcional que limita cuántas notificaciones se muestran después de ordenar por fecha descendente. Si se omite, no se aplica límite. Vite carga variables `VITE_*` desde el entorno o desde archivos locales `.env` (no versionar archivos con valores privados). No hay credenciales necesarias para la demo. No se encontró un `.env.example` en el proyecto.
+La interfaz está organizada en `src/components` (atoms, molecules, organisms y templates), `src/pages` y `src/composables`. Los tipos de dominio están en `src/domain`; la implementación de datos y selección del adaptador, en `src/infrastructure`.
 
-## Estructura principal
+`CardsRepository` define el puerto asíncrono `listCards()` y `listMovements(cardId, filter?)`. Actualmente `repository-factory.ts` admite únicamente `mock` (predeterminado), implementado por `MockCardsRepository` con fixtures locales y latencia simulada. `VITE_CARDS_SOURCE` puede valer `mock`; otro valor falla explícitamente porque no existe adaptador HTTP.
 
-- `src/lib/domain/notification.js`: validación, orden, conteo de no leídas, marcado como leído, enmascaramiento de tarjeta y formato de monto.
-- `src/lib/ports/notificationSource.js`: contrato del origen, que expone `list()` asíncrono.
-- `src/lib/adapters/mockSource.js`: adaptador con notificaciones ficticias.
-- `src/lib/stores/notifications.js`: store Svelte; valida y ordena los datos del origen, mantiene estado de carga y expone acciones de lectura.
-- `src/lib/components/`: átomos, moléculas, organismos y plantilla.
-- `src/pages/NotificationsPage.svelte`: pantalla y carga del store al montar.
-- `tests/`: pruebas de dominio, store y componentes (Vitest y Testing Library).
+Para integrar un backend real, definir primero contrato y autenticación con el sistema host; implementar un adaptador de `CardsRepository`, validar las respuestas externas antes de mapearlas a los tipos del dominio y registrarlo en la fábrica. Mantener errores traducibles y no registrar PAN completo, credenciales ni datos sensibles. Esta aplicación no define URL, endpoints, autenticación, CORS ni contrato de API; no realiza llamadas de red.
 
-## Integración
+## Persistencia y datos
 
-La aplicación no está conectada a un backend: el store usa `mockSource`. Para integrar un servicio real, implementar el puerto `NotificationSource` con una función `list()` que devuelva una promesa de registros con `id`, `type`, `cardLast4`, `title`, `body`, `createdAt` y `read` (y opcionalmente `amount`). Los tipos válidos son `compra`, `pago_proximo`, `bloqueo` y `limite`; las fechas deben poder interpretarse como fecha ISO. El store descarta registros inválidos y presenta el estado de error si falla la carga.
+No hay persistencia del lado cliente: los fixtures de demostración viven en memoria y no se usan `localStorage` ni `sessionStorage`. No se deben persistir datos de tarjeta en el navegador. La persistencia de producción pertenece al backend, cuya tecnología, esquema, retención y política de datos no están especificados aquí. La vista presenta el PAN enmascarado; usar datos ficticios en desarrollo.
 
-El adaptador de API debería validar la respuesta externa antes de entregarla al dominio, aplicar autenticación en una capa de integración segura y no registrar datos financieros o tokens. No se deben enviar ni guardar números completos de tarjeta: la interfaz solo usa los últimos cuatro dígitos y los enmascara para mostrar.
+## Configuración y seguridad
 
-## Persistencia y alcance
+`VITE_LOCALE` se menciona como locale opcional en la configuración anterior, pero no se observa que la aplicación lo consuma: el formateador tiene su propia configuración. No se requiere archivo `.env` para el modo mock. Las variables `VITE_*` quedan expuestas al cliente; nunca colocar secretos, tokens o credenciales en ellas. La autenticación y el enrutamiento se consideran responsabilidad de la aplicación host.
 
-No hay persistencia. Las notificaciones y los cambios de leído/no leído se conservan solo en el store en memoria y se pierden al recargar la página; tampoco se sincronizan con un servidor. Si se requiere persistencia, definirla detrás de un adaptador/repositorio y acordar con el backend la semántica de lectura y sincronización antes de introducirla. No guardar datos sensibles de tarjetas en almacenamiento del navegador.
+## Estructura relevante
 
-## Verificación
-
-El código y las pruebas se documentan aquí, pero no se ejecutaron build ni pruebas en este entorno. Validar en el entorno de desarrollo con `npm test` y `npm run build`.
+- `src/domain/`: contratos y tipos.
+- `src/infrastructure/`: fixtures, repositorio mock y fábrica.
+- `src/composables/useCardsQuery.ts`: carga de tarjetas, selección y consulta/filtro de movimientos.
+- `src/pages/TarjetasConsultaPage.vue`: composición de estados loading, empty, error y ready.
+- `tests/unit`, `tests/component`, `tests/e2e`: pruebas existentes.

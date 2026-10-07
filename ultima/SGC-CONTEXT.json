@@ -1,14 +1,12 @@
 {
   "answers": {
-    "where": "App móvil",
-    "type": "Notificación",
+    "where": "Banca por Internet",
+    "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Frontend",
-    "stack": "Svelte",
     "pattern": "Component-based (Atomic Design)",
-    "persistence": "No requiere",
-    "integration": "Ninguna",
-    "tests": "Unitarias"
+    "stack": "Vue 3 + TypeScript",
+    "tests": "Estándar completo"
   },
   "sgc": {
     "status": "fallback",
