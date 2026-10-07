@@ -2,13 +2,13 @@
   "answers": {
     "where": "Banca por Internet",
     "type": "Consulta",
-    "domain": "Cuentas",
+    "domain": "Tarjetas",
     "layer": "Frontend",
-    "pattern": "Micro-frontends",
-    "stack": "React + TypeScript",
-    "integration": "Ninguna",
+    "stack": "Vue 3 + TypeScript",
+    "pattern": "Component-based (Atomic Design)",
     "persistence": "No requiere",
-    "tests": "Unitarias"
+    "integration": "Ninguna",
+    "tests": "Estándar completo"
   },
   "sgc": {
     "status": "fallback",
