@@ -1,56 +1,51 @@
-# Consulta de Tarjetas · Banca por Internet
+# Consulta de tarjetas
 
-Aplicación de consulta construida con Vue 3, TypeScript y Vite. Presenta el listado de tarjetas, detalle (límite, disponible y estado) y movimientos asociados. Usa Atomic Design y datos ficticios mediante un gateway en memoria. No realiza operaciones financieras.
+Microaplicación de consulta construida con Vue 3, TypeScript y Vite. Presenta un listado de tarjetas ficticias y permite consultar el detalle seleccionado. Está organizada con Atomic Design; la carga/estado se coordina en `src/composables/useCards.ts` y el acceso a datos queda detrás de `CardsRepository`.
 
 ## Requisitos
 
-- Node.js 18 o posterior y npm.
-- Dependencias fijadas en `package.json`; no requiere servicios externos.
+- Node.js compatible con Vite 5 (Node.js 18+ recomendado).
+- npm.
 
-## Instalar, ejecutar y compilar
+## Instalar, ejecutar y probar
 
-Desde la raíz del proyecto:
+Desde el directorio del proyecto:
 
 ```sh
 npm install
+cp env.example.txt .env
 npm run dev
 ```
 
-Vite muestra la URL local en la terminal. Para generar la distribución de producción:
+Vite imprime la URL local en la terminal. Para compilar y previsualizar la versión de producción:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-`build` ejecuta primero la comprobación de tipos con `vue-tsc --noEmit` y después genera los archivos estáticos en `dist/`. `preview` sirve localmente esa distribución. El proyecto no se ha ejecutado en este entorno; verifica estos comandos en tu entorno o CI.
-
-## Pruebas
+El script `build` ejecuta `vue-tsc --noEmit` y después `vite build`. Ejecuta las pruebas unitarias con:
 
 ```sh
 npm test
-npm run typecheck
 ```
 
-Vitest ejecuta pruebas de `tests/unit/**/*.spec.ts` en jsdom. Las pruebas cubren componentes/átomos, lista de tarjetas, gateway ficticio y composable de consulta. No hay llamadas a servicios reales.
+Vitest ejecuta las pruebas bajo `tests/unit/`, que cubren el composable, el listado, los formateadores y el número enmascarado. No hay lockfile en el proyecto: `npm install` resuelve las dependencias declaradas en `package.json` y puede generar `package-lock.json`. En un checkout con lockfile, preferir `npm ci`.
 
-## Estructura y flujo
+## Configuración
 
-- `src/domain/card.ts`: contratos de tarjeta y movimiento y etiquetas de estado.
-- `src/services/cards-gateway.ts`: interfaz que desacopla la UI del origen de datos.
-- `src/services/mock-cards-gateway.ts`: datos ficticios usados por defecto, con latencia simulada.
-- `src/composables/useCardsQuery.ts`: carga, selección y estado de error/carga.
-- `src/components/`: átomos, moléculas, organismos y plantilla.
-- `src/pages/CardsConsultPage.vue`: composición de la pantalla; admite un gateway opcional mediante la prop `gateway`.
+`env.example.txt` puede copiarse a `.env` para desarrollo. `VITE_CARDS_DATA_SOURCE` acepta actualmente solo `mock` (valor por defecto si está ausente o vacío). La factoría rechaza otros valores; no hay endpoint HTTP configurado. Las variables `VITE_*` se incorporan al bundle del navegador: no incluir secretos ni credenciales.
 
 ## Integración
 
-El backend y el contrato HTTP no están definidos ni conectados. Para integrar una API, implementa `CardsGateway` en un adaptador de servicio y proporciona esa instancia a `CardsConsultPage`; el adaptador debe transformar respuestas externas al modelo de `src/domain/card.ts` y manejar errores de transporte sin filtrarlos a la UI. La interfaz requiere `listCards(): Promise<Card[]>` y `getMovements(cardId: string): Promise<CardMovement[]>`.
+El puerto `src/services/CardsRepository.ts` define `list(): Promise<Card[]>` y `getById(id: string): Promise<Card | null>`. `MockCardsRepository` implementa el contrato usando los datos ficticios de `src/mocks/cards.fixture.ts`; permite simular demora y fallos. `repositoryFactory.ts` selecciona la implementación y la página consume el repositorio mediante `useCards`.
 
-La aplicación no implementa autenticación, autorización, sesión, rutas del shell bancario ni configuración de URL de API. Deben resolverse en la integración anfitriona. No se necesita `.env` para el modo demo y no hay secretos en el repositorio.
+Para conectar un servicio real, crear una implementación HTTP de `CardsRepository` y registrarla en `repositoryFactory.ts`. Antes de habilitarla, acordar el contrato backend (ruta, autenticación, esquema de respuesta y errores, timeout y reintentos). El contrato real y la autenticación no están definidos aquí; la aplicación host es responsable de sesión, autorización, navegación y layout global. Evitar exponer información sensible en errores y logs.
 
 ## Persistencia y datos
 
-No existe persistencia: tarjetas y movimientos demo viven en memoria en `MockCardsGateway`; selecciones y resultados viven en el estado reactivo del composable y se pierden al recargar. No se usa `localStorage`, base de datos ni caché. Para producción, el backend debe ser la fuente autorizada de datos y la integración debe definir su política de almacenamiento y retención; no guardar datos de tarjeta sensibles en el navegador.
+La aplicación es de solo lectura: no tiene almacenamiento local, base de datos ni escrituras. La persistencia, si se requiere, corresponde a la integración/backend y debe diseñarse aparte. Los datos actuales son fixtures ficticios. El modelo `Card` solo contiene `last4`; no debe ampliarse para exponer el PAN completo, CVV u otros datos sensibles de autenticación.
 
-El dominio expone únicamente `last4`; nunca representa ni solicita el PAN completo. Los registros presentes son datos ficticios.
+## Alcance y verificación
+
+El alcance incluye listado y detalle con estado, límite y saldo disponible; movimientos y operaciones sobre tarjetas están fuera de alcance. Se contemplan estados de carga, error y lista vacía. No se ejecutaron instalación, compilación ni pruebas durante la elaboración de este README.
