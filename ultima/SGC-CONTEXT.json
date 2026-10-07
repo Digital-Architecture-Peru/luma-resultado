@@ -1,13 +1,13 @@
 {
   "answers": {
-    "stack": ".NET",
+    "stack": "Java + Spring Boot",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
     "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Backend",
-    "persistence": "No requiere"
+    "persistence": "PostgreSQL"
   },
   "sgc": {
     "status": "fallback",

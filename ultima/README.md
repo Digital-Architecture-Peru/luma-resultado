@@ -1,76 +1,36 @@
-# Consulta de tarjetas — API .NET 8
+# Consulta de Tarjetas – Banca por Internet (Backend)
 
-API HTTP de solo lectura para consultar tarjetas asociadas a un cliente. Implementada con ASP.NET Core Minimal API y datos ficticios en memoria. La solución no usa base de datos ni requiere servicios externos.
+Java 17 + Spring Boot 3.2, PostgreSQL, organización Component-based (Atomic Design adaptado):
 
-## Requisitos
+| Capa | Paquete | Contenido |
+|---|---|---|
+| Atoms | `atoms` | `Card`, `CardStatus`, `MaskedPan`, errores de dominio |
+| Molecules | `molecules` | puerto `CardRepository`, `CardResponse`, `PageResponse` |
+| Organisms | `organisms` | `CardQueryService` (caso de uso) |
+| Adapters / entrada | `adapters`, `web` | `JdbcCardRepository` (SQL parametrizado), `CardController`, errores problem+json |
 
-- .NET SDK 8.0 o posterior. Los proyectos apuntan a `net8.0`; `RollForward=LatestMajor` permite ejecutarlos con un runtime más nuevo si el runtime 8 no está instalado.
-- Acceso a NuGet para restaurar los paquetes del proyecto de pruebas (xUnit y Microsoft.NET.Test.Sdk).
-
-## Compilar y probar
-
-Desde la raíz del repositorio:
-
-```sh
-cd backend
-dotnet restore CardsQuery.sln
-dotnet build CardsQuery.sln
-dotnet test CardsQuery.sln
+## Build y pruebas
+```
+mvn package      # compila y ejecuta pruebas unitarias (sin base de datos)
+mvn test
 ```
 
-`dotnet test` ejecuta las pruebas de átomos y del servicio de consulta. Para ejecutar solo las pruebas:
-
-```sh
-dotnet test tests/CardsQuery.Tests/CardsQuery.Tests.csproj
+## Ejecución
+Variables (ver `.env.example`): `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DB_POOL_SIZE`, `LOG_LEVEL`, `PORT`.
 ```
-
-## Ejecutar la API
-
-Desde `backend/`:
-
-```sh
-dotnet run --project src/CardsQuery.Api/CardsQuery.Api.csproj
+SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run   # dev aplica además el seed ficticio
 ```
+Flyway aplica `db/migration` (esquema); el seed ficticio `db/seed` solo en perfil `dev`.
 
-ASP.NET Core informa la URL de escucha al iniciar. Para fijar una URL, por ejemplo:
+## API (`/v1`)
+- `GET /v1/cards?customerId=CLI-0001&status=ACTIVE&page=0&size=10`
+- `GET /v1/cards/{id}?customerId=CLI-0001`
+- `GET /actuator/health`
 
-```sh
-ASPNETCORE_URLS=http://localhost:5080 dotnet run --project src/CardsQuery.Api/CardsQuery.Api.csproj
-```
+Errores en `application/problem+json` (400, 404, 500). El número se devuelve enmascarado; no se almacena PAN completo ni CVV.
 
-En PowerShell se puede configurar con `$env:ASPNETCORE_URLS = 'http://localhost:5080'` antes de ejecutar. No hay credenciales ni configuración de base de datos.
+## Integración y seguridad
+Integración sin definir. `customerId` llega como parámetro solo para el candidate: en producción debe derivarse del token de sesión autenticado (autorización pendiente), nunca de un parámetro libre.
 
-Comprobación rápida, usando la URL indicada por el proceso:
-
-```sh
-curl http://localhost:5080/health
-curl 'http://localhost:5080/v1/customers/cust-001/cards?page=1&pageSize=10'
-curl http://localhost:5080/v1/customers/cust-001/cards/card-001
-```
-
-## API
-
-- `GET /health` — responde `200` con `{"status":"UP"}`.
-- `GET /v1/customers/{customerId}/cards/` — lista las tarjetas del cliente. Parámetros opcionales: `status` (`Active`, `Blocked` o `Expired`), `page` (por defecto `1`) y `pageSize` (por defecto `10`, rango permitido `1–50`). La lista se ordena por identificador; `total` representa el total tras aplicar el filtro de estado y antes de paginar.
-- `GET /v1/customers/{customerId}/cards/{cardId}` — devuelve el detalle de una tarjeta perteneciente a ese cliente.
-
-Los DTO de respuesta incluyen números enmascarados, nunca el número completo. La fecha de expiración se formatea como `MM/yy`; `ExpiresSoon` indica expiración dentro de los próximos 60 días, calculada con la fecha UTC actual.
-
-Errores de consulta devuelven `400` como Problem Details (`application/problem+json`); tarjeta inexistente o ajena al cliente devuelve `404`. Un cliente válido sin tarjetas produce una lista vacía. Ejemplos de datos ficticios: `cust-001` (tarjetas `card-001`, `card-002`, `card-003`) y `cust-002` (`card-004`).
-
-## Integración y persistencia
-
-La aplicación registra `ICardReader` como abstracción de lectura y actualmente la implementa con `InMemoryCardReader`. Ese adaptador mantiene una colección estática de datos de demostración: los cambios no persisten al reiniciar y no existe integración bancaria configurada. Para conectar una fuente real, implemente otro adaptador de `ICardReader` e intercambie su registro en `Program.cs`; el servicio de consulta y los contratos HTTP permanecen desacoplados del origen de datos. No se incluye esquema ni migración de base de datos.
-
-## Estructura
-
-- `backend/src/CardsQuery.Api/Atoms/`: máscara de tarjeta y valor monetario.
-- `backend/src/CardsQuery.Api/Domain/`: entidad, puerto de lectura y excepciones del dominio.
-- `backend/src/CardsQuery.Api/Molecules/`: DTO y mapeo de salida.
-- `backend/src/CardsQuery.Api/Organisms/`: servicio de consulta, validación, filtro y paginación.
-- `backend/src/CardsQuery.Api/Adapters/`: adaptador de datos en memoria.
-- `backend/tests/CardsQuery.Tests/`: pruebas unitarias.
-
-## Seguridad y alcance
-
-La API es solo de demostración: no implementa autenticación ni autorización. Antes de exponer información real, incorpore controles de identidad y autorización (incluida la asociación del cliente autenticado con `customerId`), transporte seguro y un adaptador de datos aprobado. Los datos incluidos son ficticios.
+## No verificado
+Compilación, pruebas y migraciones contra PostgreSQL real no se han ejecutado.

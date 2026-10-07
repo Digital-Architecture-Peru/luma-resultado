@@ -6,22 +6,22 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Backend
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? .NET
-- ¿Persistencia? No requiere
+- ¿Qué stack? Java + Spring Boot
+- ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en .NET (capa Backend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Java + Spring Boot (capa Backend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
-- Integración sin definir y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
-- Integración (sin definir), persistencia (No requiere) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
+- El código se genera en Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
 - Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
