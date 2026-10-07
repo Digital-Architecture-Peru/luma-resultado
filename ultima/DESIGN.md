@@ -5,21 +5,21 @@
 - ¿Qué tipo de capacidad? Consulta
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Vue 3 + TypeScript
+- Patrones disponibles Micro-frontends
+- ¿Qué stack? Angular
 - ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Vue 3 + TypeScript (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Micro-frontends.
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia sin definir detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Vue 3 + TypeScript sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- El código se genera en Angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
 - Integración (sin definir), persistencia (sin definir) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
@@ -28,58 +28,61 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento (Consulta de Tarjetas · Vue 3 + TS)
+# DESIGN · Refinamiento: Consulta de Tarjetas (MFE Angular)
 
-> Complementa el diseño base. Conserva sus Hechos y su Aceptación. Contexto SGC en **fallback**: ninguna convención corporativa está confirmada.
+> Complementa el diseño base sin modificar sus criterios de aceptación. El estado SGC es **fallback (no configurado)**, por lo que no hay restricciones corporativas confirmadas. Todo lo que no proviene del guion se registra como hipótesis.
 
 ## Decisiones de arquitectura
-| # | Decisión | Justificación |
+
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | Vite + Vue 3 (`<script setup lang="ts">`) | Toolchain idiomático de Vue 3, con tipado estricto |
-| D2 | Atomic Design en `components/{atoms,molecules,organisms,templates}` + `pages/` | Es el patrón pedido; la capa es visible en la ruta |
-| D3 | Puerto `CardsRepository` + `MockCardsRepository` | La integración está sin definir; la UI no depende del origen de los datos |
-| D4 | Estado con el composable `useCards` (sin Pinia) | Una sola vista de consulta; se evita una dependencia sin motivo |
-| D5 | Sin vue-router; se expone `CardsConsultaPage` | El enrutamiento corresponde a la app host (H2) |
-| D6 | Solo PAN enmascarado (`last4`) en el modelo | El front nunca recibe ni muestra el PAN completo |
-| D7 | Vitest + @vue/test-utils + jsdom | Pruebas unitarias nativas del ecosistema Vite |
-| D8 | `VITE_CARDS_DATA_SOURCE=mock` en `.env.example` | Configuración por entorno; las `VITE_*` son públicas, así que no llevan secretos |
+| AD1 | **Remote** Angular que expone `./routes` mediante federación de módulos (H1). También puede ejecutarse de forma aislada con datos mock. | Cumple el patrón Micro-frontends y permite probar el remote sin depender del shell. |
+| AD2 | Componentes *standalone* con *signals* y sin NgModules. | Es el estilo idiomático actual de Angular y reduce la superficie que se expone al shell. |
+| AD3 | Patrón puerto/adaptador: `CardsGateway` (clase abstracta usada como token DI), con `MockCardsGateway` activo y `HttpCardsGateway` como stub no cableado. | La integración está sin definir. El contrato queda aislado y se puede sustituir sin tocar la UI. |
+| AD4 | **Sin persistencia.** El estado vive en memoria (`CardsStore` con signals). No se guarda nada en `localStorage` ni en `sessionStorage`. | La persistencia está sin definir y almacenar datos de tarjeta en el navegador implica riesgo. |
+| AD5 | Alcance de solo lectura: listado de tarjetas y detalle (saldo, línea, disponible, fecha de corte). | La capacidad pedida es "Consulta". No incluye operaciones transaccionales. |
+| AD6 | El PAN siempre se muestra enmascarado (`**** 1234`) mediante la función pura `maskPan`. Los datos son ficticios. | Reduce la exposición de datos sensibles y permite probarlo de forma unitaria y determinista. |
+| AD7 | La sesión y la autenticación se delegan al shell. El remote no maneja tokens. | Evita incluir secretos y mantiene una única responsabilidad (H3). |
+| AD8 | La configuración se lee de `environment.ts` (`useMock`, `apiBaseUrl` vacío y `currency`). | Permite configurar por entorno sin incluir secretos. |
+| AD9 | La UI contempla los estados *cargando*, *vacío* y *error*. Usa roles ARIA y una tabla o lista semántica. | Hace la UX verificable y accesible. |
 
 ## Estructura de módulos
+
 ```
-cards-consulta/
-  package.json  vite.config.ts  tsconfig.json  .env.example  index.html  README.md
-  src/
-    main.ts  App.vue
-    domain/      card.ts (tipos)  format.ts (moneda, máscara)
-    services/    CardsRepository.ts  MockCardsRepository.ts  repositoryFactory.ts
-    mocks/       cards.fixture.ts (ficticios)
-    composables/ useCards.ts (loading/error/empty/data)
-    components/
-      atoms/     MoneyAmount.vue  MaskedCardNumber.vue  StatusBadge.vue
-      molecules/ CardSummaryItem.vue  BalanceRow.vue
-      organisms/ CardList.vue  CardDetailPanel.vue
-      templates/ ConsultaLayout.vue
-    pages/       CardsConsultaPage.vue
-  tests/unit/    format.spec.ts  useCards.spec.ts  CardList.spec.ts  MaskedCardNumber.spec.ts
+cards-query-mfe/
+  package.json · angular.json · tsconfig*.json · federation.config.js
+  src/main.ts            (initFederation → bootstrap)
+  src/bootstrap.ts
+  src/environments/environment.ts
+  src/app/app.config.ts · app.routes.ts
+  src/app/cards/
+    cards.routes.ts                 (expuesto: ./routes)
+    domain/card.model.ts · mask-pan.ts
+    data/cards.gateway.ts · mock-cards.gateway.ts · mock-cards.data.ts · http-cards.gateway.ts
+    state/cards.store.ts
+    ui/card-list/ · ui/card-detail/ (ts, html, scss)
+  *.spec.ts junto a mask-pan, mock gateway, store y card-list
+  README.md
 ```
 
-## Hipótesis (no confirmadas)
-- **H1.** El alcance cubre el listado de tarjetas y el detalle (estado, límite, disponible). Los movimientos quedan fuera.
-- **H2.** La app host de Banca por Internet aporta la autenticación, el enrutamiento y el layout global.
-- **H3.** La moneda viene en cada registro y se formatea con `Intl.NumberFormat`. No se fija país ni locale de negocio.
-- **H4.** El contrato del API real es desconocido. `HttpCardsRepository` no se implementa.
-- **H5.** No hay design system corporativo. Se usan estilos locales accesibles (contraste AA, foco visible, roles ARIA).
+## Hipótesis
+- **H1:** La federación usa Native Federation (`@angular-architects/native-federation`), compatible con el builder esbuild. Si el shell usa Webpack Module Federation, hay que ajustar `federation.config.js`.
+- **H2:** La versión de Angular y el runner de pruebas (Jasmine/Karma o Vitest) se fijan en el manifiesto y se confirman en CI. Los specs se escriben con TestBed y `expect` estándar para minimizar dependencias del runner.
+- **H3:** El shell provee el enrutamiento raíz y la sesión, y monta el remote en `/tarjetas`.
+- **H4:** La moneda y el idioma son configurables. Por defecto se usa `es` y la moneda definida en `environment`.
+- **H5:** No existe un contrato de API. El modelo `Card` es una propuesta que debe validarse con el backend.
 
 ## Riesgos
+
 | Riesgo | Mitigación |
 |---|---|
-| Exposición de datos sensibles | D6. Fixtures ficticios y ningún PAN completo |
-| Secretos en variables `VITE_*` | Usar solo flags, documentado en el README |
-| La build no se verifica en este host | Estado *candidate*; requiere `npm ci && npm run build && npm test` en CI |
-| Divergencia con el API real (H4) | Puerto aislado; el cambio queda acotado a `services/` |
-| Fallback SGC sin estándares corporativos | Revisar el diseño cuando SGC esté disponible |
+| Versiones de `@angular/*` compartidas incompatibles entre shell y remote | Declarar `shared` como singleton con `strictVersion` y documentarlo en el README. |
+| Estilos del remote que afectan al shell | Usar encapsulación por defecto y no incluir estilos globales. |
+| Exposición del PAN o de datos reales | Mantener datos ficticios, aplicar `maskPan` y prohibir el almacenamiento en el navegador. |
+| El validador local no cubre TS ni plantillas HTML | Reportar esos archivos como **no verificados**. La compilación real queda para CI. |
+| Contrato del gateway distinto al backend real | El adaptador aislado (AD3) limita el cambio a la capa `data/`. |
 
-## Aceptación (complementa la base, no la reemplaza)
-- `useCards` expone los estados `loading`, `error`, `empty` y `data`, y las pruebas cubren al menos `data` y `error`.
-- `MaskedCardNumber` muestra solo `•••• 1234`, y una prueba lo verifica.
-- El README documenta la build y la ejecución, la integración (sin definir), la persistencia (sin definir: solo lectura, sin almacenamiento local de datos de tarjeta) y lo que no se verificó.
+## Notas para builder y tester
+- El orden de ejecución es T01 a T06. En el resumen final se deben citar el estado SGC *fallback* y las hipótesis H1 a H5.
+- El README debe cubrir: `npm install`, el modo standalone, el registro del remote en el shell, la integración (sin definir, mock activo) y la persistencia (sin definir, solo en memoria).
+- El cierre se marca como **candidate**: sin compilación, sin ejecución de pruebas y sin afirmar que está listo para producción.

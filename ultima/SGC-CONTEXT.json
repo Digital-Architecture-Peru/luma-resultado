@@ -4,8 +4,8 @@
     "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Frontend",
-    "pattern": "Component-based (Atomic Design)",
-    "stack": "Vue 3 + TypeScript",
+    "pattern": "Micro-frontends",
+    "stack": "Angular",
     "tests": "Unitarias"
   },
   "sgc": {
