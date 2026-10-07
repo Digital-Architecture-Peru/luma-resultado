@@ -2,10 +2,10 @@
   "answers": {
     "stack": "React + TypeScript",
     "tests": "Unitarias",
-    "pattern": "Micro-frontends",
+    "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
-    "type": "Consulta",
-    "domain": "Tarjetas",
+    "type": "Transacción",
+    "domain": "Cuentas",
     "layer": "Frontend"
   },
   "sgc": {

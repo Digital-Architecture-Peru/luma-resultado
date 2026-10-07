@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-ui",
-    "title": "Implementar la interfaz de Banca por Internet para \"Consulta\" sobre Tarjetas en src/App.tsx y src/styles.css",
+    "title": "Implementar la interfaz de Banca por Internet para \"Transacción\" sobre Cuentas en src/App.tsx y src/styles.css",
     "dependsOn": [
       "T01-read-context"
     ],
@@ -65,7 +65,7 @@
   },
   {
     "id": "T06-docs",
-    "title": "Documentar decisiones: capa Frontend, patrón Micro-frontends, stack React + TypeScript, integración sin definir, persistencia sin definir",
+    "title": "Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia sin definir",
     "dependsOn": [
       "T05-tests"
     ],
