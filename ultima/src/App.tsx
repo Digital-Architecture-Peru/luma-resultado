@@ -4,251 +4,163 @@ type EstadoTarjeta = 'Activa' | 'Bloqueada';
 
 interface Tarjeta {
   id: string;
-  alias: string;
   titular: string;
-  numeroEnmascarado: string;
+  ultimos4: string;
   tipo: 'Débito' | 'Crédito';
-  saldoDisponible: number;
-  limite: number;
   estado: EstadoTarjeta;
+  saldo: number;
 }
 
 const TARJETAS_INICIALES: Tarjeta[] = [
-  {
-    id: 'tj-001',
-    alias: 'Tarjeta Nómina',
-    titular: 'María Fernanda Ríos',
-    numeroEnmascarado: '**** **** **** 4821',
-    tipo: 'Débito',
-    saldoDisponible: 4_250_300,
-    limite: 6_000_000,
-    estado: 'Activa',
-  },
-  {
-    id: 'tj-002',
-    alias: 'Tarjeta Viajes',
-    titular: 'María Fernanda Ríos',
-    numeroEnmascarado: '**** **** **** 1190',
-    tipo: 'Crédito',
-    saldoDisponible: 1_820_000,
-    limite: 5_000_000,
-    estado: 'Activa',
-  },
-  {
-    id: 'tj-003',
-    alias: 'Tarjeta Respaldo',
-    titular: 'Jorge Andrés Peña',
-    numeroEnmascarado: '**** **** **** 7733',
-    tipo: 'Crédito',
-    saldoDisponible: 0,
-    limite: 3_000_000,
-    estado: 'Bloqueada',
-  },
+  { id: 't1', titular: 'Ana Pérez', ultimos4: '4821', tipo: 'Crédito', estado: 'Activa', saldo: 3250000 },
+  { id: 't2', titular: 'Ana Pérez', ultimos4: '1190', tipo: 'Débito', estado: 'Activa', saldo: 870000 },
+  { id: 't3', titular: 'Carlos Ruiz', ultimos4: '7742', tipo: 'Crédito', estado: 'Bloqueada', saldo: 0 },
+  { id: 't4', titular: 'Marta Gómez', ultimos4: '3309', tipo: 'Débito', estado: 'Activa', saldo: 1540000 },
+  { id: 't5', titular: 'Luis Fernández', ultimos4: '5567', tipo: 'Crédito', estado: 'Activa', saldo: 980000 },
 ];
 
-const formatoMoneda = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
+const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
 export default function App() {
-  const [capacidadProbada, setCapacidadProbada] = useState(false);
   const [tarjetas, setTarjetas] = useState<Tarjeta[]>(TARJETAS_INICIALES);
   const [busqueda, setBusqueda] = useState('');
-  const [idSeleccionada, setIdSeleccionada] = useState<string | null>(TARJETAS_INICIALES[0]?.id ?? null);
-  const [idPendienteConfirmar, setIdPendienteConfirmar] = useState<string | null>(null);
+  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [mensajeAccion, setMensajeAccion] = useState('');
+  const [mensajeCapacidad, setMensajeCapacidad] = useState('');
 
-  const tarjetasFiltradas = useMemo(() => {
+  const resultados = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
     if (!termino) return tarjetas;
-    return tarjetas.filter((tarjeta) =>
-      [tarjeta.alias, tarjeta.titular, tarjeta.numeroEnmascarado, tarjeta.tipo, tarjeta.estado]
-        .join(' ')
-        .toLowerCase()
-        .includes(termino),
+    return tarjetas.filter(
+      (t) => t.titular.toLowerCase().includes(termino) || t.ultimos4.includes(termino)
     );
-  }, [tarjetas, busqueda]);
+  }, [busqueda, tarjetas]);
 
-  const tarjetaSeleccionada = useMemo(
-    () => tarjetas.find((tarjeta) => tarjeta.id === idSeleccionada) ?? null,
-    [tarjetas, idSeleccionada],
-  );
-
-  const tarjetaPendiente = useMemo(
-    () => tarjetas.find((tarjeta) => tarjeta.id === idPendienteConfirmar) ?? null,
-    [tarjetas, idPendienteConfirmar],
-  );
-
-  function pedirCambioEstado(id: string) {
-    setIdPendienteConfirmar(id);
+  function pedirConfirmacion(id: string) {
+    setConfirmandoId(id);
     setMensajeAccion('');
   }
 
-  function cancelarCambioEstado() {
-    setIdPendienteConfirmar(null);
+  function cancelarConfirmacion() {
+    setConfirmandoId(null);
   }
 
-  function confirmarCambioEstado() {
-    if (!tarjetaPendiente) return;
-    const nuevoEstado: EstadoTarjeta = tarjetaPendiente.estado === 'Activa' ? 'Bloqueada' : 'Activa';
-    setTarjetas((previas) =>
-      previas.map((tarjeta) =>
-        tarjeta.id === tarjetaPendiente.id ? { ...tarjeta, estado: nuevoEstado } : tarjeta,
-      ),
+  function alternarEstado(id: string) {
+    setTarjetas((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const nuevoEstado: EstadoTarjeta = t.estado === 'Activa' ? 'Bloqueada' : 'Activa';
+        setMensajeAccion(
+          `Tarjeta terminada en ${t.ultimos4} ahora está ${nuevoEstado === 'Activa' ? 'activa' : 'bloqueada'}.`
+        );
+        return { ...t, estado: nuevoEstado };
+      })
     );
-    setMensajeAccion(
-      `${tarjetaPendiente.alias} ahora está ${nuevoEstado === 'Activa' ? 'activa' : 'bloqueada'}.`,
-    );
-    setIdPendienteConfirmar(null);
+    setConfirmandoId(null);
+  }
+
+  function probarCapacidad() {
+    setMensajeCapacidad('Consulta de Tarjetas');
   }
 
   return (
-    <div className="app-shell">
+    <main className="app-shell">
       <header className="app-header">
-        <div className="app-header__texto">
-          <p className="app-header__eyebrow">Banca por Internet · Tarjetas</p>
-          <h1>Consulta de Tarjetas</h1>
-          <p className="app-header__descripcion">
-            Revisa tus tarjetas, busca por alias o titular y gestiona el bloqueo o desbloqueo con
-            confirmación. Datos de demostración en memoria.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="boton boton--primario"
-          onClick={() => setCapacidadProbada(true)}
-        >
+        <h1>Consulta de Tarjetas</h1>
+        <p className="app-subtitle">Banca por Internet · Frontend React + TypeScript (datos ficticios en memoria)</p>
+        <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
           Probar capacidad
         </button>
+        <p role="status" aria-live="polite" className="status-line">
+          {mensajeCapacidad}
+        </p>
       </header>
 
-      <p role="status" aria-live="polite" className="estado-capacidad">
-        {capacidadProbada ? 'Consulta de Tarjetas' : ''}
-      </p>
+      <section className="card panel" aria-labelledby="buscar-titulo">
+        <h2 id="buscar-titulo">Buscar tarjetas</h2>
+        <label htmlFor="busqueda-input" className="field-label">
+          Titular o últimos 4 dígitos
+        </label>
+        <input
+          id="busqueda-input"
+          type="text"
+          className="input"
+          placeholder="Ej. Ana Pérez o 4821"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
 
-      <main className="app-contenido">
-        <section className="panel" aria-labelledby="titulo-buscador">
-          <h2 id="titulo-buscador">Buscar tarjetas</h2>
-          <label htmlFor="busqueda-tarjetas" className="etiqueta">
-            Alias, titular, tipo o estado
-          </label>
-          <input
-            id="busqueda-tarjetas"
-            type="search"
-            className="campo-texto"
-            placeholder="Ej: Viajes, Jorge, Crédito, Bloqueada"
-            value={busqueda}
-            onChange={(evento) => setBusqueda(evento.target.value)}
-          />
-
-          <ul className="lista-tarjetas" aria-label="Resultados de tarjetas">
-            {tarjetasFiltradas.length === 0 && (
-              <li className="lista-tarjetas__vacio">No hay tarjetas que coincidan con la búsqueda.</li>
-            )}
-            {tarjetasFiltradas.map((tarjeta) => (
-              <li key={tarjeta.id}>
-                <button
-                  type="button"
-                  className={
-                    'tarjeta-item' + (tarjeta.id === idSeleccionada ? ' tarjeta-item--activa' : '')
-                  }
-                  onClick={() => setIdSeleccionada(tarjeta.id)}
-                  aria-pressed={tarjeta.id === idSeleccionada}
-                >
-                  <span className="tarjeta-item__alias">{tarjeta.alias}</span>
-                  <span className="tarjeta-item__numero">{tarjeta.numeroEnmascarado}</span>
-                  <span
-                    className={
-                      'badge ' +
-                      (tarjeta.estado === 'Activa' ? 'badge--exito' : 'badge--peligro')
-                    }
-                  >
-                    {tarjeta.estado}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="panel" aria-labelledby="titulo-detalle">
-          <h2 id="titulo-detalle">Detalle de la tarjeta</h2>
-          {!tarjetaSeleccionada && <p className="texto-muted">Selecciona una tarjeta para ver su detalle.</p>}
-          {tarjetaSeleccionada && (
-            <div className="detalle-tarjeta">
-              <dl className="detalle-tarjeta__grid">
-                <div>
-                  <dt>Titular</dt>
-                  <dd>{tarjetaSeleccionada.titular}</dd>
-                </div>
-                <div>
-                  <dt>Número</dt>
-                  <dd>{tarjetaSeleccionada.numeroEnmascarado}</dd>
-                </div>
-                <div>
-                  <dt>Tipo</dt>
-                  <dd>{tarjetaSeleccionada.tipo}</dd>
-                </div>
-                <div>
-                  <dt>Estado</dt>
-                  <dd>
-                    <span
-                      className={
-                        'badge ' +
-                        (tarjetaSeleccionada.estado === 'Activa' ? 'badge--exito' : 'badge--peligro')
-                      }
-                    >
-                      {tarjetaSeleccionada.estado}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Saldo disponible</dt>
-                  <dd className="valor-numerico">{formatoMoneda.format(tarjetaSeleccionada.saldoDisponible)}</dd>
-                </div>
-                <div>
-                  <dt>Límite</dt>
-                  <dd className="valor-numerico">{formatoMoneda.format(tarjetaSeleccionada.limite)}</dd>
-                </div>
-              </dl>
-
-              {idPendienteConfirmar === tarjetaSeleccionada.id ? (
-                <div className="confirmacion" role="alertdialog" aria-labelledby="titulo-confirmacion">
-                  <p id="titulo-confirmacion">
-                    ¿Confirmas {tarjetaSeleccionada.estado === 'Activa' ? 'bloquear' : 'desbloquear'}{' '}
-                    {tarjetaSeleccionada.alias}?
-                  </p>
-                  <div className="confirmacion__acciones">
-                    <button type="button" className="boton boton--peligro" onClick={confirmarCambioEstado}>
-                      Sí, confirmar
-                    </button>
-                    <button type="button" className="boton boton--secundario" onClick={cancelarCambioEstado}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className={
-                    'boton ' +
-                    (tarjetaSeleccionada.estado === 'Activa' ? 'boton--peligro' : 'boton--primario')
-                  }
-                  onClick={() => pedirCambioEstado(tarjetaSeleccionada.id)}
-                >
-                  {tarjetaSeleccionada.estado === 'Activa' ? 'Bloquear tarjeta' : 'Desbloquear tarjeta'}
-                </button>
-              )}
-            </div>
-          )}
-
-          <p role="status" aria-live="polite" className="mensaje-accion">
+        {mensajeAccion && (
+          <p role="status" aria-live="polite" className="status-line status-line--muted">
             {mensajeAccion}
           </p>
-        </section>
-      </main>
-    </div>
+        )}
+
+        <div className="table-wrap">
+          {resultados.length === 0 ? (
+            <p className="empty-state">No se encontraron tarjetas para "{busqueda}".</p>
+          ) : (
+            <table className="tabla-tarjetas">
+              <thead>
+                <tr>
+                  <th scope="col">Titular</th>
+                  <th scope="col">Tarjeta</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col" className="col-numero">Saldo</th>
+                  <th scope="col">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.titular}</td>
+                    <td>•••• {t.ultimos4}</td>
+                    <td>{t.tipo}</td>
+                    <td>
+                      <span className={`badge ${t.estado === 'Activa' ? 'badge-success' : 'badge-danger'}`}>
+                        {t.estado}
+                      </span>
+                    </td>
+                    <td className="col-numero">{formatoMoneda.format(t.saldo)}</td>
+                    <td>
+                      {confirmandoId === t.id ? (
+                        <div className="confirm-inline">
+                          <span>
+                            ¿Confirmar {t.estado === 'Activa' ? 'bloqueo' : 'activación'}?
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => alternarEstado(t.id)}
+                          >
+                            Sí, confirmar
+                          </button>
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={cancelarConfirmacion}>
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => pedirConfirmacion(t.id)}
+                        >
+                          {t.estado === 'Activa' ? 'Bloquear' : 'Activar'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+
+      <footer className="app-footer">
+        <p>Candidato: datos en memoria, sin persistencia ni red. Sujeto a verificación posterior.</p>
+      </footer>
+    </main>
   );
 }
