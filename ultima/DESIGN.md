@@ -1,28 +1,28 @@
 # DESIGN
 
 ## Hechos (respuestas del guion)
-- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
+- ¿Dónde necesitas incorporar la nueva capacidad? App móvil
 - ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Tarjetas
+- ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Frontend
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Vue 3 + TypeScript
+- ¿Qué stack? Angular
 - ¿Qué integración? Ninguna
 - ¿Persistencia? No requiere
-- ¿Qué pruebas? Estándar completo
+- ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Vue 3 + TypeScript (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular (capa Frontend) para "Consulta" sobre Cuentas en App móvil, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración Ninguna y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Vue 3 + TypeScript sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
-- Integración (Ninguna), persistencia (No requiere) y pruebas (Estándar completo) se implementan como candidate y requieren build real en CI.
+- El código se genera en Angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- Integración (Ninguna), persistencia (No requiere) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
 - Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
@@ -30,60 +30,68 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Tarjetas (Vue 3 + TypeScript)
+# DESIGN · Refinamiento (Consulta de Cuentas · Angular · App móvil)
+
+> Complementa el diseño base y no altera sus criterios de aceptación.
 
 ## Decisiones de arquitectura
-
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Vite + SFC `<script setup lang="ts">`, `vue-tsc` para tipado | Es la plantilla oficial de Vue 3 y permite chequeo estático en CI. |
-| D2 | Capas Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón pedido. Los atoms son solo presentacionales y la lógica de dominio queda fuera de los componentes. |
-| D3 | Sin `vue-router` ni Pinia | Hay una sola vista con selección local, así que no se necesitan. Además evita chocar con el router del host de Banca por Internet. |
-| D4 | Puerto `CardsRepository` con implementación `InMemoryCardsRepository` y fixtures | La integración es Ninguna, pero la fuente de datos queda reemplazable sin tocar la UI. |
-| D5 | Composable `useCards()` con estados `idle/loading/success/empty/error` | Centraliza el flujo de consulta y se puede probar sin montar componentes. |
-| D6 | El dominio solo guarda `last4`; nunca hay PAN completo | Minimiza la exposición de datos sensibles. Todos los datos son ficticios. |
-| D7 | Formato con `Intl.NumberFormat`/`DateTimeFormat`; locale y moneda vía `VITE_*` | Evita dependencias extra. Sin secretos. |
-| D8 | Estilos con CSS scoped y tokens en custom properties, sin librería de UI | El design system del host es desconocido y los tokens son fáciles de remapear. |
-| D9 | Vitest + `@vue/test-utils` + jsdom | Integración nativa con Vite. Es la única dependencia de pruebas. |
+| D1 | Componentes *standalone* y ruta *lazy* `cuentas` | Es el estilo idiomático actual de Angular. Reduce el boilerplate de NgModules y aísla la feature. |
+| D2 | Atomic Design: `shared/ui/{atoms,molecules,organisms}`; *templates* y *pages* dentro de la feature | Cumple el patrón pedido y separa la UI reutilizable de la composición propia del dominio. |
+| D3 | Puerto `ACCOUNTS_QUERY` (InjectionToken) con el adaptador `InMemoryAccountsAdapter` | La integración es "Ninguna", pero el adaptador se puede reemplazar por HTTP sin tocar componentes. |
+| D4 | Estado local con `signal`/`computed` en la página, sin NgRx | La consulta es de solo lectura y no hay persistencia, así que un store global no está justificado. |
+| D5 | CSS mobile-first propio, sin librería de UI | Evita dependencias sin motivo. Áreas táctiles ≥44px y contraste AA. |
+| D6 | El número de cuenta se expone siempre enmascarado (`•••• 1234`) | Es un dominio sensible: se adopta la buena práctica aunque los datos sean ficticios. |
+| D7 | Pruebas unitarias con Jasmine/Karma (CLI por defecto) y TestBed; cada `*.spec.ts` junto a su archivo | Es el estándar del CLI y no requiere configuración adicional. |
+| D8 | `environment.ts` sin secretos; `locale` y `currency` configurables | Atiende la regla de configuración por entorno. Los montos se formatean con los pipes de Angular. |
 
 ## Estructura de módulos
 ```
-cards-consulta/
-  package.json · tsconfig.json · vite.config.ts · index.html · .env.example · README.md
-  src/
-    main.ts · App.vue
-    domain/      card.ts (tipos) · cardFormat.ts (maskCard, formatMoney, utilization)
-    data/        CardsRepository.ts · inMemoryCardsRepository.ts · fixtures/cards.ts
-    composables/ useCards.ts
-    components/
-      atoms/     BaseBadge · MoneyAmount · MaskedCardNumber · ProgressBar
-      molecules/ CardSummaryItem · BalanceRow · StatusMessage
-      organisms/ CardList · CardDetailPanel
-      templates/ ConsultaLayout
-    pages/       CardsConsultaPage.vue
-  tests/unit/    domain/ · data/ · composables/ · components/{atoms,molecules,organisms}/ · pages/
+src/app/
+  app.config.ts · app.routes.ts · app.component.ts
+  core/accounts/
+    account.model.ts            # Account, AccountType, AccountStatus
+    accounts-query.port.ts      # InjectionToken + interfaz
+    in-memory-accounts.adapter.ts (+ .spec)   # datos ficticios
+    mask-account.pipe.ts (+ .spec)
+  shared/ui/
+    atoms/      badge, amount, icon-button (+ .spec)
+    molecules/  account-card, search-field (+ .spec)
+    organisms/  account-list (+ .spec)
+  features/accounts/
+    templates/  mobile-list-detail.template.ts
+    pages/      accounts-list.page.ts, account-detail.page.ts (+ .spec)
+    accounts.routes.ts
+src/environments/environment.ts
+package.json · angular.json · tsconfig*.json · karma.conf.js · README.md
 ```
 
-## Hipótesis
-- **H1.** La consulta muestra un listado de tarjetas (crédito/débito, estado, número enmascarado) y el detalle de la tarjeta seleccionada: línea, disponible, saldo, fecha de corte y fecha de pago. Pendiente de confirmar con negocio.
-- **H2.** Locale `es-PE` y moneda `PEN` por defecto. Ambos son configurables.
-- **H3.** El módulo se embebe en el host como vista autónoma. El mecanismo concreto (micro-frontend o librería) no está definido.
-- **H4.** "Estándar completo" significa pruebas unitarias de dominio, repositorio y composable, más pruebas de componentes por cada capa atómica. E2E queda fuera.
-- **H5.** El validador local puede no soportar `.vue`. Esos archivos quedarían sin verificar.
-- **H6.** Las versiones de dependencias son candidatas y no fueron resueltas contra un registry.
+**Contrato del puerto:**
+- `list(filter?: {type?}): Observable<Account[]>`
+- `getById(id): Observable<Account | undefined>`
 
-## Riesgos y mitigación
+**Modelo `Account`:** `id`, `alias`, `maskedNumber`, `type` (ahorros/corriente), `currency`, `availableBalance`, `status`.
 
+## Hipótesis (no confirmadas)
+- **H1:** "App móvil" significa una SPA Angular responsive (o PWA), no Ionic/Capacitor. Si es nativa híbrida, cambian el empaquetado y la navegación.
+- **H2:** "Consulta" incluye el listado de cuentas, el filtro por tipo y el detalle de solo lectura. No incluye movimientos ni operaciones.
+- **H3:** Se usa la versión estable vigente de Angular, fijada en `package.json`, sin verificar contra un registro real.
+- **H4:** El usuario ya está autenticado, por lo que la autenticación queda fuera de alcance.
+- **H5:** `locale` y `currency` por defecto son `es` y `USD`, configurables. Pendiente de confirmar con negocio.
+- **H6:** El estado del SGC es *fallback*, por lo que no se heredan lineamientos corporativos.
+
+## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Exposición de PAN o datos reales | D6, fixtures ficticios y un test que confirma que solo se renderizan 4 dígitos. |
-| No compila: nada se ejecuta en este host | Estado *candidate*. Build, `vue-tsc` y `vitest` deben correr en CI. |
-| Estilos inconsistentes con el host | Tokens CSS (D8) y validación posterior con UX. |
-| Accesibilidad insuficiente | HTML semántico (`button`, `aria-live` en StatusMessage) y aserciones de roles en los tests. |
-| Alcance funcional mal interpretado (H1) | Fixtures y tipos aislados en `domain/` y `data/` para ajustarlos rápido. |
+| No se compila ni se ejecutan pruebas en el host | Entrega *candidate* y build/test obligatorios en CI (`ng build`, `ng test --watch=false`). |
+| Desfase de versiones de dependencias | Versiones fijadas y documentadas en el README. |
+| Sobre-fragmentación con Atomic Design | Solo se crean átomos con al menos un reuso o una responsabilidad clara. |
+| Exposición de datos sensibles al conectar un backend real | Enmascarado en el modelo y la UI (D6). Nunca se registra el número completo en logs. |
+| Ambigüedad en H1/H2 | Se registran en el README como supuestos pendientes. |
 
-## Aceptación (complementa la base, no la reemplaza)
-- `maskCard` nunca devuelve más de 4 dígitos visibles.
-- `useCards` expone los estados `loading`, `success`, `empty` y `error`, cada uno cubierto por un test.
-- Existe al menos un test por capa atómica.
-- El README documenta `npm install`, `npm run dev`, `npm test`, las variables de `.env.example`, la integración (Ninguna) y la persistencia (No requiere).
+## Comprobaciones para el tester (refinan, no sustituyen)
+- Existe al menos un `*.spec.ts` por átomo, molécula, organismo, adaptador y pipe.
+- Ningún componente importa `InMemoryAccountsAdapter` directamente; solo lo usa `app.config.ts`.
+- Ningún archivo contiene un número de cuenta sin enmascarar fuera del adaptador de datos ficticios.
+- El README documenta el build, la ejecución, la integración "Ninguna", la persistencia "No requiere" y lo que no se verificó.

@@ -1,73 +1,54 @@
-# Consulta de tarjetas
+# Consulta de Cuentas
 
-Aplicación frontend de consulta de tarjetas, construida con Vue 3, TypeScript y Vite. Presenta una lista seleccionable y el detalle de la tarjeta, con estados de carga, vacío y error. El estado de datos reside en el composable `useCards`; no hay backend conectado.
+SPA mobile-first construida con Angular 18 y componentes standalone. Permite consultar cuentas ficticias, buscar por alias, filtrar por tipo y abrir el detalle. La app es de solo lectura y enmascara los números de cuenta.
 
 ## Requisitos
 
-- Node.js compatible con Vite 5 (Node.js 18+ recomendado).
-- npm.
+- Node.js 18.19 o posterior (también Node 20+).
+- npm compatible con la versión de Node.
+- Chrome instalado para ejecutar las pruebas Karma en modo headless.
 
 ## Instalar, ejecutar y compilar
 
-Desde la raíz del proyecto:
-
 ```sh
 npm install
-npm run dev
+npm start
 ```
 
-Vite mostrará la URL local en la terminal. Para generar la versión de producción y servirla localmente:
+Abre `http://localhost:4200`. El servidor de desarrollo escucha en `0.0.0.0` según el script `start`.
 
 ```sh
 npm run build
-npm run preview
 ```
 
-`npm run build` ejecuta primero la comprobación de tipos de Vue (`vue-tsc --noEmit`) y luego crea los artefactos de Vite en `dist/`.
+Angular CLI escribe el resultado en `dist/consulta-cuentas-movil`. La configuración predeterminada de build es producción; también existe configuración development con mapas de fuentes.
 
-## Comprobaciones y pruebas
+## Pruebas
 
 ```sh
-npm run typecheck  # comprobación TypeScript y componentes Vue
-npm test           # suite Vitest en entorno jsdom, una ejecución
+npm test
 ```
 
-Las pruebas existentes cubren formato del dominio, componentes, página, estados del composable y comportamiento del repositorio en memoria. Para desarrollar la suite en modo interactivo se puede invocar `npx vitest` (requiere dependencias instaladas).
+El script usa `ng test --watch=false --browsers=ChromeHeadless`; requiere Chrome. Las pruebas están configuradas con Karma y Jasmine, sin servicios externos. Cubren el adaptador en memoria (listado, filtro, búsqueda por id y enmascaramiento), el pipe de enmascarado, páginas de listado/detalle y átomos, moléculas y organismo UI. El reporte de cobertura, si se genera, queda en `coverage/consulta-cuentas-movil`.
 
-## Configuración
+## Estructura y flujo
 
-`src/config.ts` lee variables de entorno de Vite:
+- `src/app/core/accounts`: modelo `Account`, puerto `AccountsQueryPort`, token `ACCOUNTS_QUERY`, adaptador ficticio en memoria y pipe de enmascarado.
+- `src/app/features/accounts`: rutas lazy `/cuentas` y `/cuentas/:id`, con páginas de listado y detalle.
+- `src/app/shared/ui`: componentes reutilizables organizados en atoms, molecules y organisms.
+- `src/app/app.config.ts`: punto de composición donde `ACCOUNTS_QUERY` se vincula actualmente a `InMemoryAccountsAdapter`.
+- `src/environments/environment.ts`: locale y moneda usados como configuración no secreta (`es`, `USD`).
 
-| Variable | Valor predeterminado | Uso |
-|---|---|---|
-| `VITE_LOCALE` | `es-PE` | Configuración regional de presentación |
-| `VITE_DEFAULT_CURRENCY` | `PEN` | Moneda predeterminada |
+El listado carga cuentas mediante el puerto, aplica el filtro de tipo en el adaptador y filtra el alias en la vista. El detalle obtiene la cuenta por id. La UI contempla carga, error/reintento en el listado y cuenta no encontrada en el detalle.
 
-Se pueden establecer en `.env.local` en la raíz del proyecto; por ejemplo:
+## Integración y persistencia
 
-```dotenv
-VITE_LOCALE=es-PE
-VITE_DEFAULT_CURRENCY=PEN
-```
+Actualmente no hay API, autenticación, backend ni persistencia: `InMemoryAccountsAdapter` devuelve cinco registros ficticios estáticos, en memoria, y no conserva cambios entre sesiones. No se requiere base de datos para el alcance actual. Los datos crudos con números ficticios solo existen en el adaptador; el modelo expuesto por el puerto lleva `maskedNumber`.
 
-No se necesita `.env.example` para ejecutar la aplicación. Las variables con prefijo `VITE_` se exponen al código del navegador: no colocar secretos ni credenciales en ellas.
+Para integrar un backend, implemente `AccountsQueryPort` usando `HttpClient` y registre el adaptador en `app.config.ts` bajo `ACCOUNTS_QUERY`. Mantenga el contrato de solo lectura (`list(filter?)`, `getById(id)`) y el enmascaramiento antes de exponer los datos a la UI. Configure cualquier URL mediante configuración de entorno apropiada para despliegue; no guarde credenciales ni secretos en el frontend. La persistencia real y las políticas de autorización deben residir en el backend.
 
-## Arquitectura e integración de datos
+## Supuestos y límites
 
-- `src/domain/`: modelo `Card` y formateadores.
-- `src/data/CardsRepository.ts`: contrato de datos (`list` y `getById`).
-- `src/data/inMemoryCardsRepository.ts` y `src/data/fixtures/cards.ts`: implementación y datos ficticios usados actualmente.
-- `src/composables/useCards.ts`: carga, selección y estados de presentación.
-- `src/components/` y `src/pages/CardsConsultaPage.vue`: interfaz organizada en átomos, moléculas, organismos, plantilla y página.
+“App móvil” se interpreta como SPA responsive; no incluye Ionic, Capacitor ni distribución nativa. Se asume que la autenticación y autorización, si fueran necesarias, pertenecen a una capa externa que esta aplicación aún no integra. Los datos son demostrativos y no representan cuentas reales.
 
-La página acepta opcionalmente una implementación `repository` de `CardsRepository`; si no se proporciona, crea `InMemoryCardsRepository`. Para integrar una API, impleméntese ese contrato en un adaptador separado y pásese a la página, conservando el modelo de dominio y manejando errores de red en el adaptador. No hay llamadas HTTP ni servicio externo configurado en el estado actual; configurar un endpoint por sí solo no conecta una API.
-
-## Persistencia y datos
-
-No existe persistencia. El repositorio en memoria inicializa sus datos desde fixtures ficticios; los cambios no sobreviven a una recarga y no se escriben en almacenamiento local ni en una base de datos. Para persistir, debe añadirse un adaptador de repositorio apropiado al servicio elegido, sin acoplar la UI a detalles de almacenamiento.
-
-El modelo solo contempla `last4` (los últimos cuatro dígitos), no el número completo de tarjeta (PAN). Las fixtures son únicamente datos de demostración y no deben sustituirse por datos reales sensibles.
-
-## Estado de verificación
-
-Se documentan scripts declarados en `package.json` y la estructura observada del proyecto. No se ejecutaron instalación, compilación, servidor ni pruebas en este entorno; sus resultados quedan sin verificar.
+No se ejecutaron `npm install`, `npm run build` ni `npm test` durante esta documentación; por tanto, su resultado queda sin verificar en este entorno.
