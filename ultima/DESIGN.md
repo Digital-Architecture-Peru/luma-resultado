@@ -3,95 +3,104 @@
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Tarjetas
+- ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Feature-Sliced Design
-- ¿Qué stack? React + TypeScript
+- Patrones disponibles Component-based (Atomic Design)
+- ¿Qué stack? Vue 3 + TypeScript
 - ¿Qué integración? Ninguna
-- ¿Persistencia? No requiere
-- ¿Qué pruebas? Unitarias
+- ¿Persistencia? PostgreSQL
+- ¿Qué pruebas? Estándar completo
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Consulta" sobre Tarjetas en Banca por Internet, capa Frontend.
-- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
-- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
-- Accesible (etiquetas, foco, contraste) y responsive.
+- Solución en Vue 3 + TypeScript (capa Frontend) para "Consulta" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
+- Integración Ninguna y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- Stack (React + TypeScript), patrón (Feature-Sliced Design), integración (Ninguna) y persistencia (No requiere) se documentan; React/TypeScript se valida con build y navegador.
+- El código se genera en Vue 3 + TypeScript sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- Integración (Ninguna), persistencia (PostgreSQL) y pruebas (Estándar completo) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
-- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Tarjetas (Banca por Internet)
+# DESIGN · Refinamiento: Consulta de Cuentas (Vue 3 + TypeScript)
 
-> Complementa el diseño base y respeta sus criterios de aceptación: botón "Probar capacidad" visible al cargar, texto "Capacidad simulada" en `role=status`, tsc/build correctos, interacción en navegador y smoke HTTP 200.
+> Complementa el diseño base. Mantiene sus Hechos, su Contexto SGC (fallback) y sus criterios de Aceptación.
 
-## Decisiones de arquitectura
-| ID | Decisión | Justificación |
+## 1. Decisiones de arquitectura
+
+| # | Decisión | Justificación |
 |---|---|---|
-| AD-01 | FSD *lite*: `app`, `pages`, `features`, `entities`, `shared`; se omite `widgets` | Mantiene el patrón pedido con tamaño proporcional a la microapp |
-| AD-02 | `src/App.tsx` actúa como capa `app` (composición) y `src/styles.css` contiene tokens y estilos globales | T02 exige modificar estos dos archivos |
-| AD-03 | Imports relativos, sin alias `@/` | Evita tocar tsconfig/vite y reduce el riesgo de build |
-| AD-04 | Cada slice expone una API pública en `index.ts` e importa solo de capas inferiores | Es la regla central de FSD y facilita la revisión |
-| AD-05 | Datos ficticios en `entities/card/model/mock.ts` y estado local con `useState` | Integración y persistencia son "Ninguna"; no hace falta store |
-| AD-06 | La lógica pura (enmascarar, formatear, seleccionar) vive en `shared/lib` y en `entities/*/model` | Facilita las pruebas unitarias sin DOM |
-| AD-07 | Nunca se muestra el PAN completo; solo `•••• 1234` | Seguridad por diseño, aunque los datos sean ficticios |
-| AD-08 | Sin dependencias nuevas | Restricción del diseño base |
+| D1 | Vite + Vue 3 SFC con `<script setup lang="ts">` y TS `strict` | Es la cadena idiomática de Vue 3. Con tipado estricto, los errores aparecen en CI. |
+| D2 | Atomic Design en `components/atoms → molecules → organisms → templates → pages` | Es el patrón elegido. Regla: solo la *page* conoce el dominio y los datos. Átomos y moléculas reciben únicamente props y emiten eventos. |
+| D3 | **El frontend no accede a PostgreSQL.** La persistencia queda detrás del puerto `AccountRepository` (solo lectura: `list(filter)`, `getById(id)`). | Un navegador no debe conectarse a una BD. PostgreSQL vive detrás de un backend/BFF que está fuera de alcance. |
+| D4 | Adaptador único `InMemoryAccountRepository` con datos ficticios | La integración elegida es "Ninguna". El contrato HTTP futuro solo se documenta en el README y no se implementa. |
+| D5 | Inyección del repositorio con `provide/inject` y un `InjectionKey` tipado | Permite cambiar de adaptador sin tocar componentes y simplifica las pruebas con repositorios falsos. |
+| D6 | Estado con el composable `useAccounts`, sin Pinia ni vue-router | Hay una sola vista: lista con filtro y detalle. Menos dependencias implica menos superficie de riesgo. |
+| D7 | Montos en unidades menores (enteros) + código ISO 4217, formateados con `Intl.NumberFormat` | Evita errores de punto flotante en saldos. |
+| D8 | Seguridad UI: número de cuenta enmascarado (solo los últimos 4 dígitos), sin `v-html`, sin `localStorage`, `.env.example` solo con variables `VITE_*` no sensibles | Contexto bancario. Las variables `VITE_*` son públicas en el bundle. |
+| D9 | Estados explícitos `loading / empty / error / success`, con `aria-live` en loading y error | Ofrece una UX predecible y accesible. Cada estado es comprobable por el tester. |
+| D10 | Vitest + jsdom + `@vue/test-utils` | Es el runner nativo del ecosistema Vite y cubre el nivel "Estándar completo" (ver H5). |
 
-## Estructura de módulos
+## 2. Estructura de módulos
+
 ```
-src/
-  main.tsx                      # existente; monta <App/>
-  App.tsx                       # capa app: compone CardInquiryPage
-  styles.css                    # tokens, foco visible, layout responsive
-  pages/card-inquiry/
-    ui/CardInquiryPage.tsx      # h1, lista, detalle, feature
-    index.ts
-  features/
-    select-card/ui/CardSelector.tsx       # radiogroup/botones accesibles
-    try-capability/
-      model/useTryCapability.ts           # idle -> simulated
-      ui/TryCapabilityButton.tsx          # "Probar capacidad" + role=status
-      index.ts
-  entities/card/
-    model/types.ts  mock.ts  selectors.ts # Card, 3 tarjetas, getById
-    ui/CardSummary.tsx                    # cupo, saldo, fecha de corte
-    index.ts
-  shared/lib/format.ts                    # maskPan, formatCurrency, formatDate
+consulta-cuentas/
+├─ package.json · tsconfig.json · vite.config.ts · index.html
+├─ .env.example                 # VITE_APP_LOCALE, sin secretos
+├─ README.md                    # build, ejecución, integración, persistencia
+├─ docs/postgresql-reference.sql  # esquema de referencia, no ejecutado
+├─ src/
+│  ├─ main.ts · App.vue         # provide(AccountRepositoryKey, new InMemory…)
+│  ├─ domain/account.ts         # Account, AccountType, Money, AccountFilter
+│  ├─ domain/format.ts          # maskAccountNumber, formatMoney
+│  ├─ ports/AccountRepository.ts
+│  ├─ adapters/InMemoryAccountRepository.ts
+│  ├─ fixtures/accounts.ts      # datos ficticios
+│  ├─ composables/useAccounts.ts
+│  └─ components/
+│     ├─ atoms/      BaseAmount · MaskedNumber · BaseBadge · BaseSpinner
+│     ├─ molecules/  AccountCard · AccountTypeFilter · StatusMessage
+│     ├─ organisms/  AccountList · AccountDetailPanel
+│     ├─ templates/  ConsultaLayout
+│     └─ pages/      ConsultaCuentasPage
+└─ tests/
+   ├─ unit/        format · InMemoryAccountRepository · useAccounts
+   └─ components/  atoms · AccountList · ConsultaCuentasPage (4 estados)
 ```
 
-## Comportamiento y accesibilidad
-- Al cargar se ve la lista con 3 tarjetas ficticias (débito, crédito y una bloqueada). La primera aparece seleccionada.
-- El detalle muestra estado, cupo disponible, saldo y fecha de corte.
-- El contenedor `role=status` existe vacío desde el inicio. Al pulsar el botón recibe "Capacidad simulada", para que el lector de pantalla lo anuncie.
-- La app usa HTML semántico, `aria-pressed` o `aria-checked` en la selección, foco visible, contraste AA y layout de una columna en anchos menores a 640 px.
+## 3. Riesgos
 
-## Hipótesis
-- H1: la plantilla usa Vite + React 18 + TS strict y `main.tsx` importa `App` por defecto.
-- H2: locale `es-CO` y moneda COP. Se puede cambiar en `format.ts`.
-- H3: puede que no haya runner de pruebas (Vitest) instalado. En ese caso, el plan de pruebas unitarias se documenta en TODOS.json (T05) sin añadir dependencias.
-- H4: el contexto SGC está en fallback, así que no se asumen lineamientos corporativos de marca. Se usan tokens neutros.
-- H5: el estado "bloqueada" es un dato ficticio y solo se muestra; no permite acciones.
+| Riesgo | Impacto | Mitigación |
+|---|---|---|
+| Interpretar "PostgreSQL" como acceso directo desde el frontend | Alto (seguridad) | Aplicar D3. Verificar que no haya dependencias `pg` o ORM en `src/`. |
+| Archivos `.vue` sin un validador local de sintaxis | Medio | Validar los `.ts` en local. La validación de SFC con `vue-tsc` queda en CI y se declara como no verificada. |
+| Dependencias no instaladas ni resueltas en este host | Medio | Usar rangos de versión conservadores. Se requiere `npm install` y build en CI. |
+| SGC en fallback: no se aplica el design system ni la normativa corporativa | Medio | Usar estilos mínimos y aislados, fáciles de sustituir. Revisión posterior con SGC. |
+| Formas de integración con el host de Banca por Internet desconocidas | Medio | La page queda autocontenida y el repositorio es inyectable (ver H3). |
+| Supuestos de locale y moneda incorrectos | Bajo | Locale configurable por `VITE_APP_LOCALE` (ver H4). |
 
-## Plan de pruebas unitarias (T05)
-- `maskPan('4111111111111234')` devuelve `•••• 1234` y nunca expone más de 4 dígitos.
-- `formatCurrency` y `formatDate` dan una salida estable para el locale de H2.
-- `getCardById` devuelve la tarjeta correcta o `undefined` si el id no existe.
-- `useTryCapability` pasa de `idle` a `simulated` y expone el texto "Capacidad simulada".
+## 4. Hipótesis explícitas
 
-## Riesgos
-| Riesgo | Mitigación |
-|---|---|
-| Sobreestructurar FSD en una microapp | Aplicar AD-01 y no crear slices vacíos |
-| Romper el build por alias o rutas | Aplicar AD-03 y ejecutar `tsc` antes de `vite build` |
-| El status no se anuncia | Montar el contenedor vacío antes de pulsar |
-| Exponer datos sensibles | Aplicar AD-07; no guardar el PAN completo en mocks |
-| Diferencias de `Intl` entre entornos | Las pruebas comparan patrones, no strings exactos |
-| Presentar el resultado como listo para producción | El handoff se cierra como **candidate** (T07) |
+- **H1.** "Consulta" significa solo lectura: listar cuentas, filtrar por tipo y ver el detalle. No hay operaciones de escritura.
+- **H2.** La persistencia PostgreSQL pertenece a un backend futuro. Aquí solo se entregan el puerto, el contrato documentado (`GET /cuentas`, `GET /cuentas/{id}`) y el esquema de referencia, sin ejecutarlos.
+- **H3.** La capacidad se entrega como app Vite independiente. Su encaje en el shell de Banca por Internet (ruta, micro-frontend o librería) está por definir.
+- **H4.** El locale y las monedas son configurables. Los fixtures usan códigos ISO 4217 genéricos, sin suponer un país.
+- **H5.** "Estándar completo" equivale a pruebas unitarias, de componente y de integración de la page con un repositorio falso. Las pruebas E2E quedan documentadas como pendientes.
+- **H6.** Los tipos de cuenta en los fixtures (p. ej. ahorro y corriente) son ilustrativos y no catálogo oficial.
+- **H7.** La autenticación y la sesión las provee el host y están fuera de alcance.
+
+## 5. Criterios complementarios de verificación
+
+Estos criterios no reemplazan la Aceptación base:
+- `ConsultaCuentasPage` muestra los 4 estados (D9) y una prueba cubre cada uno.
+- Ningún número de cuenta se renderiza completo. Lo verifican pruebas de `MaskedNumber` y `AccountCard`.
+- `src/` no importa drivers de base de datos ni contiene URLs reales o secretos.
+- El README declara qué se verificó (sintaxis `.ts`) y qué no (build, `vue-tsc`, ejecución de pruebas, integración con el host).
