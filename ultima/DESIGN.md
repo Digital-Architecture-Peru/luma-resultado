@@ -6,93 +6,95 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript
+- ¿Qué stack? Angular
 - ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Consulta" sobre Tarjetas en Banca por Internet, capa Frontend.
-- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
-- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
-- Accesible (etiquetas, foco, contraste) y responsive.
+- Solución en Angular (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
+- Integración sin definir y persistencia sin definir detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
+- El código se genera en Angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- Integración (sin definir), persistencia (sin definir) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
-- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Tarjetas (Banca por Internet)
+# DESIGN · Refinamiento (Consulta de Tarjetas · Angular · Atomic Design)
 
-> Complementa el diseño base y respeta sus criterios de aceptación: botón "Probar capacidad" visible al cargar, texto "Capacidad simulada" en `role=status`, tsc y build correctos, y preview con HTTP 200.
+> Complementa el diseño base y respeta sus criterios de aceptación. SGC está en **fallback**, así que no hay estándares corporativos confirmados.
 
-## Decisiones de arquitectura (ADR breves)
-| # | Decisión | Justificación |
+## Decisiones de arquitectura
+
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | Atomic Design en `src/components/{atoms,molecules,organisms,templates}` y `src/pages` | Es el patrón elegido. Permite reutilizar las piezas visuales y probarlas de forma aislada. |
-| D2 | `App.tsx` solo compone `ConsultaTarjetasPage` | Cumple T02 sin mezclar lógica en el punto de entrada. |
-| D3 | Contrato `TarjetasRepository` (`listar()` y `obtener(id)`) con implementación `InMemoryTarjetasRepository` | La integración no está definida. El adaptador permite cambiar la fuente después sin tocar la UI. |
-| D4 | Estado local con `useState` (tarjeta seleccionada y mensaje de estado), sin router ni librería de estado | Es una sola vista de solo lectura. Se evita añadir dependencias. |
-| D5 | Un único `styles.css` con variables CSS y clases por capa (`a-`, `m-`, `o-`) | Lo exige T02 y no requiere tooling adicional. |
-| D6 | Formato con `Intl.NumberFormat` y `Intl.DateTimeFormat` | Es nativo, no añade dependencias y facilita cambiar el locale. |
-| D7 | PAN siempre enmascarado (`•••• 4821`), sin campo de PAN completo en el modelo | Aplica el principio de mínimo dato (estilo PCI), aunque los datos sean ficticios. |
-| D8 | El contenedor `role="status"` se renderiza vacío desde la carga | Los lectores de pantalla anuncian los cambios solo si la región viva ya existe en el DOM. |
+| AD1 | Componentes standalone y `ChangeDetectionStrategy.OnPush` | Es idiomático en Angular moderno, evita NgModules y facilita las pruebas unitarias aisladas. |
+| AD2 | Atomic Design en `shared/ui` (atoms, molecules, organisms, templates) y páginas en `features/cards/pages` | Cumple el patrón pedido y separa la UI reutilizable de la lógica de la feature. |
+| AD3 | Puerto `CardsRepository` (clase abstracta) con `MockCardsAdapter` como único adaptador activo | La integración no está definida. Se podrá cambiar a HTTP sin tocar componentes. |
+| AD4 | Solo lectura: listar tarjetas, ver el detalle y ver los movimientos | El tipo de capacidad es "Consulta" y no se diseñan mutaciones. |
+| AD5 | Componentes de presentación (`@Input`/`@Output`) y página contenedora que inyecta `CardsFacade` | Los atoms, molecules y organisms se prueban sin dependencias. La página orquesta los datos. |
+| AD6 | El número de tarjeta llega enmascarado (`**** 1234`) y el pipe `maskPan` actúa como defensa extra | Nunca se modela ni se muestra un PAN completo, ni siquiera en datos ficticios. |
+| AD7 | `environment.ts` con `useMock: true` y `apiBaseUrl: ''` | Configuración sin secretos y lista para CI. |
+| AD8 | Estados explícitos `loading`, `empty`, `error` y `data` en el template | La UX de una consulta debe ser predecible. Aplica el skill modern-ui-ux. |
 
 ## Estructura de módulos
+
 ```
-src/
-  App.tsx                      # compone la página
-  styles.css                   # tokens + estilos por capa
-  domain/tarjeta.ts            # tipos Tarjeta, EstadoTarjeta
-  data/tarjetas.mock.ts        # 3 tarjetas ficticias
-  services/tarjetasRepository.ts  # contrato + InMemory
-  lib/format.ts                # moneda, fecha, enmascarado
-  components/
-    atoms/      Button, Badge, Amount, MaskedPan
-    molecules/  CardSummary, DetailRow
-    organisms/  CardList, CardDetail, StatusRegion
-    templates/  ConsultaLayout
-  pages/ConsultaTarjetasPage.tsx  # estado + botón "Probar capacidad"
+src/app/
+  core/cards/
+    models/ card.model.ts, movement.model.ts
+    ports/ cards.repository.ts
+    adapters/ mock-cards.adapter.ts (+ mock-data.ts)
+    cards.facade.ts
+  shared/ui/
+    atoms/ card-number, amount, status-badge
+    molecules/ card-summary, movement-row
+    organisms/ card-list, card-detail, movements-table
+    templates/ consultation-layout
+  shared/pipes/ mask-pan.pipe.ts
+  features/cards/pages/ cards-page, card-detail-page
+  app.routes.ts            # /tarjetas, /tarjetas/:id
+environments/ environment.ts
 ```
 
-Modelo `Tarjeta`: `id`, `alias`, `marca`, `ultimos4`, `tipo` (crédito/débito), `estado`, `limite?`, `disponible`, `deudaActual?`, `fechaCorte?`, `fechaPago?`.
+Manifiestos: `package.json`, `angular.json`, `tsconfig*.json`. Cada unidad tiene su `*.spec.ts` junto al archivo.
 
-## Hipótesis explícitas
-- **H1.** El SGC está en fallback, así que no hay restricciones corporativas verificadas (design system, tokens, políticas). Se usan tokens propios y neutros.
-- **H2.** "Consulta" es solo lectura. Quedan fuera bloquear la tarjeta, pagar o ver movimientos detallados.
-- **H3.** Locale `es-PE` y moneda PEN, inferidos de la zona horaria -05:00. Son configurables en `format.ts`.
-- **H4.** Usuario ya autenticado y simulado; no hay login.
-- **H5.** Si Vitest o Testing Library no están instalados, no se añaden. El plan de pruebas unitarias se documenta en `TODOS.json` (T05) y se ejecutan las pruebas que la base permita.
-- **H6.** Integración y persistencia siguen sin definir. D3 deja el punto de extensión preparado.
+## Pruebas unitarias (candidate)
+- **Atoms y molecules:** renderizado según el input, por ejemplo el badge por estado y el formato de monto.
+- **Pipe:** `maskPan` con un PAN completo, uno ya enmascarado y una entrada vacía.
+- **Facade:** usa un `CardsRepository` falso y cubre los estados `data`, `empty` y `error`.
+- **Página:** muestra la lista con datos mock y emite la navegación al detalle.
 
-## Riesgos y mitigación
+## Hipótesis
+- **H1:** Angular 17 o superior con standalone. Si la versión es otra, se ajustan los manifiestos.
+- **H2:** Se usa Jasmine/Karma (el runner por defecto del CLI). Si el estándar es Jest, solo cambia la configuración, no los specs.
+- **H3:** Locale y moneda configurables. Se asume `es` con moneda por token `CURRENCY_CODE`, porque el país no está confirmado.
+- **H4:** No existe un design system corporativo, así que se usan estilos propios mínimos y accesibles.
+- **H5:** Autenticación y sesión de Banca por Internet quedan fuera del alcance (las provee el host).
+- **H6:** No se compila ni ejecuta en este host. Solo se verifica sintaxis donde haya validador local.
+
+## Riesgos
+
 | Riesgo | Mitigación |
 |---|---|
-| Confundir los datos ficticios con datos reales | Etiqueta visible "Datos de demostración" y valores claramente ficticios |
-| Exponer números de tarjeta | Solo se guardan los `ultimos4` (D7) |
-| Que la región viva no anuncie el mensaje | Aplicar D8 y verificarlo en el navegador (T03) |
-| Sobreingeniería de Atomic Design para una sola vista | Componentes mínimos; no crear átomos sin uso |
-| Falta de runner de pruebas | Aplicar H5 y reportarlo como limitación en el handoff |
-| Accesibilidad | Lista navegable con teclado (`button` y `aria-pressed`), foco visible, contraste AA y montos con texto legible |
+| Exposición de datos sensibles (PAN o CVV) | AD6, ningún campo CVV y datos solo ficticios. |
+| Desalineación con estándares SGC (fallback) | Se documenta en el README y se revisa cuando SGC esté disponible. |
+| Versión de Angular incompatible en CI | H1 queda explícita y se fijan las versiones en `package.json`. |
+| Contrato de integración desconocido | Puerto AD3. El adaptador HTTP queda pendiente de contrato. |
+| Brechas de accesibilidad | Roles y labels ARIA, tabla semántica y foco visible. |
 
-## Plan de pruebas unitarias (T05)
-- `format.ts`: moneda, fecha y enmascarado con casos borde (`limite` undefined).
-- `InMemoryTarjetasRepository`: `listar()` devuelve 3 tarjetas; `obtener(id)` con un id inexistente devuelve `undefined`.
-- Página: el botón "Probar capacidad" existe al cargar. Al hacer clic, `role=status` contiene "Capacidad simulada".
-- Selección: al elegir una tarjeta se actualiza el detalle.
-
-## Trazabilidad
-| Tarea | Cubierta por |
-|---|---|
-| T01 | Hechos y H1 |
-| T02 | D1, D2 y D5 |
-| T03 | D8 y la página |
-| T04 | D4 y D6 (sin dependencias nuevas) |
-| T05 | Plan de pruebas y H5 |
-| T06 | Decisiones D1–D7 y H6 |
-| T07 | Estado *candidate*; no se afirma que esté listo para producción |
+## Trazabilidad con los todos
+- **T01:** se citan Hechos, H1–H6 y el estado fallback.
+- **T02:** se implementa la estructura de módulos anterior.
+- **T03:** se valida la sintaxis de TS, JSON y HTML con el validador disponible.
+- **T04:** specs por unidad.
+- **T05:** el README cubre build, ejecución, integración y persistencia sin definir.
+- **T06:** resumen candidate que no afirma compilación ni producción.
