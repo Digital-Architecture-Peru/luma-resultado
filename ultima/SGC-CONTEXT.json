@@ -5,7 +5,7 @@
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
     "type": "Transacción",
-    "domain": "Cuentas",
+    "domain": "Pagos",
     "layer": "Frontend"
   },
   "sgc": {
