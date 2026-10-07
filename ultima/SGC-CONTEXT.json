@@ -4,10 +4,10 @@
     "type": "Consulta",
     "domain": "Cuentas",
     "layer": "Frontend",
-    "pattern": "Feature-Sliced Design",
+    "pattern": "Micro-frontends",
     "stack": "React + TypeScript",
     "integration": "Ninguna",
-    "persistence": "PostgreSQL",
+    "persistence": "No requiere",
     "tests": "Unitarias"
   },
   "sgc": {
