@@ -1,21 +1,21 @@
 {
   "status": "candidate",
-  "generation": "c8090b1a-8b3c-4ded-afa0-e70121c5ddad",
+  "generation": "325c5102-ef92-4741-938f-41619300228f",
   "planRevision": 1,
   "files": [
     {
       "path": "src/App.tsx",
-      "hash": "0004e35e6ae5562139fed25623d0f79ef241b89d270fd532771834c339a7e17c"
+      "hash": "c22776699dcf04a476bfa6b3a2608f93cc9e73a37cec1e9f1b19f6be139a66fc"
     },
     {
       "path": "src/styles.css",
-      "hash": "51c11d75361988c01ae9c11264a37ada9d275c1c5819703b45a15cf767bce24f"
+      "hash": "b460772241ba654f4d23e68a2305c34f8351f11a5bd2db9c5a05b7b7083b42d9"
     }
   ],
   "validations": [
     {
       "kind": "build",
-      "elapsedMs": 3491.302799999714,
+      "elapsedMs": 3565.911500000395,
       "passed": true
     },
     {
@@ -31,11 +31,11 @@
       },
       "screenshot": {
         "path": "evidence/preview.png",
-        "hash": "9b2b0fe870c44b9c5e69595270ca5ebf2d41f8fc745ebb761bc6f39c062f3320"
+        "hash": "f141a3021c39efb7a5ce1e5abdacc6682fb148b1075f844bd9b323e97166964f"
       },
-      "elapsedMs": 593.0337999993935
+      "elapsedMs": 556.8580000000075
     }
   ],
   "deviations": [],
-  "agentSessionId": "fc827c03-6644-4bea-b608-bf08fe78b43e"
+  "agentSessionId": "1722c39b-49f9-4cb3-b575-1ffd6f4ed5b9"
 }

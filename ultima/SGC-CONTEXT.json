@@ -2,7 +2,7 @@
   "answers": {
     "stack": "React + TypeScript",
     "tests": "Unitarias",
-    "pattern": "Feature-Sliced Design",
+    "pattern": "Micro-frontends",
     "where": "Banca por Internet",
     "type": "Consulta",
     "domain": "Tarjetas",

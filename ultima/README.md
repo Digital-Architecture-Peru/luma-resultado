@@ -1,4 +1,4 @@
-# Microapp c5fc00f8-3a80-4446-aebc-6ab668b276ff
+# Microapp 82ea5869-bdba-4afe-90f2-751e75ffbf2b
 
 Candidate generada por Microapp Builder y validada en navegador local; no es producción.
 
@@ -7,7 +7,7 @@ Nueva capacidad (guion Luma)
 - ¿Qué tipo de capacidad? Consulta
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Feature-Sliced Design
+- Patrones disponibles Micro-frontends
 - ¿Qué stack? React + TypeScript
 - ¿Qué pruebas? Unitarias
 
@@ -17,7 +17,7 @@ Construye una microapp React interactiva y accesible que represente esta capacid
 - [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)
 - [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)
 - [T05-tests] Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)
-- [T06-docs] Documentar decisiones: capa Frontend, patrón Feature-Sliced Design, stack React + TypeScript, integración sin definir, persistencia sin definir (acepta: README del resultado publicado)
+- [T06-docs] Documentar decisiones: capa Frontend, patrón Micro-frontends, stack React + TypeScript, integración sin definir, persistencia sin definir (acepta: README del resultado publicado)
 - [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)
 
 SGC: fallback (SGC no configurado)
