@@ -1,14 +1,14 @@
 {
   "answers": {
-    "where": "Banca por Internet",
-    "type": "Consulta",
-    "domain": "Cuentas",
+    "where": "App móvil",
+    "type": "Notificación",
+    "domain": "Tarjetas",
     "layer": "Frontend",
-    "stack": "Vue 3 + TypeScript",
+    "stack": "Svelte",
     "pattern": "Component-based (Atomic Design)",
-    "persistence": "PostgreSQL",
+    "persistence": "No requiere",
     "integration": "Ninguna",
-    "tests": "Estándar completo"
+    "tests": "Unitarias"
   },
   "sgc": {
     "status": "fallback",
