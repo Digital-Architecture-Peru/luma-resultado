@@ -1,401 +1,278 @@
 import { useMemo, useState } from 'react';
 
 type Canal = 'Email' | 'SMS' | 'Push';
-type Evento =
-  | 'Saldo bajo'
-  | 'Depósito recibido'
-  | 'Pago programado'
-  | 'Intento de acceso';
+type Estado = 'Programada' | 'Enviada' | 'Fallida';
 
-interface ReglaNotificacion {
+interface NotificacionPago {
   id: string;
-  cuentaAlias: string;
-  cuentaNumero: string;
-  evento: Evento;
+  destinatario: string;
+  monto: number;
   canal: Canal;
-  umbral?: number;
-  activa: boolean;
+  estado: Estado;
+  fecha: string;
 }
+
+let nextId = 4;
+
+const DATOS_INICIALES: NotificacionPago[] = [
+  { id: 'n1', destinatario: 'Ana Torres', monto: 125000, canal: 'Email', estado: 'Enviada', fecha: '2026-10-01' },
+  { id: 'n2', destinatario: 'Carlos Ruiz', monto: 48000, canal: 'SMS', estado: 'Programada', fecha: '2026-10-05' },
+  { id: 'n3', destinatario: 'Lucía Pardo', monto: 980000, canal: 'Push', estado: 'Fallida', fecha: '2026-10-03' },
+];
+
+const formatoMonto = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
 interface FormState {
-  cuentaAlias: string;
-  cuentaNumero: string;
-  evento: Evento;
+  destinatario: string;
+  monto: string;
   canal: Canal;
-  umbral: string;
-  activa: boolean;
+  estado: Estado;
+  fecha: string;
 }
 
-const EVENTOS: Evento[] = [
-  'Saldo bajo',
-  'Depósito recibido',
-  'Pago programado',
-  'Intento de acceso',
-];
-const CANALES: Canal[] = ['Email', 'SMS', 'Push'];
+const FORM_VACIO: FormState = { destinatario: '', monto: '', canal: 'Email', estado: 'Programada', fecha: '' };
 
-const DATOS_INICIALES: ReglaNotificacion[] = [
-  {
-    id: 'r1',
-    cuentaAlias: 'Cuenta Nómina',
-    cuentaNumero: '**** 4521',
-    evento: 'Saldo bajo',
-    canal: 'Email',
-    umbral: 50000,
-    activa: true,
-  },
-  {
-    id: 'r2',
-    cuentaAlias: 'Cuenta Ahorros',
-    cuentaNumero: '**** 8830',
-    evento: 'Depósito recibido',
-    canal: 'Push',
-    activa: true,
-  },
-  {
-    id: 'r3',
-    cuentaAlias: 'Cuenta Nómina',
-    cuentaNumero: '**** 4521',
-    evento: 'Intento de acceso',
-    canal: 'SMS',
-    activa: false,
-  },
-];
-
-const FORM_VACIO: FormState = {
-  cuentaAlias: '',
-  cuentaNumero: '',
-  evento: 'Saldo bajo',
-  canal: 'Email',
-  umbral: '',
-  activa: true,
-};
-
-let contadorId = DATOS_INICIALES.length;
-function nuevoId(): string {
-  contadorId += 1;
-  return `r${contadorId}`;
+function validar(form: FormState): string | null {
+  if (!form.destinatario.trim()) return 'El destinatario es obligatorio.';
+  if (!form.monto || Number(form.monto) <= 0) return 'El monto debe ser mayor a cero.';
+  if (!form.fecha) return 'La fecha es obligatoria.';
+  return null;
 }
 
 export default function App() {
-  const [reglas, setReglas] = useState<ReglaNotificacion[]>(DATOS_INICIALES);
+  const [capacidadMensaje, setCapacidadMensaje] = useState('');
+  const [notificaciones, setNotificaciones] = useState<NotificacionPago[]>(DATOS_INICIALES);
   const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<'Todas' | Estado>('Todas');
   const [form, setForm] = useState<FormState>(FORM_VACIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [errorForm, setErrorForm] = useState<string | null>(null);
-  const [mensajeLista, setMensajeLista] = useState<string>('');
-  const [estadoPrueba, setEstadoPrueba] = useState<string>('');
+  const [pendienteEliminar, setPendienteEliminar] = useState<NotificacionPago | null>(null);
+  const [mensajeAccion, setMensajeAccion] = useState('');
 
-  const reglasFiltradas = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    if (!termino) return reglas;
-    return reglas.filter((r) =>
-      [r.cuentaAlias, r.cuentaNumero, r.evento, r.canal]
-        .join(' ')
-        .toLowerCase()
-        .includes(termino)
-    );
-  }, [reglas, busqueda]);
+  const listaFiltrada = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return notificaciones.filter((n) => {
+      const coincideTexto = !texto || n.destinatario.toLowerCase().includes(texto);
+      const coincideEstado = filtroEstado === 'Todas' || n.estado === filtroEstado;
+      return coincideTexto && coincideEstado;
+    });
+  }, [notificaciones, busqueda, filtroEstado]);
 
-  function manejarProbarCapacidad() {
-    setEstadoPrueba(
-      `Notificación de Cuentas: prueba enviada correctamente a ${reglas.filter((r) => r.activa).length} regla(s) activa(s).`
-    );
+  function probarCapacidad() {
+    setCapacidadMensaje('Notificación de Pagos');
   }
 
-  function limpiarFormulario() {
-    setForm(FORM_VACIO);
+  function iniciarEdicion(n: NotificacionPago) {
+    setEditandoId(n.id);
+    setForm({
+      destinatario: n.destinatario,
+      monto: String(n.monto),
+      canal: n.canal,
+      estado: n.estado,
+      fecha: n.fecha,
+    });
+    setErrorForm(null);
+    setMensajeAccion('');
+  }
+
+  function cancelarEdicion() {
     setEditandoId(null);
+    setForm(FORM_VACIO);
     setErrorForm(null);
   }
 
-  function validarFormulario(f: FormState): string | null {
-    if (!f.cuentaAlias.trim()) return 'El alias de la cuenta es obligatorio.';
-    if (!f.cuentaNumero.trim()) return 'El número de cuenta es obligatorio.';
-    if (f.umbral.trim() && Number.isNaN(Number(f.umbral))) {
-      return 'El umbral debe ser un número válido.';
-    }
-    return null;
-  }
-
-  function manejarEnviarFormulario(e: React.FormEvent) {
+  function guardar(e: React.FormEvent) {
     e.preventDefault();
-    const error = validarFormulario(form);
+    const error = validar(form);
     if (error) {
       setErrorForm(error);
       return;
     }
-    const umbralNumero = form.umbral.trim() ? Number(form.umbral) : undefined;
-    if (editandoId) {
-      setReglas((prev) =>
-        prev.map((r) =>
-          r.id === editandoId
-            ? {
-                ...r,
-                cuentaAlias: form.cuentaAlias.trim(),
-                cuentaNumero: form.cuentaNumero.trim(),
-                evento: form.evento,
-                canal: form.canal,
-                umbral: umbralNumero,
-                activa: form.activa,
-              }
-            : r
-        )
-      );
-      setMensajeLista(`Regla de "${form.cuentaAlias.trim()}" actualizada.`);
-    } else {
-      const nueva: ReglaNotificacion = {
-        id: nuevoId(),
-        cuentaAlias: form.cuentaAlias.trim(),
-        cuentaNumero: form.cuentaNumero.trim(),
-        evento: form.evento,
-        canal: form.canal,
-        umbral: umbralNumero,
-        activa: form.activa,
-      };
-      setReglas((prev) => [...prev, nueva]);
-      setMensajeLista(`Regla de "${nueva.cuentaAlias}" creada.`);
-    }
-    limpiarFormulario();
-  }
-
-  function manejarEditar(regla: ReglaNotificacion) {
-    setEditandoId(regla.id);
-    setConfirmandoId(null);
     setErrorForm(null);
-    setForm({
-      cuentaAlias: regla.cuentaAlias,
-      cuentaNumero: regla.cuentaNumero,
-      evento: regla.evento,
-      canal: regla.canal,
-      umbral: regla.umbral != null ? String(regla.umbral) : '',
-      activa: regla.activa,
-    });
+    const monto = Number(form.monto);
+    if (editandoId) {
+      setNotificaciones((prev) =>
+        prev.map((n) =>
+          n.id === editandoId
+            ? { ...n, destinatario: form.destinatario.trim(), monto, canal: form.canal, estado: form.estado, fecha: form.fecha }
+            : n,
+        ),
+      );
+      setMensajeAccion(`Notificación de ${form.destinatario.trim()} actualizada.`);
+      setEditandoId(null);
+    } else {
+      const nueva: NotificacionPago = {
+        id: `n${nextId++}`,
+        destinatario: form.destinatario.trim(),
+        monto,
+        canal: form.canal,
+        estado: form.estado,
+        fecha: form.fecha,
+      };
+      setNotificaciones((prev) => [nueva, ...prev]);
+      setMensajeAccion(`Notificación de ${nueva.destinatario} creada.`);
+    }
+    setForm(FORM_VACIO);
   }
 
-  function manejarAlternarActiva(id: string) {
-    setReglas((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, activa: !r.activa } : r))
-    );
+  function pedirEliminar(n: NotificacionPago) {
+    setPendienteEliminar(n);
   }
 
-  function pedirConfirmacionEliminar(id: string) {
-    setConfirmandoId(id);
+  function confirmarEliminar() {
+    if (!pendienteEliminar) return;
+    setNotificaciones((prev) => prev.filter((n) => n.id !== pendienteEliminar.id));
+    setMensajeAccion(`Notificación de ${pendienteEliminar.destinatario} eliminada.`);
+    setPendienteEliminar(null);
+    if (editandoId === pendienteEliminar.id) cancelarEdicion();
   }
 
   function cancelarEliminar() {
-    setConfirmandoId(null);
-  }
-
-  function confirmarEliminar(id: string) {
-    const regla = reglas.find((r) => r.id === id);
-    setReglas((prev) => prev.filter((r) => r.id !== id));
-    setConfirmandoId(null);
-    if (editandoId === id) limpiarFormulario();
-    setMensajeLista(
-      regla ? `Regla de "${regla.cuentaAlias}" eliminada.` : 'Regla eliminada.'
-    );
+    setPendienteEliminar(null);
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
         <div>
-          <h1>Notificación de Cuentas</h1>
-          <p className="app-subtitle">
-            Banca por Internet · Configuración de alertas sobre tus cuentas
+          <p className="eyebrow">Banca por Internet · Pagos</p>
+          <h1>Notificación de Pagos</h1>
+          <p className="subtitle">Gestiona las notificaciones de pago enviadas a los clientes: crea, edita, busca y elimina registros ficticios en memoria.</p>
+        </div>
+        <div className="capacidad-box">
+          <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
+            Probar capacidad
+          </button>
+          <p role="status" className="capacidad-status">
+            {capacidadMensaje}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={manejarProbarCapacidad}
-        >
-          Probar capacidad
-        </button>
       </header>
 
-      <p role="status" className="status-banner" aria-live="polite">
-        {estadoPrueba}
-      </p>
-
-      <section className="panel" aria-labelledby="titulo-form">
-        <h2 id="titulo-form">
-          {editandoId ? 'Editar regla de notificación' : 'Nueva regla de notificación'}
-        </h2>
-        <form onSubmit={manejarEnviarFormulario} className="form-grid">
+      <section className="panel" aria-labelledby="form-titulo">
+        <h2 id="form-titulo">{editandoId ? 'Editar notificación' : 'Nueva notificación'}</h2>
+        <form onSubmit={guardar} className="form-grid" noValidate>
           <div className="field">
-            <label htmlFor="alias">Alias de la cuenta</label>
+            <label htmlFor="destinatario">Destinatario</label>
             <input
-              id="alias"
+              id="destinatario"
               type="text"
-              value={form.cuentaAlias}
-              onChange={(e) => setForm({ ...form, cuentaAlias: e.target.value })}
-              placeholder="Cuenta Nómina"
+              value={form.destinatario}
+              onChange={(e) => setForm({ ...form, destinatario: e.target.value })}
+              autoComplete="off"
             />
           </div>
           <div className="field">
-            <label htmlFor="numero">Número de cuenta</label>
+            <label htmlFor="monto">Monto (COP)</label>
             <input
-              id="numero"
-              type="text"
-              value={form.cuentaNumero}
-              onChange={(e) => setForm({ ...form, cuentaNumero: e.target.value })}
-              placeholder="**** 1234"
+              id="monto"
+              type="number"
+              min="0"
+              step="1000"
+              value={form.monto}
+              onChange={(e) => setForm({ ...form, monto: e.target.value })}
             />
-          </div>
-          <div className="field">
-            <label htmlFor="evento">Evento</label>
-            <select
-              id="evento"
-              value={form.evento}
-              onChange={(e) => setForm({ ...form, evento: e.target.value as Evento })}
-            >
-              {EVENTOS.map((ev) => (
-                <option key={ev} value={ev}>
-                  {ev}
-                </option>
-              ))}
-            </select>
           </div>
           <div className="field">
             <label htmlFor="canal">Canal</label>
-            <select
-              id="canal"
-              value={form.canal}
-              onChange={(e) => setForm({ ...form, canal: e.target.value as Canal })}
-            >
-              {CANALES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
+            <select id="canal" value={form.canal} onChange={(e) => setForm({ ...form, canal: e.target.value as Canal })}>
+              <option value="Email">Email</option>
+              <option value="SMS">SMS</option>
+              <option value="Push">Push</option>
             </select>
           </div>
           <div className="field">
-            <label htmlFor="umbral">Umbral (opcional)</label>
-            <input
-              id="umbral"
-              type="text"
-              inputMode="numeric"
-              value={form.umbral}
-              onChange={(e) => setForm({ ...form, umbral: e.target.value })}
-              placeholder="Ej. 50000"
-            />
+            <label htmlFor="estado">Estado</label>
+            <select id="estado" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value as Estado })}>
+              <option value="Programada">Programada</option>
+              <option value="Enviada">Enviada</option>
+              <option value="Fallida">Fallida</option>
+            </select>
           </div>
-          <div className="field field-checkbox">
-            <label htmlFor="activa">
-              <input
-                id="activa"
-                type="checkbox"
-                checked={form.activa}
-                onChange={(e) => setForm({ ...form, activa: e.target.checked })}
-              />
-              Regla activa
-            </label>
+          <div className="field">
+            <label htmlFor="fecha">Fecha</label>
+            <input id="fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
           </div>
-
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary">
+              {editandoId ? 'Guardar cambios' : 'Crear notificación'}
+            </button>
+            {editandoId && (
+              <button type="button" className="btn btn-ghost" onClick={cancelarEdicion}>
+                Cancelar edición
+              </button>
+            )}
+          </div>
           {errorForm && (
             <p className="error-text" role="alert">
               {errorForm}
             </p>
           )}
-
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">
-              {editandoId ? 'Guardar cambios' : 'Crear regla'}
-            </button>
-            {editandoId && (
-              <button type="button" className="btn btn-ghost" onClick={limpiarFormulario}>
-                Cancelar edición
-              </button>
-            )}
-          </div>
         </form>
+        <p role="status" className="accion-status">
+          {mensajeAccion}
+        </p>
       </section>
 
-      <section className="panel" aria-labelledby="titulo-lista">
-        <div className="panel-header">
-          <h2 id="titulo-lista">Reglas configuradas</h2>
-          <div className="field search-field">
-            <label htmlFor="buscar">Buscar</label>
-            <input
-              id="buscar"
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Cuenta, evento o canal"
-            />
+      <section className="panel" aria-labelledby="lista-titulo">
+        <div className="lista-header">
+          <h2 id="lista-titulo">Notificaciones registradas</h2>
+          <div className="filtros">
+            <div className="field">
+              <label htmlFor="busqueda">Buscar por destinatario</label>
+              <input
+                id="busqueda"
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Ej. Ana Torres"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="filtro-estado">Filtrar por estado</label>
+              <select id="filtro-estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as 'Todas' | Estado)}>
+                <option value="Todas">Todas</option>
+                <option value="Programada">Programada</option>
+                <option value="Enviada">Enviada</option>
+                <option value="Fallida">Fallida</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <p role="status" aria-live="polite" className="muted-status">
-          {mensajeLista}
-        </p>
-
-        {reglasFiltradas.length === 0 ? (
-          <p className="empty-state">No hay reglas que coincidan con la búsqueda.</p>
+        {listaFiltrada.length === 0 ? (
+          <p className="estado-vacio">No hay notificaciones que coincidan con la búsqueda.</p>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Cuenta</th>
-                  <th>Evento</th>
-                  <th>Canal</th>
-                  <th>Umbral</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
+                  <th scope="col">Destinatario</th>
+                  <th scope="col">Monto</th>
+                  <th scope="col">Canal</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Fecha</th>
+                  <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {reglasFiltradas.map((r) => (
-                  <tr key={r.id}>
+                {listaFiltrada.map((n) => (
+                  <tr key={n.id}>
+                    <td>{n.destinatario}</td>
+                    <td className="num">{formatoMonto.format(n.monto)}</td>
+                    <td>{n.canal}</td>
                     <td>
-                      <div>{r.cuentaAlias}</div>
-                      <div className="muted">{r.cuentaNumero}</div>
+                      <span className={`badge badge-${n.estado.toLowerCase()}`}>{n.estado}</span>
                     </td>
-                    <td>{r.evento}</td>
-                    <td>{r.canal}</td>
-                    <td className="num-cell">{r.umbral != null ? r.umbral.toLocaleString('es-CO') : '—'}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className={`badge ${r.activa ? 'badge-success' : 'badge-muted'}`}
-                        onClick={() => manejarAlternarActiva(r.id)}
-                        aria-pressed={r.activa}
-                      >
-                        {r.activa ? 'Activa' : 'Inactiva'}
-                      </button>
-                    </td>
-                    <td className="acciones-cell">
-                      <button type="button" className="btn btn-secondary" onClick={() => manejarEditar(r)}>
+                    <td>{n.fecha}</td>
+                    <td className="acciones">
+                      <button type="button" className="btn btn-ghost" onClick={() => iniciarEdicion(n)}>
                         Editar
                       </button>
-                      {confirmandoId === r.id ? (
-                        <span className="confirm-inline">
-                          <span>¿Eliminar?</span>
-                          <button
-                            type="button"
-                            className="btn btn-danger"
-                            onClick={() => confirmarEliminar(r.id)}
-                          >
-                            Sí, eliminar
-                          </button>
-                          <button type="button" className="btn btn-ghost" onClick={cancelarEliminar}>
-                            Cancelar
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => pedirConfirmacionEliminar(r.id)}
-                        >
-                          Eliminar
-                        </button>
-                      )}
+                      <button type="button" className="btn btn-danger" onClick={() => pedirEliminar(n)}>
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -404,6 +281,25 @@ export default function App() {
           </div>
         )}
       </section>
+
+      {pendienteEliminar && (
+        <div className="dialog-backdrop" role="presentation">
+          <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmar-titulo">
+            <h2 id="confirmar-titulo">Confirmar eliminación</h2>
+            <p>
+              ¿Eliminar la notificación de <strong>{pendienteEliminar.destinatario}</strong>? Esta acción no se puede deshacer.
+            </p>
+            <div className="dialog-actions">
+              <button type="button" className="btn btn-ghost" onClick={cancelarEliminar}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-danger" onClick={confirmarEliminar}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
