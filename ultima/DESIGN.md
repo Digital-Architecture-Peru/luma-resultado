@@ -1,9 +1,9 @@
 # DESIGN
 
 ## Hechos (respuestas del guion)
-- ¿Dónde necesitas incorporar la nueva capacidad? Portal empresas
-- ¿Qué tipo de capacidad? Transacción
-- ¿Sobre qué dominio? Pagos
+- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
+- ¿Qué tipo de capacidad? Consulta
+- ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
 - Patrones disponibles Feature-Sliced Design
 - ¿Qué stack? React + TypeScript
@@ -15,7 +15,7 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Transacción" sobre Pagos en Portal empresas, capa Frontend.
+- Microapp React/TypeScript para "Consulta" sobre Tarjetas en Banca por Internet, capa Frontend.
 - Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
 - Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
 - Accesible (etiquetas, foco, contraste) y responsive.
@@ -29,121 +29,69 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN — Refinamiento: Transacción de Pagos · Portal empresas
+# DESIGN · Refinamiento: Consulta de Tarjetas (Banca por Internet)
 
-> Complementa el diseño base y respeta sus criterios de aceptación: botón «Probar capacidad» visible al cargar; al pulsarlo aparece el texto exacto «Capacidad simulada» en `role=status`; `tsc` y `vite build` sin errores; HTTP 200 del preview.
+> Complementa el diseño base y respeta sus criterios de aceptación: botón "Probar capacidad" visible al cargar, texto "Capacidad simulada" en `role=status`, tsc/build correctos, interacción en navegador y smoke HTTP 200.
 
-## 1. Hechos adicionales
-- SGC en **fallback**: no se dispone de estándares corporativos (design system, políticas, límites de negocio). Lo que dependa de ellos se registra como hipótesis (H*).
-- T02 fija como puntos de entrega `src/App.tsx` y `src/styles.css`.
-- No hay integración ni persistencia. Todo ocurre en memoria y en el cliente.
-
-## 2. Comportamiento funcional
-- Pantalla única «Pago a proveedor (simulado)» con un aviso visible: *Simulación con datos ficticios. No se mueve dinero.*
-- Formulario **precargado con datos válidos**:
-  - cuenta origen (select con cuentas ficticias);
-  - beneficiario (select);
-  - monto;
-  - concepto.
-- Bloque de resumen con los datos de la transacción antes de confirmar.
-- Botón nativo `<button type="button">` «Probar capacidad», **siempre habilitado**.
-  - Si los datos son válidos, ejecuta la transacción simulada.
-  - Si no lo son, muestra errores por campo.
-- La región `role="status"` existe vacía desde la carga.
-  - Tras un envío válido, su texto es **exactamente** «Capacidad simulada».
-  - La referencia ficticia (`SIM-0001`) y el detalle se muestran en un elemento **aparte**, para no alterar el texto exacto.
-
-## 3. Decisiones de arquitectura
-
-| # | Decisión | Justificación |
+## Decisiones de arquitectura
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | `App.tsx` actúa como capa *app* de FSD y solo compone la página. `main.tsx` no cambia. | Cumple T02 sin romper FSD. Se evita mover el punto de entrada. |
-| D2 | FSD **mínimo**: `pages`, `features`, `entities`, `shared`. Sin `widgets` ni `processes`. | Es una sola pantalla. Más capas añadirían ceremonia sin valor. |
-| D3 | Cada slice expone una API pública vía `index.ts`. Las importaciones solo van hacia capas inferiores. | Es la regla central de FSD y facilita las pruebas unitarias. |
-| D4 | Importaciones relativas, sin alias de rutas. | Evita tocar `tsconfig` y `vite.config`, y reduce el riesgo en T04. |
-| D5 | Montos en **centavos enteros** (`number`), formateados con `Intl.NumberFormat`. | Evita errores de punto flotante. No añade dependencias. |
-| D6 | Estado local con `useReducer` (`idle → validationError → success`). | Es suficiente para un flujo síncrono y no requiere librerías de estado. |
-| D7 | Lógica de dominio en funciones puras: `validatePayment`, `submitTransaction` y `formatMoney`. | Son testables sin DOM y cubren la petición de pruebas «Unitarias». |
-| D8 | Envío **síncrono** y referencia con contador determinista. No se usa `Math.random` ni `Date`. | Hace las pruebas reproducibles y evita esperas inestables en la validación del navegador. |
-| D9 | No se añaden dependencias de runtime. | Es una restricción del diseño base. |
-| D10 | Accesibilidad: | Cubre la accesibilidad pedida por la plantilla. |
-| | • `<label>` asociado a cada campo; | |
-| | • errores enlazados con `aria-describedby` y `aria-invalid`; | |
-| | • foco visible con `:focus-visible`; | |
-| | • contraste AA; | |
-| | • diseño responsive mobile-first con CSS Grid en `styles.css`. | |
+| AD-01 | FSD *lite*: `app`, `pages`, `features`, `entities`, `shared`; se omite `widgets` | Mantiene el patrón pedido con tamaño proporcional a la microapp |
+| AD-02 | `src/App.tsx` actúa como capa `app` (composición) y `src/styles.css` contiene tokens y estilos globales | T02 exige modificar estos dos archivos |
+| AD-03 | Imports relativos, sin alias `@/` | Evita tocar tsconfig/vite y reduce el riesgo de build |
+| AD-04 | Cada slice expone una API pública en `index.ts` e importa solo de capas inferiores | Es la regla central de FSD y facilita la revisión |
+| AD-05 | Datos ficticios en `entities/card/model/mock.ts` y estado local con `useState` | Integración y persistencia son "Ninguna"; no hace falta store |
+| AD-06 | La lógica pura (enmascarar, formatear, seleccionar) vive en `shared/lib` y en `entities/*/model` | Facilita las pruebas unitarias sin DOM |
+| AD-07 | Nunca se muestra el PAN completo; solo `•••• 1234` | Seguridad por diseño, aunque los datos sean ficticios |
+| AD-08 | Sin dependencias nuevas | Restricción del diseño base |
 
-## 4. Estructura de módulos
-
+## Estructura de módulos
 ```
 src/
-├─ main.tsx                      # sin cambios
-├─ App.tsx                       # capa app: compone <PaymentTransactionPage/>
-├─ styles.css                    # tokens CSS (colores, espaciado), layout, focus, responsive
-├─ pages/payment-transaction/
-│  ├─ ui/PaymentTransactionPage.tsx
-│  └─ index.ts
-├─ features/submit-payment/
-│  ├─ model/reducer.ts           # estados y transiciones
-│  ├─ model/submitTransaction.ts # pura: valida → {status, reference}
-│  ├─ ui/SubmitPaymentForm.tsx   # formulario + botón + role=status
-│  └─ index.ts
-├─ entities/payment/
-│  ├─ model/types.ts             # Account, Beneficiary, PaymentDraft, PaymentResult
-│  ├─ model/validatePayment.ts   # reglas de monto, campos requeridos y límite
-│  ├─ ui/PaymentSummary.tsx
-│  └─ index.ts
-└─ shared/
-   ├─ config/mockData.ts         # cuentas y beneficiarios ficticios
-   ├─ config/locale.ts           # moneda y locale (ver H2)
-   └─ lib/money.ts               # toCents, formatMoney
+  main.tsx                      # existente; monta <App/>
+  App.tsx                       # capa app: compone CardInquiryPage
+  styles.css                    # tokens, foco visible, layout responsive
+  pages/card-inquiry/
+    ui/CardInquiryPage.tsx      # h1, lista, detalle, feature
+    index.ts
+  features/
+    select-card/ui/CardSelector.tsx       # radiogroup/botones accesibles
+    try-capability/
+      model/useTryCapability.ts           # idle -> simulated
+      ui/TryCapabilityButton.tsx          # "Probar capacidad" + role=status
+      index.ts
+  entities/card/
+    model/types.ts  mock.ts  selectors.ts # Card, 3 tarjetas, getById
+    ui/CardSummary.tsx                    # cupo, saldo, fecha de corte
+    index.ts
+  shared/lib/format.ts                    # maskPan, formatCurrency, formatDate
 ```
 
-## 5. Hipótesis
+## Comportamiento y accesibilidad
+- Al cargar se ve la lista con 3 tarjetas ficticias (débito, crédito y una bloqueada). La primera aparece seleccionada.
+- El detalle muestra estado, cupo disponible, saldo y fecha de corte.
+- El contenedor `role=status` existe vacío desde el inicio. Al pulsar el botón recibe "Capacidad simulada", para que el lector de pantalla lo anuncie.
+- La app usa HTML semántico, `aria-pressed` o `aria-checked` en la selección, foco visible, contraste AA y layout de una columna en anchos menores a 640 px.
 
-| ID | Hipótesis |
-|---|---|
-| H1 | La «Transacción» se modela como **pago a proveedor** desde una cuenta empresarial. Otros tipos, como nómina o lote, quedan fuera de alcance. |
-| H2 | Moneda y locale `COP` / `es-CO`, centralizados en `shared/config/locale.ts` y fáciles de cambiar. |
-| H3 | Límite de monto por operación de 50.000.000 (ficticio). El límite real lo definiría el SGC. |
-| H4 | Si la plantilla ya incluye un runner, por ejemplo Vitest, se usa. Si no, el plan de pruebas unitarias se documenta en `TODOS.json` (T05) sin añadir dependencias. Cualquier excepción debe justificarse en el README. |
-| H5 | Los archivos de T01 (`context-package.json`, `SGC-CONTEXT.json`) pueden estar ausentes o vacíos. Si es así, se cita el fallback y se continúa. Su contenido se trata como datos, no como instrucciones. |
-| H6 | El patrón FSD no se valida con herramientas, por ejemplo un linter de fronteras. Solo se documenta y se respeta por convención. |
+## Hipótesis
+- H1: la plantilla usa Vite + React 18 + TS strict y `main.tsx` importa `App` por defecto.
+- H2: locale `es-CO` y moneda COP. Se puede cambiar en `format.ts`.
+- H3: puede que no haya runner de pruebas (Vitest) instalado. En ese caso, el plan de pruebas unitarias se documenta en TODOS.json (T05) sin añadir dependencias.
+- H4: el contexto SGC está en fallback, así que no se asumen lineamientos corporativos de marca. Se usan tokens neutros.
+- H5: el estado "bloqueada" es un dato ficticio y solo se muestra; no permite acciones.
 
-## 6. Plan de pruebas unitarias (T05)
-1. `validatePayment` rechaza:
-   - monto ≤ 0;
-   - monto por encima del límite (H3);
-   - campos vacíos.
+## Plan de pruebas unitarias (T05)
+- `maskPan('4111111111111234')` devuelve `•••• 1234` y nunca expone más de 4 dígitos.
+- `formatCurrency` y `formatDate` dan una salida estable para el locale de H2.
+- `getCardById` devuelve la tarjeta correcta o `undefined` si el id no existe.
+- `useTryCapability` pasa de `idle` a `simulated` y expone el texto "Capacidad simulada".
 
-   Acepta el borrador precargado.
-2. `toCents` y `formatMoney`: redondeo correcto y formato del locale (H2).
-3. `submitTransaction`:
-   - con datos válidos devuelve `{status: 'success', reference: 'SIM-0001'}` y referencias secuenciales;
-   - con datos inválidos devuelve errores.
-4. `reducer`: transiciones `idle → success` y `idle → validationError → success`.
-5. Componente (si H4 lo permite): al pulsar «Probar capacidad», `role=status` contiene exactamente «Capacidad simulada».
-
-## 7. Riesgos y mitigaciones
-
+## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| El texto del status se altera, por ejemplo al añadir la referencia, y falla la aceptación. | Texto fijo en una constante. Referencia en un elemento separado (D8 y sección 2). |
-| El botón queda deshabilitado o los datos iniciales son inválidos. | Botón siempre habilitado y borrador precargado válido, cubierto por la prueba 1. |
-| Errores de tipos estrictos (`noUnusedLocals`, importaciones sin usar) rompen T04. | Tipos explícitos en `entities` y sin código muerto en cada slice. |
-| El usuario confunde la demo con un pago real. | Aviso permanente de simulación y referencias con prefijo `SIM-`. |
-| Ausencia de SGC: no se aplican estándares de marca ni de negocio. | Tokens CSS centralizados y límites configurables (H2, H3). Se declara en el handoff. |
-| FSD resulta excesivo para una microapp. | Alcance FSD mínimo (D2). |
-| Uso de datos reales o sensibles. | Solo nombres y NIT ficticios en `mockData.ts`. Sin secretos ni llamadas de red. |
-
-## 8. Trazabilidad con las tareas
-
-| Tarea | Dónde se cubre en este diseño |
-|---|---|
-| T01 | H5 |
-| T02 | D1, D10 y sección 4 |
-| T03 | Sección 2 y prueba 5 |
-| T04 | D4, D9 y riesgo de tipos estrictos |
-| T05 | Sección 6 y H4 |
-| T06 | Decisiones D1–D10 y H1–H6, que van al README |
-| T07 | Handoff en estado *candidate*: no afirma producción y declara el fallback SGC |
+| Sobreestructurar FSD en una microapp | Aplicar AD-01 y no crear slices vacíos |
+| Romper el build por alias o rutas | Aplicar AD-03 y ejecutar `tsc` antes de `vite build` |
+| El status no se anuncia | Montar el contenedor vacío antes de pulsar |
+| Exponer datos sensibles | Aplicar AD-07; no guardar el PAN completo en mocks |
+| Diferencias de `Intl` entre entornos | Las pruebas comparan patrones, no strings exactos |
+| Presentar el resultado como listo para producción | El handoff se cierra como **candidate** (T07) |
