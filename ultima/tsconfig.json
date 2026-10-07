@@ -12,8 +12,7 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "types": ["vite/client"]
+    "resolveJsonModule": true
   },
-  "include": ["env.d.ts", "src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "tests/**/*.ts", "env.d.ts", "vite.config.ts"]
 }
