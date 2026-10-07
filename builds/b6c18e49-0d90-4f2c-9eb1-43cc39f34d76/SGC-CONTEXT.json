@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "stack": "Vue 3 + TypeScript",
+    "tests": "Unitarias",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "App móvil",
+    "type": "Transacción",
+    "domain": "Tarjetas",
+    "layer": "Frontend"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
