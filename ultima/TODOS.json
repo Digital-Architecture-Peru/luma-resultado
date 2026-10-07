@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-source",
-    "title": "Implementar la capa Frontend en Vue 3 + TypeScript para \"Consulta\" sobre Cuentas con patrón Component-based (Atomic Design)",
+    "title": "Implementar la capa Frontend en Svelte para \"Notificación\" sobre Tarjetas con patrón Component-based (Atomic Design)",
     "dependsOn": [
       "T01-read-context"
     ],
@@ -38,7 +38,7 @@
   },
   {
     "id": "T04-tests",
-    "title": "Incluir pruebas (Estándar completo) del stack",
+    "title": "Incluir pruebas (Unitarias) del stack",
     "dependsOn": [
       "T02-source"
     ],
@@ -51,7 +51,7 @@
   },
   {
     "id": "T05-docs",
-    "title": "Documentar build/ejecución, integración (Ninguna) y persistencia (PostgreSQL)",
+    "title": "Documentar build/ejecución, integración (Ninguna) y persistencia (No requiere)",
     "dependsOn": [
       "T02-source"
     ],

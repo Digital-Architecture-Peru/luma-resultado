@@ -1,75 +1,60 @@
-# Consulta de Cuentas · Banca por Internet
+# Notificaciones de tarjetas
 
-Aplicación de consulta **solo lectura** construida con Vue 3, TypeScript y Vite. Presenta cuentas ficticias, permite filtrarlas por tipo y consultar su detalle. Estado de entrega: **candidate**; no se ejecutaron instalación, compilación ni pruebas en este entorno.
+Aplicación web móvil de notificaciones in-app, construida con Svelte 4 y Vite. La interfaz usa componentes organizados por Atomic Design y actualmente trabaja con datos ficticios; no realiza llamadas de red.
 
 ## Requisitos
 
-- Node.js 18.18 o posterior (recomendado: Node.js 20 LTS).
-- npm compatible con la versión de Node instalada.
+- Node.js 18 o superior
+- npm
 
-## Instalar, ejecutar y verificar
+## Instalar, ejecutar y probar
 
 Desde la raíz del proyecto:
 
-```bash
-npm install       # instalar dependencias; generar y versionar package-lock.json
-npm run dev       # iniciar Vite para desarrollo (la terminal muestra la URL local)
-npm run typecheck # comprobar tipos TypeScript y componentes Vue
-npm test          # ejecutar pruebas unitarias y de componentes con Vitest
-npm run build     # typecheck y bundle de producción en dist/
-npm run preview   # previsualizar localmente el bundle de dist/
+```sh
+npm install
+npm run dev
 ```
 
-`npm run test:watch` inicia Vitest en modo de observación. No se incluye prueba E2E.
+Vite mostrará la dirección local (normalmente `http://localhost:5173`). Para generar y revisar localmente el build de producción:
+
+```sh
+npm run build
+npm run preview
+```
+
+Para ejecutar las pruebas unitarias y de componentes:
+
+```sh
+npm test
+```
+
+Vitest ejecuta el conjunto una vez. Las pruebas usan datos deterministas y no necesitan servicios externos.
 
 ## Configuración
 
-`env.example.txt` es la plantilla de entorno disponible en el repositorio; cópiela a `.env` para desarrollo local. `VITE_APP_LOCALE` configura el locale BCP 47 usado para formatear montos y fechas; su valor predeterminado es `es` (por ejemplo, `es-EC` o `en-US`). Reinicie Vite después de modificar variables.
+`VITE_MAX_ITEMS` es una variable opcional que limita cuántas notificaciones se muestran después de ordenar por fecha descendente. Si se omite, no se aplica límite. Vite carga variables `VITE_*` desde el entorno o desde archivos locales `.env` (no versionar archivos con valores privados). No hay credenciales necesarias para la demo. No se encontró un `.env.example` en el proyecto.
 
-**Toda variable `VITE_*` queda expuesta en el bundle del navegador. No incluya secretos, credenciales ni tokens.** La plantilla de ignore está en `gitignore.txt`; en el repositorio de publicación deberá usarse como `.gitignore`. Los nombres alternativos se conservan por las restricciones del workspace.
+## Estructura principal
 
-## Arquitectura y recorrido de datos
-
-La interfaz sigue una estructura por componentes inspirada en Atomic Design:
-
-- `src/domain/`: tipos de cuenta y utilidades de formato/etiquetas.
-- `src/ports/AccountRepository.ts`: contrato asíncrono de solo lectura (`list` y `getById`).
-- `src/adapters/InMemoryAccountRepository.ts` y `src/fixtures/`: adaptador local con datos ficticios.
-- `src/composables/useAccounts.ts`: carga, filtro, selección y estados de lista/detalle.
-- `src/components/`: átomos, moléculas, organismos, plantilla y página.
-- `tests/`: pruebas unitarias y de componentes con Vitest.
-
-`App.vue` proporciona la implementación del repositorio mediante la clave de inyección; la página consume el puerto, de modo que un adaptador futuro puede sustituirse sin acoplar los componentes a la persistencia. Los saldos se representan como enteros en unidades menores y se formatean usando moneda ISO 4217. Los números de cuenta deben mostrarse enmascarados.
+- `src/lib/domain/notification.js`: validación, orden, conteo de no leídas, marcado como leído, enmascaramiento de tarjeta y formato de monto.
+- `src/lib/ports/notificationSource.js`: contrato del origen, que expone `list()` asíncrono.
+- `src/lib/adapters/mockSource.js`: adaptador con notificaciones ficticias.
+- `src/lib/stores/notifications.js`: store Svelte; valida y ordena los datos del origen, mantiene estado de carga y expone acciones de lectura.
+- `src/lib/components/`: átomos, moléculas, organismos y plantilla.
+- `src/pages/NotificationsPage.svelte`: pantalla y carga del store al montar.
+- `tests/`: pruebas de dominio, store y componentes (Vitest y Testing Library).
 
 ## Integración
 
-Actualmente **no hay integración de red** ni conexión con un host bancario. El adaptador en memoria utiliza únicamente datos ilustrativos. La autenticación, la sesión y la autorización pertenecen al host/backend y no están implementadas en esta aplicación.
+La aplicación no está conectada a un backend: el store usa `mockSource`. Para integrar un servicio real, implementar el puerto `NotificationSource` con una función `list()` que devuelva una promesa de registros con `id`, `type`, `cardLast4`, `title`, `body`, `createdAt` y `read` (y opcionalmente `amount`). Los tipos válidos son `compra`, `pago_proximo`, `bloqueo` y `limite`; las fechas deben poder interpretarse como fecha ISO. El store descarta registros inválidos y presenta el estado de error si falla la carga.
 
-Para integrar un backend, implemente `AccountRepository` con un adaptador HTTP y provea esa implementación desde `App.vue`. Contrato sugerido, sujeto a acuerdo con el backend:
+El adaptador de API debería validar la respuesta externa antes de entregarla al dominio, aplicar autenticación en una capa de integración segura y no registrar datos financieros o tokens. No se deben enviar ni guardar números completos de tarjeta: la interfaz solo usa los últimos cuatro dígitos y los enmascara para mostrar.
 
-| Operación | Ruta sugerida | Resultado |
-|---|---|---|
-| Listar | `GET /cuentas?tipo=SAVINGS` (tipo opcional) | Colección de cuentas del titular autenticado |
-| Detalle | `GET /cuentas/{id}` | Cuenta autorizada o respuesta 404 |
+## Persistencia y alcance
 
-El cliente no debe poder elegir el titular en la petición. El servidor debe derivar la identidad de una sesión autenticada, autorizar cada detalle y limitar los campos devueltos. No registrar respuestas con datos personales o números completos de cuenta. La UI no se debe considerar una frontera de autorización.
+No hay persistencia. Las notificaciones y los cambios de leído/no leído se conservan solo en el store en memoria y se pierden al recargar la página; tampoco se sincronizan con un servidor. Si se requiere persistencia, definirla detrás de un adaptador/repositorio y acordar con el backend la semántica de lectura y sincronización antes de introducirla. No guardar datos sensibles de tarjetas en almacenamiento del navegador.
 
-## Persistencia
+## Verificación
 
-No se persiste información en el navegador: no hay `localStorage`, base de datos ni llamadas remotas. El puerto desacopla la UI de la fuente de datos. La persistencia futura debe implementarse exclusivamente en un backend/BFF; el navegador **nunca** debe conectarse directamente a PostgreSQL.
-
-`docs/postgresql-reference.sql` documenta un esquema y consultas de referencia, no es una migración ni se ejecuta desde este proyecto, y no fue validado contra una instancia de PostgreSQL. Antes de adoptarlo, el equipo de backend debe definir migraciones, retención y controles de acceso. Como mínimo, las consultas deben parametrizar valores y filtrar siempre por el titular autenticado, incluso al buscar por ID. El número de cuenta requiere controles de almacenamiento y exposición acordes a la política de datos; la máscara visual no protege el valor recibido por el navegador.
-
-## Pruebas
-
-- `tests/unit/`: formato, adaptador en memoria y composable.
-- `tests/components/`: componentes y página con repositorios de prueba; incluye estados de carga, éxito, vacío y error, filtro y detalle.
-- Ejecutar con `npm test`; las pruebas no requieren servicios externos ni red.
-
-## Accesibilidad y seguridad consideradas
-
-La interfaz incluye estados accesibles y mensajes de estado, controles etiquetados, foco visible y diseño adaptable. Se evita renderizado HTML arbitrario y se enmascara el número en la presentación. Son medidas de implementación, no una certificación de seguridad o accesibilidad; deben revisarse en el shell integrado y con datos reales.
-
-## Límites de verificación
-
-No se ejecutaron `npm install`, `npm run typecheck`, `npm test` ni `npm run build`; por tanto, no se afirma que compile ni que las pruebas pasen. No hay lockfile, integración con el host, backend, base de datos ni pruebas E2E. El esquema SQL es solo una referencia y no está verificado en PostgreSQL.
+El código y las pruebas se documentan aquí, pero no se ejecutaron build ni pruebas en este entorno. Validar en el entorno de desarrollo con `npm test` y `npm run build`.
