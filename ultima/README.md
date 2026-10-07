@@ -1,58 +1,61 @@
-# Portal de empresas · Transacciones con tarjeta
+# Notificaciones de tarjetas · Banca por Internet
 
-Aplicación frontend para registrar transacciones de tarjetas corporativas. Está construida con Vue 3, TypeScript y Vite, con componentes organizados en Atomic Design.
+Frontend de notificaciones construido con Svelte 4, TypeScript y Vite. La interfaz organiza sus componentes con Atomic Design (`atoms`, `molecules`, `organisms`); las reglas del dominio están en `src/lib/model`, el puerto de integración y su implementación ficticia en `src/lib/services`, y el estado reactivo en `src/lib/stores`.
+
+> **Estado:** integración con backend y persistencia todavía no están implementadas. La aplicación usa datos de ejemplo en memoria; los cambios se pierden al recargar. No usar datos ficticios como información real de clientes.
 
 ## Requisitos
 
-- Node.js compatible con Vite 5 (Node.js 18+ recomendado).
+- Node.js compatible con Vite 5 (Node.js 18 o superior recomendado).
 - npm.
 
-## Instalar, ejecutar y verificar
+## Instalar, compilar y ejecutar
+
+Desde la raíz del proyecto:
 
 ```sh
 npm install
 npm run dev
 ```
 
-Vite mostrará la URL local de desarrollo en la terminal. Para comprobación estática de tipos y generar el bundle de producción:
+Vite imprime la URL local de desarrollo en la terminal. Para crear una compilación de producción:
 
 ```sh
 npm run build
+```
+
+El script ejecuta primero `svelte-check --tsconfig ./tsconfig.json` (comprobación de Svelte y TypeScript) y después `vite build`; el resultado se genera en `dist/`. Para servir localmente esa compilación:
+
+```sh
 npm run preview
 ```
 
-`npm run build` ejecuta primero `vue-tsc --noEmit` y después `vite build`. `npm run preview` sirve localmente el bundle ya generado; no reemplaza un servidor de producción.
+`preview` es un servidor local de previsualización, no un servidor de producción.
 
-Ejecutar todas las pruebas una vez, sin modo interactivo:
+## Pruebas
 
 ```sh
 npm test
 ```
 
-Vitest usa jsdom. Las pruebas bajo `tests/` verifican validación de entradas, comportamiento del gateway en memoria, formulario y flujo de la página.
+Ejecuta Vitest una vez, sin modo interactivo. Las pruebas actuales cubren funciones del modelo (enmascarado, filtros, conteo y orden), operaciones/errores del store y componentes. La configuración de Vitest usa jsdom y `tests/setup.ts`.
 
-## Diseño y flujo
+## Integración
 
-`src/App.vue` es el punto de composición; crea `InMemoryGateway` y lo entrega a `TransactionPage`. La página coordina el formulario y el historial. La validación de borradores reside en `src/domain/validation.ts`; los contratos de dominio están en `src/domain/types.ts`.
+La interfaz de integración es `NotificationGateway`, definida en `src/lib/services/notificationGateway.ts`:
 
-`TransactionGateway` (`src/services/transactionGateway.ts`) es el puerto de integración: define `listCards()`, `listTransactions()` y `submit(request)`. `InMemoryGateway` implementa ese contrato usando tarjetas de demostración (`SAMPLE_CARDS`), crea registros aprobados y descuenta el cupo en memoria. El estado se pierde al recargar o reiniciar la aplicación. Los datos son ficticios; no se comunica con un banco ni procesa pagos reales.
+- `list(): Promise<CardNotification[]>`
+- `markRead(id: string): Promise<void>`
+- `markAllRead(): Promise<void>`
 
-## Integración y persistencia
+La composición actual en `src/App.svelte` instancia `InMemoryNotificationGateway`, que carga `SAMPLE_NOTIFICATIONS`. Para conectar un backend, implementar el puerto mediante un adaptador HTTP y sustituir esa instancia en el punto de composición; mantener transporte y configuración fuera de componentes y reglas del dominio.
 
-La integración HTTP y una persistencia duradera están **pendientes de definir e implementar**. Para conectarlas, se recomienda implementar otro adaptador de `TransactionGateway`, manteniendo sus tipos y errores explícitos, y sustituir la instancia en `src/App.vue`. La interfaz actual no define rutas, autenticación, formato de errores de servidor, reintentos ni esquema de almacenamiento; esos contratos deben acordarse con el backend antes de implementar el adaptador.
+El modelo `CardNotification` (`src/lib/model/notification.ts`) requiere `id`, `cardLast4` (exactamente cuatro dígitos), `type` (`purchase`, `limit`, `blocked` o `payment_due`), `message`, `createdAt` (fecha ISO 8601) y `read`. Antes de aceptar respuestas remotas, validar la estructura, el tipo de notificación, fechas y los cuatro dígitos; no confiar en la validación del cliente como control de seguridad. Los errores del store se reflejan en su estado y las escrituras actualizan la interfaz únicamente tras completar la llamada al gateway.
 
-Si se acuerda una URL base configurable, puede exponerse en Vite mediante una variable `VITE_API_BASE_URL` definida en un archivo local `.env` (no incluido en el repositorio) o en el entorno de despliegue. Las variables `VITE_*` quedan embebidas en el bundle del navegador: nunca deben contener secretos, tokens privados ni credenciales. No se requiere variable de entorno para ejecutar el gateway actual.
+No hay URL de API configurada ni adaptador HTTP en esta versión. Aunque la implementación futura podría usar una variable de entorno de Vite, por ejemplo `VITE_NOTIFICATIONS_API_URL`, el código actual no la lee: crear un archivo `.env` por sí solo no habilita la integración. Las variables `VITE_*` se exponen al código del navegador; nunca colocar secretos, credenciales ni tokens privados allí. Autenticación, autorización, CORS, límites y validación también deben resolverse en el servicio y en el backend.
 
-Al introducir persistencia remota, las reglas de negocio y cupos también deben validarse en el servidor; la validación cliente es solo una ayuda de interfaz y no constituye una frontera de seguridad. Usar HTTPS y no almacenar datos de tarjeta sensibles en este frontend.
+## Persistencia y operación
 
-## Estructura relevante
+`InMemoryNotificationGateway` conserva una copia mutable de los datos solo durante la vida de la página. No hay almacenamiento local, base de datos, sincronización entre dispositivos ni garantía de durabilidad. En una integración real, el backend debe ser la fuente de verdad y persistir las notificaciones y su estado de lectura con autorización por usuario. El adaptador deberá traducir fallos de red/HTTP a errores manejables, y la interfaz debería definir con el backend el contrato de paginación, orden, concurrencia y reintentos antes de manejar volúmenes de producción.
 
-- `src/components/atoms/`, `molecules/`, `organisms/`, `templates/`: interfaz.
-- `src/composables/useTransactions.ts`: estado y coordinación del ciclo de carga/envío.
-- `src/domain/`: modelos, formato y validación.
-- `src/services/`: interfaz del gateway y adaptador en memoria.
-- `tests/`: pruebas de validación, gateway y componentes.
-
-## Estado de verificación
-
-Los comandos anteriores describen cómo compilar y probar el proyecto; no se ejecutaron durante la elaboración de esta documentación. Ejecuta `npm run build` y `npm test` en el entorno de desarrollo o CI para verificarlo.
+No almacenar números completos de tarjeta en este cliente. El modelo solo muestra y valida los últimos cuatro dígitos; la función `maskCard` presenta ese sufijo enmascarado.

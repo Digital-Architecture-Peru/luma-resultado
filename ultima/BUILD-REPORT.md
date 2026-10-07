@@ -1,12 +1,12 @@
-# Build 528a8707-88d9-4baf-a2cf-965b2f58af91
+# Build 0f7fd32b-e821-4cab-9607-2a69879a9fb6
 
-Stack: Vue 3 + TypeScript · capa Frontend
+Stack: Svelte · capa Frontend
 
 Candidate generada por Microapp Builder; no es producción.
 
-27 archivos; sintaxis verificada en 15/15; sin validador local: 12; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (22); dist/ generado. (candidate).
+21 archivos; sintaxis verificada en 13/13; sin validador local: 8; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (13); dist/ generado. (candidate).
 
-Verificación: OK · build · pruebas unitarias (22) · dist/ incluido
+Verificación: OK · build · pruebas unitarias (13) · dist/ incluido
 Correcciones aplicadas: 0
 
 Recursos incrustados en el builder (hash SHA-256):
@@ -16,27 +16,21 @@ Recursos incrustados en el builder (hash SHA-256):
 - index.html: sin verificar (sin validador local)
 - package.json: sintaxis OK (JSON.parse)
 - README.md: sin verificar (sin validador local)
-- src/App.vue: sin verificar (sin validador local)
-- src/components/atoms/BaseButton.vue: sin verificar (sin validador local)
-- src/components/atoms/BaseInput.vue: sin verificar (sin validador local)
-- src/components/atoms/StatusBadge.vue: sin verificar (sin validador local)
-- src/components/molecules/CardSelector.vue: sin verificar (sin validador local)
-- src/components/molecules/FormField.vue: sin verificar (sin validador local)
-- src/components/organisms/TransactionForm.vue: sin verificar (sin validador local)
-- src/components/organisms/TransactionHistory.vue: sin verificar (sin validador local)
-- src/components/templates/TransactionPage.vue: sin verificar (sin validador local)
-- src/composables/useTransactions.ts: sintaxis OK (typescript.transpileModule)
-- src/domain/format.ts: sintaxis OK (typescript.transpileModule)
-- src/domain/types.ts: sintaxis OK (typescript.transpileModule)
-- src/domain/validation.ts: sintaxis OK (typescript.transpileModule)
-- src/env.d.ts: sintaxis OK (typescript.createSourceFile)
+- src/app.css: sin verificar (sin validador local)
+- src/App.svelte: sin verificar (sin validador local)
+- src/lib/components/atoms/Badge.svelte: sin verificar (sin validador local)
+- src/lib/components/atoms/Button.svelte: sin verificar (sin validador local)
+- src/lib/components/molecules/NotificationItem.svelte: sin verificar (sin validador local)
+- src/lib/components/organisms/NotificationCenter.svelte: sin verificar (sin validador local)
+- src/lib/model/notification.ts: sintaxis OK (typescript.transpileModule)
+- src/lib/services/notificationGateway.ts: sintaxis OK (typescript.transpileModule)
+- src/lib/stores/notificationStore.ts: sintaxis OK (typescript.transpileModule)
 - src/main.ts: sintaxis OK (typescript.transpileModule)
-- src/services/inMemoryGateway.ts: sintaxis OK (typescript.transpileModule)
-- src/services/transactionGateway.ts: sintaxis OK (typescript.transpileModule)
-- src/styles.css: sin verificar (sin validador local)
-- tests/inMemoryGateway.spec.ts: sintaxis OK (typescript.transpileModule)
-- tests/TransactionForm.spec.ts: sintaxis OK (typescript.transpileModule)
-- tests/TransactionPage.spec.ts: sintaxis OK (typescript.transpileModule)
-- tests/validation.spec.ts: sintaxis OK (typescript.transpileModule)
+- src/vite-env.d.ts: sintaxis OK (typescript.createSourceFile)
+- svelte.config.js: sintaxis OK (node --check)
+- tests/components.test.ts: sintaxis OK (typescript.transpileModule)
+- tests/notification.model.test.ts: sintaxis OK (typescript.transpileModule)
+- tests/notificationStore.test.ts: sintaxis OK (typescript.transpileModule)
+- tests/setup.ts: sintaxis OK (typescript.transpileModule)
 - tsconfig.json: sintaxis OK (JSON.parse)
 - vite.config.ts: sintaxis OK (typescript.transpileModule)
