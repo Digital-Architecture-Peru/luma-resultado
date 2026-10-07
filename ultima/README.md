@@ -1,88 +1,53 @@
-# Consulta de tarjetas — backend
+# Consulta de Tarjetas (Banca por Internet)
 
-API REST de solo lectura para consultar tarjetas ficticias. Está implementada con Java 17 y Spring Boot 3.2.5. El número completo solo existe en los datos de dominio de ejemplo; las respuestas REST lo muestran enmascarado, dejando visibles los últimos cuatro dígitos.
+API de solo lectura construida con Java 17 y Quarkus 3.15.1. Expone tarjetas ficticias de ejemplo; no es una integración con un core bancario ni un servicio listo para producción.
 
 ## Requisitos
 
-- JDK 17 (o compatible con Java 17).
-- Apache Maven 3.6 o posterior. El repositorio no incluye Maven Wrapper.
-
-Comprueba las herramientas con `java -version` y `mvn -version`.
+- JDK 17
+- Apache Maven 3.8+ (el repositorio no incluye Maven Wrapper)
 
 ## Compilar, ejecutar y probar
 
-Desde la raíz del proyecto:
+Desde la raíz del repositorio:
 
-```sh
-mvn clean package
+```bash
+mvn test       # pruebas unitarias JUnit 5
+mvn package    # compila y empaqueta la aplicación Quarkus
+mvn quarkus:dev # modo desarrollo, servidor en http://localhost:8080
 ```
 
-Este comando compila, ejecuta las pruebas y genera el artefacto en `target/`. Para ejecutar solo las pruebas:
+En otra terminal, con el servicio en ejecución, se puede verificar:
 
-```sh
-mvn test
+```bash
+curl -i 'http://localhost:8080/v1/cards'
+curl -i 'http://localhost:8080/v1/cards?status=ACTIVE&page=0&size=10'
+curl -i 'http://localhost:8080/v1/cards/CARD-001'
+curl -i 'http://localhost:8080/health'
 ```
 
-Para iniciar la aplicación en modo desarrollo:
-
-```sh
-mvn spring-boot:run
-```
-
-También se puede ejecutar el JAR generado:
-
-```sh
-java -jar target/consulta-tarjetas-0.1.0.jar
-```
-
-Por defecto escucha en `http://localhost:8080`. El puerto puede cambiarse mediante `SERVER_PORT`, por ejemplo `SERVER_PORT=8090 mvn spring-boot:run`. El nivel de logging configurable es `LOG_LEVEL` (por defecto `INFO`). No se requieren credenciales ni servicios externos.
+Las opciones `PORT` y `LOG_LEVEL` configuran el puerto HTTP (por defecto `8080`) y el nivel de log (por defecto `INFO`), respectivamente. Por ejemplo: `PORT=8081 LOG_LEVEL=DEBUG mvn quarkus:dev`.
 
 ## API
 
-### Listar tarjetas
+- `GET /v1/cards?status=ACTIVE|BLOCKED|EXPIRED&page=0&size=10`: lista paginada. `page` comienza en cero; `size` acepta de 1 a 50. `status` puede omitirse.
+- `GET /v1/cards/{id}`: detalle por identificador; por ejemplo, `CARD-001`.
+- `GET /health`: endpoint SmallRye Health.
 
-`GET /v1/tarjetas` devuelve una lista de resúmenes. `estado` y `tipo` son filtros opcionales; los valores se interpretan sin distinguir mayúsculas/minúsculas y deben coincidir con los enums disponibles.
+El número PAN se enmascara en los DTO antes de responder. Consultas inválidas devuelven `400`, identificadores bien formados pero no encontrados devuelven `404`, y los errores mapeados usan `application/problem+json`.
 
-```sh
-curl -i 'http://localhost:8080/v1/tarjetas'
-curl -i 'http://localhost:8080/v1/tarjetas?estado=ACTIVA&tipo=CREDITO'
-```
+## Organización
 
-Valores aceptados:
-
-- `estado`: `ACTIVA`, `BLOQUEADA`, `VENCIDA`
-- `tipo`: `CREDITO`, `DEBITO`
-
-Cada resumen contiene `id`, `numeroEnmascarado`, `tipo` y `estado`.
-
-### Consultar detalle
-
-```sh
-curl -i 'http://localhost:8080/v1/tarjetas/TC-001'
-```
-
-El detalle incluye titular, moneda, límite, saldo, disponible y vencimiento, además del número enmascarado. Para crédito, el disponible es límite menos saldo; para débito, es el saldo. IDs admiten letras, números y guiones, con longitud de 1 a 20 caracteres.
-
-### Salud
-
-```sh
-curl -i 'http://localhost:8080/actuator/health'
-```
-
-El único endpoint Actuator expuesto por la configuración es `health`.
-
-### Errores
-
-Los errores se devuelven como `application/problem+json`: `400` para filtros o identificadores inválidos, `404` cuando no existe la tarjeta solicitada y `500` para errores inesperados. El error interno no revela detalles de implementación.
+- `api/`: recursos HTTP y mapeo de errores.
+- `organisms/`: caso de uso `CardQueryService`, puerto `CardCatalog` y adaptador `InMemoryCardCatalog`.
+- `molecules/`: conversión del modelo a DTO.
+- `atoms/`: validación de identificadores y enmascaramiento PAN.
+- `model/`, `dto/`: dominio y contratos de respuesta.
 
 ## Integración y persistencia
 
-Actualmente no hay integración con sistemas externos ni base de datos. `TarjetaRepository` define el puerto de lectura y `InMemoryTarjetaRepository` es el adaptador activo, con cuatro registros ficticios cargados en memoria. Los datos no sobreviven al reinicio y la API no ofrece operaciones de escritura.
+Actualmente no hay persistencia, base de datos, migraciones ni conexión con sistemas externos. `InMemoryCardCatalog` entrega una lista inmutable de datos ficticios inicializada en memoria y sus cambios no sobreviven al reinicio. La aplicación depende del puerto `CardCatalog`; una integración futura puede proporcionar otro adaptador para esa interfaz y configurar credenciales/conectividad mediante variables de entorno o configuración segura, sin incorporar datos reales a este adaptador. Antes de producción deben definirse autenticación/autorización, gestión de secretos, auditoría y controles de acceso con el sistema consumidor.
 
-Para integrar una fuente real, se debe implementar `TarjetaRepository` con el mecanismo acordado (por ejemplo, un cliente de servicio o un adaptador de almacenamiento) y configurar su selección en Spring. La interfaz existente solo cubre listar y buscar por ID; requisitos adicionales de paginación, disponibilidad, consistencia y errores del proveedor deberán definirse antes de ampliar esa integración. No se configura persistencia relacional ni se incluyen migraciones.
+## Pruebas disponibles
 
-Autenticación y autorización tampoco están implementadas. Antes de exponer el servicio fuera de un entorno local/de desarrollo, deben definirse e incorporarse los controles de identidad, permisos, transporte seguro, gestión de datos sensibles y políticas operativas apropiadas. Los registros incluidos son ficticios y no deben sustituirse por datos reales sin revisar esos controles.
-
-## Pruebas incluidas
-
-Las pruebas JUnit cubren el enmascaramiento del número, filtros y cálculos del servicio, validación de entradas y respuestas HTTP (incluidos errores). Ejecuta `mvn test` para correrlas.
+`mvn test` ejecuta pruebas de JUnit 5 para enmascaramiento PAN y el servicio de consulta: filtros, paginación, parámetros inválidos, detalle y tarjetas no encontradas. No se documentan pruebas de integración HTTP ni persistencia porque no están presentes en el código actual.
