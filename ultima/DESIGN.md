@@ -4,22 +4,24 @@
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Consulta
 - ¿Sobre qué dominio? Tarjetas
-- ¿Qué necesitas construir? Frontend
+- ¿Qué necesitas construir? Backend
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript
+- ¿Qué stack? Java + Spring Boot
+- ¿Persistencia? No requiere
 - ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Consulta" sobre Tarjetas en Banca por Internet, capa Frontend.
-- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
-- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
-- Accesible (etiquetas, foco, contraste) y responsive.
+- Solución en Java + Spring Boot (capa Backend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
+- Integración sin definir y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
+- El código se genera en Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- Integración (sin definir), persistencia (No requiere) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
-- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.

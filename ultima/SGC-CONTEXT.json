@@ -1,12 +1,13 @@
 {
   "answers": {
-    "stack": "React + TypeScript",
+    "stack": "Java + Spring Boot",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
     "type": "Consulta",
     "domain": "Tarjetas",
-    "layer": "Frontend"
+    "layer": "Backend",
+    "persistence": "No requiere"
   },
   "sgc": {
     "status": "fallback",
