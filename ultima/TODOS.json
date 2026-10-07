@@ -65,7 +65,7 @@
   },
   {
     "id": "T06-docs",
-    "title": "Documentar decisiones: capa Frontend, patrón Feature-Sliced Design, stack React + TypeScript, integración sin definir, persistencia sin definir",
+    "title": "Documentar decisiones: capa Frontend, patrón Micro-frontends, stack React + TypeScript, integración sin definir, persistencia sin definir",
     "dependsOn": [
       "T05-tests"
     ],

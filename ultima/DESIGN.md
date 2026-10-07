@@ -5,7 +5,7 @@
 - ¿Qué tipo de capacidad? Consulta
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Feature-Sliced Design
+- Patrones disponibles Micro-frontends
 - ¿Qué stack? React + TypeScript
 - ¿Qué pruebas? Unitarias
 
@@ -19,7 +19,7 @@ Estado: fallback (SGC no configurado)
 - Accesible (etiquetas, foco, contraste) y responsive.
 
 ## Hipótesis
-- Stack (React + TypeScript), patrón (Feature-Sliced Design), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
+- Stack (React + TypeScript), patrón (Micro-frontends), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
 
 ## Aceptación
 - tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
