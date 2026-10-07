@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-07T21:13:25.020Z",
+  "actualizado": "2026-10-07T21:13:27.662Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -150,6 +150,44 @@
         {
           "etapa": "Cierre",
           "segundo": 124
+        }
+      ]
+    },
+    "Notificación|Tarjetas|Frontend||": {
+      "clave": "Notificación|Tarjetas|Frontend||",
+      "answers": {
+        "type": "Notificación",
+        "domain": "Tarjetas",
+        "layer": "Frontend",
+        "stack": "React + TypeScript",
+        "persistence": "No requiere"
+      },
+      "commit": "8b97eb569ad484e096b99019fe4e300cf01e6db2",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/36",
+      "distTree": "1463c26abbdada27551c4cc7c09ffc9545161b42",
+      "distRuta": "ultima/dist",
+      "fecha": "2026-10-07T17:51:43Z",
+      "duracion_s": 117,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0
+        },
+        {
+          "etapa": "Build",
+          "segundo": 0
+        },
+        {
+          "etapa": "Test",
+          "segundo": 87
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 87
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 117
         }
       ]
     }
