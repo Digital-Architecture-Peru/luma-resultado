@@ -3,8 +3,8 @@
     "stack": "React + TypeScript",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
-    "where": "Banca por Internet",
-    "type": "Notificación",
+    "where": "App móvil",
+    "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Frontend"
   },
