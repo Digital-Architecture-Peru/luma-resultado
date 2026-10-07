@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "stack": "Vue 3 + TypeScript",
+    "tests": "Estándar completo",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "Portal empresas",
+    "type": "Transacción",
+    "domain": "Tarjetas",
+    "layer": "Frontend"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

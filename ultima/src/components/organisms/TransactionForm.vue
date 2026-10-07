@@ -1,36 +1,62 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import type { Card, TransactionDraft, TransactionInput, ValidationErrors } from '../../domain/types';
-import { parseAmount, validateDraft } from '../../domain/validation';
+import { computed, reactive, ref } from 'vue';
+import type { Card, FieldErrors, TransactionRequest } from '../../domain/types';
+import { MAX_DESCRIPTION_LENGTH, MAX_MERCHANT_LENGTH, validateDraft } from '../../domain/validation';
 import BaseButton from '../atoms/BaseButton.vue';
-import BaseInput from '../atoms/BaseInput.vue';
-import CardSelect from '../molecules/CardSelect.vue';
+import CardSelector from '../molecules/CardSelector.vue';
+import FormField from '../molecules/FormField.vue';
 
-const props = defineProps<{ cards: Card[]; submitting?: boolean }>();
-const emit = defineEmits<{ (e: 'submit', input: TransactionInput): void }>();
+const props = defineProps<{ cards: Card[]; submitting: boolean }>();
+const emit = defineEmits<{ (e: 'submit', request: TransactionRequest): void }>();
 
-const draft = reactive<TransactionDraft>({ cardId: '', amountText: '', merchant: '' });
-const errors = ref<ValidationErrors>({});
+const draft = reactive({ cardId: '', amount: '', merchant: '', description: '' });
+const errors = ref<FieldErrors>({});
+
+const selectedCard = computed(() => props.cards.find((c) => c.id === draft.cardId));
 
 function onSubmit(): void {
-  errors.value = validateDraft(draft, props.cards);
-  if (Object.keys(errors.value).length > 0) return;
-  emit('submit', {
-    cardId: draft.cardId,
-    amount: parseAmount(draft.amountText) as number,
-    merchant: draft.merchant.trim(),
-  });
+  const result = validateDraft(draft, selectedCard.value);
+  errors.value = result.errors;
+  if (result.request) emit('submit', result.request);
 }
+
+function reset(): void {
+  draft.amount = '';
+  draft.merchant = '';
+  draft.description = '';
+  errors.value = {};
+}
+
+defineExpose({ reset });
 </script>
 
 <template>
-  <form class="card-panel" novalidate @submit.prevent="onSubmit">
-    <h2>Nueva transacción</h2>
-    <CardSelect v-model="draft.cardId" :cards="cards" :error="errors.cardId" />
-    <BaseInput id="amount" v-model="draft.amountText" label="Monto" inputmode="decimal" :error="errors.amountText" />
-    <BaseInput id="merchant" v-model="draft.merchant" label="Comercio" :error="errors.merchant" />
+  <form class="card" novalidate aria-labelledby="form-title" @submit.prevent="onSubmit">
+    <h2 id="form-title">Nueva transacción</h2>
+    <CardSelector v-model="draft.cardId" :cards="cards" :error="errors.cardId" />
+    <FormField
+      id="amount"
+      v-model="draft.amount"
+      label="Monto"
+      inputmode="decimal"
+      :error="errors.amount"
+    />
+    <FormField
+      id="merchant"
+      v-model="draft.merchant"
+      label="Comercio o beneficiario"
+      :maxlength="MAX_MERCHANT_LENGTH"
+      :error="errors.merchant"
+    />
+    <FormField
+      id="description"
+      v-model="draft.description"
+      label="Descripción (opcional)"
+      :maxlength="MAX_DESCRIPTION_LENGTH"
+      :error="errors.description"
+    />
     <BaseButton type="submit" :disabled="submitting">
-      {{ submitting ? 'Enviando…' : 'Pagar' }}
+      {{ submitting ? 'Procesando…' : 'Realizar transacción' }}
     </BaseButton>
   </form>
 </template>

@@ -1,17 +1,32 @@
 <script setup lang="ts">
-import type { Transaction } from '../../domain/types';
-import TransactionItem from '../molecules/TransactionItem.vue';
+import type { TransactionRecord } from '../../domain/types';
+import { formatMoney } from '../../domain/format';
+import StatusBadge from '../atoms/StatusBadge.vue';
 
-defineProps<{ transactions: Transaction[]; loading?: boolean }>();
+defineProps<{ records: TransactionRecord[] }>();
 </script>
 
 <template>
-  <section class="card-panel" aria-labelledby="history-title">
-    <h2 id="history-title">Movimientos</h2>
-    <p v-if="loading">Cargando…</p>
-    <p v-else-if="transactions.length === 0" class="muted">Aún no hay movimientos.</p>
-    <ul v-else class="tx-list">
-      <TransactionItem v-for="tx in transactions" :key="tx.id" :transaction="tx" />
-    </ul>
+  <section class="card" aria-labelledby="history-title">
+    <h2 id="history-title">Movimientos recientes</h2>
+    <p v-if="records.length === 0" class="field__hint">Aún no hay transacciones.</p>
+    <table v-else>
+      <thead>
+        <tr>
+          <th scope="col">Referencia</th>
+          <th scope="col">Comercio</th>
+          <th scope="col" class="num">Monto</th>
+          <th scope="col">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="record in records" :key="record.id">
+          <td>{{ record.id }}</td>
+          <td>{{ record.merchant }}</td>
+          <td class="num">{{ formatMoney(record.amount, record.currency) }}</td>
+          <td><StatusBadge tone="success">Aprobada</StatusBadge></td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 </template>

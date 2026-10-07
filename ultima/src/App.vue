@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TransactionPage from './components/pages/TransactionPage.vue';
-import { createInMemoryGateway } from './services/transactionGateway';
+import TransactionPage from './components/templates/TransactionPage.vue';
+import { InMemoryGateway } from './services/inMemoryGateway';
 
-// Único punto de composición: sustituir por el adaptador real cuando se defina la integración.
-const gateway = createInMemoryGateway();
+// Punto único de composición: aquí se cambiará por el adaptador HTTP (VITE_API_BASE_URL).
+const gateway = new InMemoryGateway();
 </script>
 
 <template>

@@ -1,51 +1,50 @@
 import { ref } from 'vue';
-import type { Card, Transaction, TransactionInput } from '../domain/types';
-import { TransactionError } from '../domain/types';
-import type { TransactionGateway } from '../services/transactionGateway';
+import type { Card, TransactionRecord, TransactionRequest } from '../domain/types';
+import { TransactionError, type TransactionGateway } from '../services/transactionGateway';
 
-export type Feedback = { kind: 'success' | 'error'; text: string } | null;
+export type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export function useTransactions(gateway: TransactionGateway) {
   const cards = ref<Card[]>([]);
-  const transactions = ref<Transaction[]>([]);
-  const loading = ref(false);
+  const history = ref<TransactionRecord[]>([]);
+  const loadState = ref<LoadState>('idle');
   const submitting = ref(false);
-  const feedback = ref<Feedback>(null);
-
-  async function refresh(): Promise<void> {
-    [cards.value, transactions.value] = await Promise.all([
-      gateway.listCards(),
-      gateway.listTransactions(),
-    ]);
-  }
+  const confirmation = ref('');
+  const errorMessage = ref('');
 
   async function load(): Promise<void> {
-    loading.value = true;
+    loadState.value = 'loading';
     try {
-      await refresh();
+      const [loadedCards, loadedHistory] = await Promise.all([
+        gateway.listCards(),
+        gateway.listTransactions(),
+      ]);
+      cards.value = loadedCards;
+      history.value = loadedHistory;
+      loadState.value = 'ready';
     } catch {
-      feedback.value = { kind: 'error', text: 'No se pudo cargar la información.' };
-    } finally {
-      loading.value = false;
+      errorMessage.value = 'No se pudo cargar la información de tarjetas.';
+      loadState.value = 'error';
     }
   }
 
-  async function submit(input: TransactionInput): Promise<boolean> {
+  async function submit(request: TransactionRequest): Promise<boolean> {
     submitting.value = true;
-    feedback.value = null;
+    confirmation.value = '';
+    errorMessage.value = '';
     try {
-      const tx = await gateway.submit(input);
-      await refresh();
-      feedback.value = { kind: 'success', text: `Transacción ${tx.id} aprobada.` };
+      const record = await gateway.submit(request);
+      confirmation.value = `Transacción ${record.id} aprobada.`;
+      await load();
       return true;
     } catch (error) {
-      const text = error instanceof TransactionError ? error.message : 'Error inesperado. Intenta de nuevo.';
-      feedback.value = { kind: 'error', text };
+      errorMessage.value =
+        error instanceof TransactionError ? error.message : 'No se pudo procesar la transacción.';
       return false;
     } finally {
       submitting.value = false;
     }
   }
 
-  return { cards, transactions, loading, submitting, feedback, load, submit };
+  return { cards, history, loadState, submitting, confirmation, errorMessage, load, submit };
 }
