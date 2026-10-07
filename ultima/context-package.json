@@ -1,11 +1,11 @@
 {
   "mode": "create",
-  "generation": "81f8718b-98b7-4890-8715-dc0f5bc1a64f",
+  "generation": "0d1c52f7-efa1-4d4c-8410-79b3556d0cc9",
   "planRevision": 1,
   "approvals": [],
   "inputs": [],
   "screenMap": [],
-  "requirements": "user: Construye Consulta de Pagos para Banca por Internet. Capa: Frontend. Patrón: Component-based (Atomic Design). Pruebas: Unitarias.\n\nDISEÑO (solution-designer):\n# DESIGN\n\n## Hechos (respuestas del guion)\n- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet\n- ¿Qué tipo de capacidad? Consulta\n- ¿Sobre qué dominio? Pagos\n- ¿Qué necesitas construir? Frontend\n- Patrones disponibles Component-based (Atomic Design)\n- ¿Qué stack? React + TypeScript\n- ¿Qué pruebas? Unitarias\n\n## Contexto SGC\nEstado: fallback (SGC no configurado)\n\n## Solución\n- Microapp React/TypeScript para \"Consulta\" sobre Pagos en Banca por Internet, capa Frontend.\n- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.\n- Pantalla principal con el botón \"Probar capacidad\" visible al cargar; al pulsarlo muestra \"Capacidad simulada\" en un elemento role=status.\n- Accesible (etiquetas, foco, contraste) y responsive.\n\n## Hipótesis\n- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.\n\n## Aceptación\n- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.\n",
+  "requirements": "user: Construye Transacción de Tarjetas para Banca por Internet. Capa: Frontend. Patrón: Component-based (Atomic Design). Pruebas: Unitarias.\n\nDISEÑO (solution-designer):\n# DESIGN\n\n## Hechos (respuestas del guion)\n- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet\n- ¿Qué tipo de capacidad? Transacción\n- ¿Sobre qué dominio? Tarjetas\n- ¿Qué necesitas construir? Frontend\n- Patrones disponibles Component-based (Atomic Design)\n- ¿Qué stack? React + TypeScript\n- ¿Qué pruebas? Unitarias\n\n## Contexto SGC\nEstado: fallback (SGC no configurado)\n\n## Solución\n- Microapp React/TypeScript para \"Transacción\" sobre Tarjetas en Banca por Internet, capa Frontend.\n- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.\n- Pantalla principal con el botón \"Probar capacidad\" visible al cargar; al pulsarlo muestra \"Capacidad simulada\" en un elemento role=status.\n- Accesible (etiquetas, foco, contraste) y responsive.\n\n## Hipótesis\n- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.\n\n## Aceptación\n- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.\n",
   "asIs": [],
   "toBe": {
     "architecture": "Typed React in-memory screen, bundled MCP App; no external backend",
@@ -102,7 +102,7 @@
     "maxFileBytes": 40000,
     "humanDecisions": false,
     "hash": "58b9845440f725c050065f6130f25f14704f06014cd8eca2d2136b67cb956e35",
-    "generation": "81f8718b-98b7-4890-8715-dc0f5bc1a64f",
+    "generation": "0d1c52f7-efa1-4d4c-8410-79b3556d0cc9",
     "mode": "create",
     "inputHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "framework": null
