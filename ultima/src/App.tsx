@@ -1,219 +1,208 @@
 import { useMemo, useState } from 'react';
 
-// ---------------------------------------------------------------------------
-// entities/account — datos ficticios y funciones puras de dominio
-// ---------------------------------------------------------------------------
-type AccountType = 'ahorros' | 'corriente';
-
-interface Account {
+type Cuenta = {
   id: string;
   alias: string;
-  type: AccountType;
-  number: string;
-  currency: string;
-  balance: number;
+  tipo: 'Ahorros' | 'Corriente' | 'Nómina';
+  numero: string;
+  moneda: 'USD' | 'EUR';
+  saldo: number;
+  movimientos: { id: string; fecha: string; descripcion: string; monto: number }[];
+};
+
+const CUENTAS: Cuenta[] = [
+  {
+    id: 'c1',
+    alias: 'Cuenta principal',
+    tipo: 'Ahorros',
+    numero: '0012345678',
+    moneda: 'USD',
+    saldo: 4520.33,
+    movimientos: [
+      { id: 'm1', fecha: '2026-10-01', descripcion: 'Depósito nómina', monto: 1800 },
+      { id: 'm2', fecha: '2026-10-03', descripcion: 'Pago servicios', monto: -120.5 },
+      { id: 'm3', fecha: '2026-10-05', descripcion: 'Transferencia recibida', monto: 300 },
+    ],
+  },
+  {
+    id: 'c2',
+    alias: 'Gastos corrientes',
+    tipo: 'Corriente',
+    numero: '0098765432',
+    moneda: 'USD',
+    saldo: 1275.8,
+    movimientos: [
+      { id: 'm4', fecha: '2026-09-28', descripcion: 'Compra supermercado', monto: -85.2 },
+      { id: 'm5', fecha: '2026-10-02', descripcion: 'Retiro cajero', monto: -200 },
+    ],
+  },
+  {
+    id: 'c3',
+    alias: 'Ahorro viajes',
+    tipo: 'Nómina',
+    numero: '0055501234',
+    moneda: 'EUR',
+    saldo: 980.0,
+    movimientos: [
+      { id: 'm6', fecha: '2026-09-15', descripcion: 'Aporte mensual', monto: 150 },
+      { id: 'm7', fecha: '2026-10-04', descripcion: 'Intereses', monto: 2.1 },
+    ],
+  },
+];
+
+function maskAccount(numero: string): string {
+  const last4 = numero.slice(-4);
+  return `•••• ${last4}`;
 }
 
-function getAccounts(): Account[] {
-  return [
-    { id: 'acc-1', alias: 'Cuenta Principal', type: 'ahorros', number: '4001234567894321', currency: 'USD', balance: 3250.75 },
-    { id: 'acc-2', alias: 'Fondo de Emergencia', type: 'ahorros', number: '4009988776655443', currency: 'USD', balance: 12500.0 },
-    { id: 'acc-3', alias: 'Gastos del Hogar', type: 'corriente', number: '5102233445566778', currency: 'USD', balance: 870.2 },
-    { id: 'acc-4', alias: 'Negocio Personal', type: 'corriente', number: '5109876543210987', currency: 'USD', balance: 15430.9 },
-  ];
+function formatBalance(saldo: number, moneda: Cuenta['moneda']): string {
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: moneda }).format(saldo);
 }
 
-function maskAccountNumber(number: string): string {
-  const last4 = number.slice(-4);
-  return `•••• •••• •••• ${last4}`;
-}
-
-function formatBalance(balance: number, currency: string): string {
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency }).format(balance);
-}
-
-function filterAccounts(accounts: Account[], type: AccountType | 'todas', query: string): Account[] {
-  const normalizedQuery = query.trim().toLowerCase();
-  return accounts.filter((account) => {
-    const matchesType = type === 'todas' || account.type === type;
-    const matchesQuery = normalizedQuery === '' || account.alias.toLowerCase().includes(normalizedQuery);
-    return matchesType && matchesQuery;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// widgets/account-detail — panel de solo lectura
-// ---------------------------------------------------------------------------
-function AccountDetail({ account }: { account: Account | null }) {
-  if (!account) {
-    return (
-      <aside className="detail-panel detail-panel--empty" aria-labelledby="detail-heading">
-        <h2 id="detail-heading">Detalle de la cuenta</h2>
-        <p>Selecciona una cuenta de la lista para ver su detalle.</p>
-      </aside>
-    );
-  }
-  return (
-    <aside className="detail-panel" aria-labelledby="detail-heading">
-      <h2 id="detail-heading">Detalle de la cuenta</h2>
-      <dl className="detail-list">
-        <dt>Alias</dt>
-        <dd>{account.alias}</dd>
-        <dt>Tipo</dt>
-        <dd className="capitalize">{account.type}</dd>
-        <dt>Número</dt>
-        <dd>{maskAccountNumber(account.number)}</dd>
-        <dt>Moneda</dt>
-        <dd>{account.currency}</dd>
-        <dt>Saldo disponible</dt>
-        <dd className="balance">{formatBalance(account.balance, account.currency)}</dd>
-      </dl>
-    </aside>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// features/filter-accounts — filtro por tipo y búsqueda por alias
-// ---------------------------------------------------------------------------
-function AccountFilters({
-  typeFilter,
-  onTypeFilterChange,
-  query,
-  onQueryChange,
-}: {
-  typeFilter: AccountType | 'todas';
-  onTypeFilterChange: (value: AccountType | 'todas') => void;
-  query: string;
-  onQueryChange: (value: string) => void;
-}) {
-  return (
-    <form className="filters" role="search" aria-label="Filtrar cuentas" onSubmit={(e) => e.preventDefault()}>
-      <div className="field">
-        <label htmlFor="type-filter">Tipo de cuenta</label>
-        <select
-          id="type-filter"
-          value={typeFilter}
-          onChange={(e) => onTypeFilterChange(e.target.value as AccountType | 'todas')}
-        >
-          <option value="todas">Todas</option>
-          <option value="ahorros">Ahorros</option>
-          <option value="corriente">Corriente</option>
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor="alias-search">Buscar por alias</label>
-        <input
-          id="alias-search"
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Ej. Principal"
-        />
-      </div>
-    </form>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// widgets/account-list — listado seleccionable
-// ---------------------------------------------------------------------------
-function AccountList({
-  accounts,
-  selectedId,
-  onSelect,
-}: {
-  accounts: Account[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  if (accounts.length === 0) {
-    return <p className="empty-state">No se encontraron cuentas con esos criterios.</p>;
-  }
-  return (
-    <ul className="account-list" aria-label="Lista de cuentas">
-      {accounts.map((account) => {
-        const isSelected = account.id === selectedId;
-        return (
-          <li key={account.id}>
-            <button
-              type="button"
-              className={`account-card${isSelected ? ' account-card--selected' : ''}`}
-              aria-pressed={isSelected}
-              onClick={() => onSelect(account.id)}
-            >
-              <span className="account-alias">{account.alias}</span>
-              <span className="account-meta">
-                <span className="capitalize">{account.type}</span> · {maskAccountNumber(account.number)}
-              </span>
-              <span className="balance">{formatBalance(account.balance, account.currency)}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// pages/account-query — composición de la página de consulta
-// ---------------------------------------------------------------------------
-function AccountQueryPage() {
-  const accounts = useMemo(() => getAccounts(), []);
-  const [typeFilter, setTypeFilter] = useState<AccountType | 'todas'>('todas');
-  const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(accounts[0]?.id ?? null);
-
-  const filteredAccounts = useMemo(
-    () => filterAccounts(accounts, typeFilter, query),
-    [accounts, typeFilter, query]
-  );
-
-  const selectedAccount = useMemo(
-    () => filteredAccounts.find((account) => account.id === selectedId) ?? null,
-    [filteredAccounts, selectedId]
-  );
-
-  return (
-    <section aria-labelledby="page-heading">
-      <h1 id="page-heading">Consulta de Cuentas</h1>
-      <p className="banner">Banca por Internet · Datos de demostración</p>
-
-      <AccountFilters
-        typeFilter={typeFilter}
-        onTypeFilterChange={setTypeFilter}
-        query={query}
-        onQueryChange={setQuery}
-      />
-
-      <div className="query-layout">
-        <AccountList accounts={filteredAccounts} selectedId={selectedAccount?.id ?? null} onSelect={setSelectedId} />
-        <AccountDetail account={selectedAccount} />
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// app — raíz de la aplicación: capacidad de prueba + página de consulta
-// ---------------------------------------------------------------------------
 export default function App() {
-  const [capabilityMessage, setCapabilityMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState<string>(CUENTAS[0].id);
+  const [capacityStatus, setCapacityStatus] = useState('');
+
+  const cuentasFiltradas = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return CUENTAS;
+    return CUENTAS.filter(
+      (c) =>
+        c.alias.toLowerCase().includes(q) ||
+        c.tipo.toLowerCase().includes(q) ||
+        c.numero.includes(q)
+    );
+  }, [query]);
+
+  const cuentaSeleccionada = useMemo(
+    () => CUENTAS.find((c) => c.id === selectedId) ?? null,
+    [selectedId]
+  );
 
   function handleProbarCapacidad() {
-    setCapabilityMessage('Consulta de Cuentas');
+    setCapacityStatus('Consulta de Cuentas');
   }
 
   return (
-    <main className="app-shell">
-      <div className="capability-check">
-        <button type="button" onClick={handleProbarCapacidad}>
+    <main className="mf-cuentas">
+      <header className="mf-cuentas__header">
+        <div>
+          <h1>Consulta de Cuentas</h1>
+          <p>Banca por Internet · Micro-frontend de solo lectura</p>
+        </div>
+        <span className="mf-cuentas__badge" role="note">
+          Datos ficticios — sin conexión a sistemas reales
+        </span>
+      </header>
+
+      <section className="mf-cuentas__toolbar" aria-label="Acciones de la capacidad">
+        <button type="button" className="mf-cuentas__btn-primary" onClick={handleProbarCapacidad}>
           Probar capacidad
         </button>
-        <p role="status" aria-live="polite" className="status-message">
-          {capabilityMessage ?? ''}
-        </p>
+        <div role="status" aria-live="polite" className="mf-cuentas__status">
+          {capacityStatus}
+        </div>
+      </section>
+
+      <section className="mf-cuentas__search" aria-label="Buscar cuentas">
+        <label htmlFor="buscar-cuentas">Buscar por alias, tipo o número</label>
+        <input
+          id="buscar-cuentas"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Ej. Ahorros, 1234, Gastos"
+        />
+      </section>
+
+      <div className="mf-cuentas__layout">
+        <section aria-label="Listado de cuentas" className="mf-cuentas__list-panel">
+          <h2>Mis cuentas</h2>
+          {cuentasFiltradas.length === 0 ? (
+            <p className="mf-cuentas__empty">Sin resultados para esta búsqueda.</p>
+          ) : (
+            <ul className="mf-cuentas__list">
+              {cuentasFiltradas.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    aria-pressed={c.id === selectedId}
+                    className={
+                      'mf-cuentas__list-item' +
+                      (c.id === selectedId ? ' mf-cuentas__list-item--active' : '')
+                    }
+                    onClick={() => setSelectedId(c.id)}
+                  >
+                    <span className="mf-cuentas__alias">{c.alias}</span>
+                    <span className="mf-cuentas__meta">
+                      {c.tipo} · {maskAccount(c.numero)}
+                    </span>
+                    <span className="mf-cuentas__saldo">{formatBalance(c.saldo, c.moneda)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section aria-label="Detalle de cuenta" className="mf-cuentas__detail-panel">
+          {cuentaSeleccionada ? (
+            <>
+              <h2>{cuentaSeleccionada.alias}</h2>
+              <dl className="mf-cuentas__detail-grid">
+                <div>
+                  <dt>Tipo</dt>
+                  <dd>{cuentaSeleccionada.tipo}</dd>
+                </div>
+                <div>
+                  <dt>Número</dt>
+                  <dd>{maskAccount(cuentaSeleccionada.numero)}</dd>
+                </div>
+                <div>
+                  <dt>Moneda</dt>
+                  <dd>{cuentaSeleccionada.moneda}</dd>
+                </div>
+                <div>
+                  <dt>Saldo disponible</dt>
+                  <dd>{formatBalance(cuentaSeleccionada.saldo, cuentaSeleccionada.moneda)}</dd>
+                </div>
+              </dl>
+
+              <h3>Movimientos recientes</h3>
+              {cuentaSeleccionada.movimientos.length === 0 ? (
+                <p className="mf-cuentas__empty">Esta cuenta no tiene movimientos.</p>
+              ) : (
+                <table className="mf-cuentas__table">
+                  <caption className="mf-cuentas__sr-only">
+                    Movimientos de {cuentaSeleccionada.alias}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Fecha</th>
+                      <th scope="col">Descripción</th>
+                      <th scope="col">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cuentaSeleccionada.movimientos.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.fecha}</td>
+                        <td>{m.descripcion}</td>
+                        <td className={m.monto < 0 ? 'mf-cuentas__monto-neg' : 'mf-cuentas__monto-pos'}>
+                          {formatBalance(m.monto, cuentaSeleccionada.moneda)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          ) : (
+            <p className="mf-cuentas__empty">Selecciona una cuenta para ver el detalle.</p>
+          )}
+        </section>
       </div>
-      <AccountQueryPage />
     </main>
   );
 }
