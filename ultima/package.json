@@ -1,5 +1,5 @@
 {
-  "name": "banca-tarjetas-consulta",
+  "name": "banca-consulta-tarjetas",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,20 +9,19 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test tests/e2e"
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "vue": "^3.4.0"
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.44.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.0",
     "jsdom": "^24.0.0",
     "typescript": "^5.4.0",
     "vite": "^5.2.0",
-    "vitest": "^1.6.0",
+    "vitest": "^1.5.0",
     "vue-tsc": "^2.0.0"
   }
 }

@@ -1,59 +1,65 @@
-# Consulta de Tarjetas
+# Banca por Internet · Consulta de tarjetas
 
-Frontend de consulta construido con Vue 3, TypeScript y Vite. Estado de entrega: **candidate**. El código se revisó mediante lectura; no se ejecutaron build, pruebas ni servidor en este entorno.
+Aplicación frontend de consulta construida con Vue 3, TypeScript, Vue Router y Vite. Presenta tarjetas, detalle financiero y movimientos. Los datos por defecto son fixtures ficticios; no hay autenticación ni escritura de operaciones.
 
 ## Requisitos
 
-- Node.js compatible con Vite 5 (Node.js 18+ recomendado).
+- Node.js compatible con Vite 5 (Node.js 18 o superior recomendado).
 - npm.
 
-## Instalar, compilar y ejecutar
+## Instalar, ejecutar y verificar
 
 ```sh
 npm install
-npm run typecheck
-npm run build
-npm run dev
+npm run dev        # servidor local de desarrollo (Vite)
+npm run typecheck  # comprobación estática con vue-tsc
+npm test           # suite Vitest en modo run
+npm run test:watch # modo interactivo
+npm run build      # typecheck y bundle de producción en dist/
+npm run preview    # servir localmente el bundle generado
 ```
 
-Vite muestra la URL local (normalmente `http://localhost:5173`). Para servir el artefacto compilado localmente:
+La aplicación se sirve en `/tarjetas`; `/` redirige allí. Para probar el build local, ejecutar `npm run build` y después `npm run preview`. La ejecución de estos comandos no se ha verificado en este entorno.
 
-```sh
-npm run preview
+## Configuración
+
+Vite expone variables `VITE_*` al código cliente: no colocar secretos, credenciales ni datos personales en ellas.
+
+| Variable | Uso |
+| --- | --- |
+| `VITE_CARDS_ADAPTER` | `mock` (predeterminado) o `http`. |
+| `VITE_API_BASE_URL` | Base URL requerida al elegir `http`. |
+| `VITE_LOCALE` | Locale de formato, predeterminado `es`. |
+
+Crear un `.env` local si hace falta; no se requiere para el modo mock. Ejemplo de configuración local, sin secretos:
+
+```dotenv
+VITE_CARDS_ADAPTER=mock
+VITE_LOCALE=es
 ```
 
-Scripts disponibles: `dev` inicia Vite; `typecheck` ejecuta `vue-tsc --noEmit`; `build` tipa y genera el build de Vite; `preview` sirve ese build. No hay lockfile listado, por lo que `npm install` resuelve las versiones admitidas por los rangos de `package.json`.
+Para seleccionar `http`, establecer además `VITE_API_BASE_URL`. Reiniciar Vite al cambiar variables de entorno.
 
-## Pruebas
+## Estructura y arquitectura
 
-```sh
-npm test              # Vitest unitarias y de componentes
-npm run test:watch    # Vitest interactivo
-npm run test:e2e      # Playwright: tests/e2e
-```
+- `src/pages/`: páginas para listado y detalle.
+- `src/components/`: componentes organizados en atoms, molecules, organisms y templates.
+- `src/composables/`: carga de listado/detalle, estados de carga, error y no encontrado.
+- `src/domain/`: tipos y formato/enmascaramiento de datos.
+- `src/services/CardsGateway.ts`: puerto de acceso a datos; `MockCardsGateway` proporciona fixtures locales.
+- `src/services/gatewayFactory.ts`: selecciona el adaptador según configuración.
+- `tests/`: pruebas unitarias, componentes e integración de navegación.
 
-La configuración de Vitest incluye `tests/unit/**/*.spec.ts` y `tests/component/**/*.spec.ts` en jsdom. La prueba E2E usa `@playwright/test` y espera el servidor en `http://localhost:5173`; iniciar `npm run dev` en otra terminal antes de correrla. La configuración no levanta servidor automáticamente. No se han ejecutado estas pruebas durante esta entrega.
+La interfaz `CardsGateway` define `listCards()`, `getCard(id)` y `getMovements(id)`. El mock implementa estas operaciones en memoria. El adaptador `HttpCardsGateway` es actualmente un stub: aunque se puede seleccionar mediante configuración, sus métodos lanzan un error porque el contrato backend aún no está definido. No representa una integración HTTP funcional.
 
-## Arquitectura e integración
+## Integración pendiente
 
-La interfaz está organizada en `src/components` (atoms, molecules, organisms y templates), `src/pages` y `src/composables`. Los tipos de dominio están en `src/domain`; la implementación de datos y selección del adaptador, en `src/infrastructure`.
-
-`CardsRepository` define el puerto asíncrono `listCards()` y `listMovements(cardId, filter?)`. Actualmente `repository-factory.ts` admite únicamente `mock` (predeterminado), implementado por `MockCardsRepository` con fixtures locales y latencia simulada. `VITE_CARDS_SOURCE` puede valer `mock`; otro valor falla explícitamente porque no existe adaptador HTTP.
-
-Para integrar un backend real, definir primero contrato y autenticación con el sistema host; implementar un adaptador de `CardsRepository`, validar las respuestas externas antes de mapearlas a los tipos del dominio y registrarlo en la fábrica. Mantener errores traducibles y no registrar PAN completo, credenciales ni datos sensibles. Esta aplicación no define URL, endpoints, autenticación, CORS ni contrato de API; no realiza llamadas de red.
+Antes de implementar el adaptador HTTP, acordar con el backend rutas, método, autenticación provista por el shell de banca, esquema y validación de respuestas, paginación/orden de movimientos, manejo de errores y política de timeout. El contrato de dominio actual está en `src/domain/card.ts`; los identificadores de tarjeta se pasan al gateway. No hay llamadas remotas en la configuración predeterminada. No enviar PAN completo ni datos sensibles que la pantalla no necesita; el frontend presenta únicamente los últimos cuatro dígitos mediante el componente de PAN enmascarado.
 
 ## Persistencia y datos
 
-No hay persistencia del lado cliente: los fixtures de demostración viven en memoria y no se usan `localStorage` ni `sessionStorage`. No se deben persistir datos de tarjeta en el navegador. La persistencia de producción pertenece al backend, cuya tecnología, esquema, retención y política de datos no están especificados aquí. La vista presenta el PAN enmascarado; usar datos ficticios en desarrollo.
+No existe persistencia cliente ni backend implementado por esta aplicación: no usa `localStorage`, `sessionStorage` ni IndexedDB. El mock obtiene datos de `src/mocks/cards.fixture.ts` y no los guarda. La integración, autenticación y almacenamiento de datos deben ser provistos por el entorno bancario/backend y diseñados antes de habilitar el adaptador HTTP.
 
-## Configuración y seguridad
+## Pruebas
 
-`VITE_LOCALE` se menciona como locale opcional en la configuración anterior, pero no se observa que la aplicación lo consuma: el formateador tiene su propia configuración. No se requiere archivo `.env` para el modo mock. Las variables `VITE_*` quedan expuestas al cliente; nunca colocar secretos, tokens o credenciales en ellas. La autenticación y el enrutamiento se consideran responsabilidad de la aplicación host.
-
-## Estructura relevante
-
-- `src/domain/`: contratos y tipos.
-- `src/infrastructure/`: fixtures, repositorio mock y fábrica.
-- `src/composables/useCardsQuery.ts`: carga de tarjetas, selección y consulta/filtro de movimientos.
-- `src/pages/TarjetasConsultaPage.vue`: composición de estados loading, empty, error y ready.
-- `tests/unit`, `tests/component`, `tests/e2e`: pruebas existentes.
+Vitest usa jsdom. Las pruebas existentes verifican formato de importes/fechas y enmascaramiento, selección del gateway, componentes y flujo de listado a detalle; la integración verifica que el modo mock no invoque `fetch`, además de estados de error y no encontrado. Ejecutar con `npm test`. No se afirma que las pruebas o el build pasen sin ejecutarlos.
