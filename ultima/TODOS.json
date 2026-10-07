@@ -1,7 +1,7 @@
 [
   {
     "id": "T01-read-context",
-    "title": "Leer SGC-CONTEXT.json, DESIGN.md y los requisitos",
+    "title": "Leer context-package.json, SGC-CONTEXT.json y los requisitos",
     "dependsOn": [],
     "acceptance": "Requisitos y restricciones citados en el resumen final",
     "evidence": {
@@ -11,51 +11,65 @@
     "status": "unverified"
   },
   {
-    "id": "T02-source",
-    "title": "Implementar la capa Full Stack en React + TypeScript + Java + Quarkus para \"Consulta\" sobre Tarjetas con patrón Component-based (Atomic Design)",
+    "id": "T02-ui",
+    "title": "Implementar la interfaz de Banca por Internet para \"Consulta\" sobre Tarjetas en src/App.tsx y src/styles.css",
     "dependsOn": [
       "T01-read-context"
     ],
-    "acceptance": "Fuentes del stack escritas en el workspace",
+    "acceptance": "src/App.tsx y src/styles.css modificados",
     "evidence": {
       "kind": "file",
-      "ref": "src"
+      "ref": "src/App.tsx"
     },
     "status": "done"
   },
   {
-    "id": "T03-syntax",
-    "title": "Verificar sintaxis de los archivos con el validador local disponible",
+    "id": "T03-interaction",
+    "title": "Implementar el botón y texto esperado del criterio de aceptación",
     "dependsOn": [
-      "T02-source"
+      "T02-ui"
     ],
-    "acceptance": "Sin errores de sintaxis en los archivos verificables",
+    "acceptance": "Interacción real validada en navegador",
     "evidence": {
       "kind": "validation",
-      "ref": "syntax"
+      "ref": "browser-interaction"
     },
     "status": "done"
   },
   {
-    "id": "T04-tests",
-    "title": "Incluir pruebas (Unitarias) del stack",
+    "id": "T04-build",
+    "title": "Compilar sin errores de tipos ni de build",
     "dependsOn": [
-      "T02-source"
+      "T02-ui"
     ],
-    "acceptance": "Archivos de prueba presentes",
+    "acceptance": "tsc y vite build correctos",
     "evidence": {
       "kind": "validation",
-      "ref": "tests"
+      "ref": "build"
     },
     "status": "done"
   },
   {
-    "id": "T05-docs",
-    "title": "Documentar build/ejecución, integración (sin definir) y persistencia (No requiere)",
+    "id": "T05-tests",
+    "title": "Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff",
     "dependsOn": [
-      "T02-source"
+      "T03-interaction",
+      "T04-build"
     ],
-    "acceptance": "README.md presente",
+    "acceptance": "handoff-result.json con validaciones",
+    "evidence": {
+      "kind": "file",
+      "ref": "handoff-result.json"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T06-docs",
+    "title": "Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia No requiere",
+    "dependsOn": [
+      "T05-tests"
+    ],
+    "acceptance": "README del resultado publicado",
     "evidence": {
       "kind": "file",
       "ref": "README.md"
@@ -63,18 +77,16 @@
     "status": "done"
   },
   {
-    "id": "T06-handoff",
-    "title": "Cerrar con resumen candidate sin afirmar compilación ni producción",
+    "id": "T07-handoff",
+    "title": "Cerrar con resumen candidate sin afirmar producción",
     "dependsOn": [
-      "T03-syntax",
-      "T04-tests",
-      "T05-docs"
+      "T05-tests"
     ],
-    "acceptance": "Resumen con lo no verificado",
+    "acceptance": "handoff-result.json válido",
     "evidence": {
-      "kind": "manual",
-      "ref": "handoff"
+      "kind": "file",
+      "ref": "handoff-result.json"
     },
-    "status": "unverified"
+    "status": "done"
   }
 ]

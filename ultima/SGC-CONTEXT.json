@@ -1,14 +1,13 @@
 {
   "answers": {
     "where": "Banca por Internet",
-    "pattern": "Component-based (Atomic Design)",
-    "tests": "Unitarias",
-    "stack": "React + TypeScript + Java + Quarkus",
     "type": "Consulta",
     "domain": "Tarjetas",
-    "layer": "Full Stack",
-    "backendStack": "Java + Quarkus",
-    "persistence": "No requiere"
+    "layer": "Frontend",
+    "pattern": "Component-based (Atomic Design)",
+    "stack": "React + TypeScript",
+    "persistence": "No requiere",
+    "tests": "Unitarias"
   },
   "sgc": {
     "status": "fallback",
