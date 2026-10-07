@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "where": "Banca por Internet",
+    "type": "Consulta",
+    "domain": "Tarjetas",
+    "layer": "Frontend",
+    "pattern": "Component-based (Atomic Design)",
+    "stack": "Vue 3 + TypeScript",
+    "tests": "Unitarias"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

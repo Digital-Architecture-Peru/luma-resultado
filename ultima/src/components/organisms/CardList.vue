@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import type { CardSummary } from '../../domain/card'
+import type { Card } from '../../domain/card'
 import CardSummaryItem from '../molecules/CardSummaryItem.vue'
 
-defineProps<{ cards: CardSummary[]; selectedId?: string | null }>()
-const emit = defineEmits<{ (e: 'select', id: string): void }>()
+defineProps<{ cards: Card[]; selectedId: string | null }>()
+defineEmits<{ (e: 'select', id: string): void }>()
 </script>
 
 <template>
-  <ul class="card-list" aria-label="Mis tarjetas">
-    <li v-for="c in cards" :key="c.id">
-      <CardSummaryItem :card="c" :selected="c.id === selectedId" @select="emit('select', $event)" />
-    </li>
-  </ul>
+  <section aria-labelledby="cards-title">
+    <h2 id="cards-title">Mis tarjetas</h2>
+    <p v-if="cards.length === 0" class="empty">No tienes tarjetas para mostrar.</p>
+    <ul v-else class="list">
+      <li v-for="card in cards" :key="card.id">
+        <CardSummaryItem
+          :card="card"
+          :selected="card.id === selectedId"
+          @select="$emit('select', $event)"
+        />
+      </li>
+    </ul>
+  </section>
 </template>
 
 <style scoped>
-.card-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.empty { color: #444; }
 </style>
