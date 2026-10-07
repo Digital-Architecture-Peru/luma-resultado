@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-07T21:54:31.222Z",
+  "actualizado": "2026-10-07T23:56:40.887Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -451,17 +451,17 @@
         "persistence": "No requiere",
         "tests": "Unitarias"
       },
-      "commit": "26494c380095552e9c8868792b5335c74b619535",
-      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/56",
-      "distTree": "39183ff868231bdc3da26f288c322c16d0790a89",
+      "commit": "f4271698904621c46581a50360351e6f29cdff3c",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/57",
+      "distTree": "285f134bc7666dd3afd9069a3ba2732f4a2124d4",
       "distRuta": "ultima/dist",
-      "fecha": "2026-10-07T21:54:16Z",
-      "duracion_s": 110,
+      "fecha": "2026-10-07T23:56:24Z",
+      "duracion_s": 102,
       "etapas": [
         {
           "etapa": "Preflight",
           "segundo": 0,
-          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 351537be-58bc-4732-adc9-91a368529cb8 registrado en /api/construccion."
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo ff4ec6cd-036f-4d74-9bde-4804b1b20928 registrado en /api/construccion."
         },
         {
           "etapa": "Contexto",
@@ -475,23 +475,23 @@
         },
         {
           "etapa": "Build",
-          "segundo": 0,
-          "detalle": "construcción iniciada en segundo plano (create React nuevo, tarea e7335115-36f7-40d2-bca8-bdb9f67ae4c9). Copilot CLI trabaja sin bloquear el chat; te enviaré la captura y la URL cuando termine."
+          "segundo": 1,
+          "detalle": "construcción iniciada en segundo plano (create React nuevo, tarea 778fff65-52b6-4439-9d13-58ec554e959b). Copilot CLI trabaja sin bloquear el chat; te enviaré la captura y la URL cuando termine."
         },
         {
           "etapa": "Test",
-          "segundo": 92,
+          "segundo": 78,
           "detalle": "tipos, build e interacción real en navegador correctos; smoke HTTP 200 del preview. Todos verificados: 6/7."
         },
         {
           "etapa": "Despliegue",
-          "segundo": 92,
+          "segundo": 78,
           "detalle": "publicando en GitHub…"
         },
         {
           "etapa": "Cierre",
-          "segundo": 110,
-          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 26494c3: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/26494c380095552e9c8868792b5335c74b619535\nPull Request: https://github.com/Digita"
+          "segundo": 102,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit f427169: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/f4271698904621c46581a50360351e6f29cdff3c\nPull Request: https://github.com/Digita"
         }
       ]
     }
