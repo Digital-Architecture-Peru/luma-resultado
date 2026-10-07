@@ -1,15 +1,16 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App";
-import "./styles.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { httpTarjetasApi } from './api/tarjetasApi';
+import './styles.css';
 
-const container = document.getElementById("root");
-if (!container) {
-  throw new Error("No se encontro el elemento #root");
+const root = document.getElementById('root');
+if (!root) {
+  throw new Error('No se encontró el elemento #root');
 }
 
-createRoot(container).render(
+createRoot(root).render(
   <StrictMode>
-    <App />
+    <App api={httpTarjetasApi} />
   </StrictMode>,
 );
