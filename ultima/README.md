@@ -1,25 +1,73 @@
-# Microapp 01642e4e-7a0b-4612-8054-7dfeb3c22c9b
+# Consulta de tarjetas
 
-Candidate generada por Microapp Builder y validada en navegador local; no es producción.
+Aplicación frontend de consulta de tarjetas, construida con Vue 3, TypeScript y Vite. Presenta una lista seleccionable y el detalle de la tarjeta, con estados de carga, vacío y error. El estado de datos reside en el composable `useCards`; no hay backend conectado.
 
-Nueva capacidad (guion Luma)
-- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
-- ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Cuentas
-- ¿Qué necesitas construir? Frontend
-- Patrones disponibles Micro-frontends
-- ¿Qué stack? React + TypeScript
-- ¿Qué integración? Ninguna
-- ¿Persistencia? No requiere
-- ¿Qué pruebas? Unitarias
+## Requisitos
 
-Construye una microapp React interactiva y accesible que represente esta capacidad con datos ficticios en memoria. Lista de todos que debes ejecutar en orden:
-- [T01-read-context] Leer context-package.json, SGC-CONTEXT.json y los requisitos (acepta: Requisitos y restricciones citados en el resumen final)
-- [T02-ui] Implementar la interfaz de Banca por Internet para "Consulta" sobre Cuentas en src/App.tsx y src/styles.css (acepta: src/App.tsx y src/styles.css modificados)
-- [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)
-- [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)
-- [T05-tests] Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)
-- [T06-docs] Documentar decisiones: capa Frontend, patrón Micro-frontends, stack React + TypeScript, integración Ninguna, persistencia No requiere (acepta: README del resultado publicado)
-- [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)
+- Node.js compatible con Vite 5 (Node.js 18+ recomendado).
+- npm.
 
-SGC: fallback (SGC no configurado)
+## Instalar, ejecutar y compilar
+
+Desde la raíz del proyecto:
+
+```sh
+npm install
+npm run dev
+```
+
+Vite mostrará la URL local en la terminal. Para generar la versión de producción y servirla localmente:
+
+```sh
+npm run build
+npm run preview
+```
+
+`npm run build` ejecuta primero la comprobación de tipos de Vue (`vue-tsc --noEmit`) y luego crea los artefactos de Vite en `dist/`.
+
+## Comprobaciones y pruebas
+
+```sh
+npm run typecheck  # comprobación TypeScript y componentes Vue
+npm test           # suite Vitest en entorno jsdom, una ejecución
+```
+
+Las pruebas existentes cubren formato del dominio, componentes, página, estados del composable y comportamiento del repositorio en memoria. Para desarrollar la suite en modo interactivo se puede invocar `npx vitest` (requiere dependencias instaladas).
+
+## Configuración
+
+`src/config.ts` lee variables de entorno de Vite:
+
+| Variable | Valor predeterminado | Uso |
+|---|---|---|
+| `VITE_LOCALE` | `es-PE` | Configuración regional de presentación |
+| `VITE_DEFAULT_CURRENCY` | `PEN` | Moneda predeterminada |
+
+Se pueden establecer en `.env.local` en la raíz del proyecto; por ejemplo:
+
+```dotenv
+VITE_LOCALE=es-PE
+VITE_DEFAULT_CURRENCY=PEN
+```
+
+No se necesita `.env.example` para ejecutar la aplicación. Las variables con prefijo `VITE_` se exponen al código del navegador: no colocar secretos ni credenciales en ellas.
+
+## Arquitectura e integración de datos
+
+- `src/domain/`: modelo `Card` y formateadores.
+- `src/data/CardsRepository.ts`: contrato de datos (`list` y `getById`).
+- `src/data/inMemoryCardsRepository.ts` y `src/data/fixtures/cards.ts`: implementación y datos ficticios usados actualmente.
+- `src/composables/useCards.ts`: carga, selección y estados de presentación.
+- `src/components/` y `src/pages/CardsConsultaPage.vue`: interfaz organizada en átomos, moléculas, organismos, plantilla y página.
+
+La página acepta opcionalmente una implementación `repository` de `CardsRepository`; si no se proporciona, crea `InMemoryCardsRepository`. Para integrar una API, impleméntese ese contrato en un adaptador separado y pásese a la página, conservando el modelo de dominio y manejando errores de red en el adaptador. No hay llamadas HTTP ni servicio externo configurado en el estado actual; configurar un endpoint por sí solo no conecta una API.
+
+## Persistencia y datos
+
+No existe persistencia. El repositorio en memoria inicializa sus datos desde fixtures ficticios; los cambios no sobreviven a una recarga y no se escriben en almacenamiento local ni en una base de datos. Para persistir, debe añadirse un adaptador de repositorio apropiado al servicio elegido, sin acoplar la UI a detalles de almacenamiento.
+
+El modelo solo contempla `last4` (los últimos cuatro dígitos), no el número completo de tarjeta (PAN). Las fixtures son únicamente datos de demostración y no deben sustituirse por datos reales sensibles.
+
+## Estado de verificación
+
+Se documentan scripts declarados en `package.json` y la estructura observada del proyecto. No se ejecutaron instalación, compilación, servidor ni pruebas en este entorno; sus resultados quedan sin verificar.

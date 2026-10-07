@@ -3,82 +3,87 @@
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Cuentas
+- ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Micro-frontends
-- ¿Qué stack? React + TypeScript
+- Patrones disponibles Component-based (Atomic Design)
+- ¿Qué stack? Vue 3 + TypeScript
 - ¿Qué integración? Ninguna
 - ¿Persistencia? No requiere
-- ¿Qué pruebas? Unitarias
+- ¿Qué pruebas? Estándar completo
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Consulta" sobre Cuentas en Banca por Internet, capa Frontend.
-- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
-- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
-- Accesible (etiquetas, foco, contraste) y responsive.
+- Solución en Vue 3 + TypeScript (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
+- Integración Ninguna y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
+- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- Stack (React + TypeScript), patrón (Micro-frontends), integración (Ninguna) y persistencia (No requiere) se documentan; React/TypeScript se valida con build y navegador.
+- El código se genera en Vue 3 + TypeScript sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
+- Integración (Ninguna), persistencia (No requiere) y pruebas (Estándar completo) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
-- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
+- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Cuentas (Banca por Internet)
-
-> Complementa el diseño base. Mantiene sus criterios de aceptación: botón **"Probar capacidad"** visible al cargar, texto **"Capacidad simulada"** en `role="status"`, tsc/build correctos y smoke HTTP 200.
+# DESIGN · Refinamiento: Consulta de Tarjetas (Vue 3 + TypeScript)
 
 ## Decisiones de arquitectura
+
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Microapp autocontenida, un solo punto de entrada (`App`), sin estado global | Encaja con Micro-frontends: el host podría montarla sin acoplarse. No se agrega Module Federation porque la base prohíbe dependencias nuevas. |
-| D2 | Estilos con prefijo raíz `.mf-cuentas` y sin selectores globales | Evita que el CSS afecte al host. |
-| D3 | Datos ficticios en un módulo tipado aparte (`mockData.ts`) | Aísla la fuente de datos para sustituirla luego por un contrato real, que hoy no existe (integración: Ninguna). |
-| D4 | Lógica de presentación en funciones puras (`format.ts`): enmascarar número de cuenta y formatear saldo con `Intl.NumberFormat` | Se puede probar de forma unitaria sin DOM y sin dependencias nuevas. |
-| D5 | Estado solo con `useState`: cuenta seleccionada y estado de la simulación | Consulta de solo lectura sin persistencia; no justifica un store. |
-| D6 | Banner visible "Datos ficticios" | Evita que se confunda con información bancaria real. |
+| D1 | Vite + SFC `<script setup lang="ts">`, `vue-tsc` para tipado | Es la plantilla oficial de Vue 3 y permite chequeo estático en CI. |
+| D2 | Capas Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón pedido. Los atoms son solo presentacionales y la lógica de dominio queda fuera de los componentes. |
+| D3 | Sin `vue-router` ni Pinia | Hay una sola vista con selección local, así que no se necesitan. Además evita chocar con el router del host de Banca por Internet. |
+| D4 | Puerto `CardsRepository` con implementación `InMemoryCardsRepository` y fixtures | La integración es Ninguna, pero la fuente de datos queda reemplazable sin tocar la UI. |
+| D5 | Composable `useCards()` con estados `idle/loading/success/empty/error` | Centraliza el flujo de consulta y se puede probar sin montar componentes. |
+| D6 | El dominio solo guarda `last4`; nunca hay PAN completo | Minimiza la exposición de datos sensibles. Todos los datos son ficticios. |
+| D7 | Formato con `Intl.NumberFormat`/`DateTimeFormat`; locale y moneda vía `VITE_*` | Evita dependencias extra. Sin secretos. |
+| D8 | Estilos con CSS scoped y tokens en custom properties, sin librería de UI | El design system del host es desconocido y los tokens son fáciles de remapear. |
+| D9 | Vitest + `@vue/test-utils` + jsdom | Integración nativa con Vite. Es la única dependencia de pruebas. |
 
 ## Estructura de módulos
 ```
-src/
-  main.tsx              (existente, sin cambios)
-  App.tsx               raíz: lista de cuentas, detalle, botón y status   [T02/T03]
-  styles.css            estilos con prefijo .mf-cuentas, responsive, foco visible [T02]
-  cuentas/
-    types.ts            Cuenta { id, tipo, numero, moneda, saldo }
-    mockData.ts         3–4 cuentas ficticias en memoria
-    format.ts           maskAccount(), formatBalance()
+cards-consulta/
+  package.json · tsconfig.json · vite.config.ts · index.html · .env.example · README.md
+  src/
+    main.ts · App.vue
+    domain/      card.ts (tipos) · cardFormat.ts (maskCard, formatMoney, utilization)
+    data/        CardsRepository.ts · inMemoryCardsRepository.ts · fixtures/cards.ts
+    composables/ useCards.ts
+    components/
+      atoms/     BaseBadge · MoneyAmount · MaskedCardNumber · ProgressBar
+      molecules/ CardSummaryItem · BalanceRow · StatusMessage
+      organisms/ CardList · CardDetailPanel
+      templates/ ConsultaLayout
+    pages/       CardsConsultaPage.vue
+  tests/unit/    domain/ · data/ · composables/ · components/{atoms,molecules,organisms}/ · pages/
 ```
-Si el builder prefiere el cambio mínimo, también es válido dejar todo en `App.tsx`. Lo obligatorio es modificar `App.tsx` y `styles.css`.
-
-## Interacción y accesibilidad
-- Lista de cuentas como `<ul>` con botones seleccionables (`aria-pressed`). El detalle va en una `<section>` con encabezado.
-- Los números de cuenta solo se muestran enmascarados (`•••• 1234`).
-- El botón "Probar capacidad" está fuera de cualquier condicional para que sea visible al cargar. El `role="status"` existe desde el inicio vacío y recibe el texto al pulsar.
-- Foco visible, contraste AA, layout de una columna por debajo de 640 px.
-
-## Plan de pruebas unitarias (T05, se documenta en TODOS.json)
-1. `maskAccount` conserva solo los últimos 4 dígitos.
-2. `formatBalance` respeta la moneda y los decimales.
-3. `mockData` tiene ids únicos y saldos numéricos.
-4. Interacción botón → status: se ejecuta solo si el proyecto ya incluye un runner. Si no, queda documentada y se cubre con la validación en navegador.
 
 ## Hipótesis
-- H1: el host de Micro-frontends y su mecanismo de montaje están fuera de alcance. Solo se garantiza el aislamiento (D1, D2).
-- H2: no se sabe si la plantilla trae Vitest o Testing Library. No se agregan.
-- H3: las monedas ficticias (p. ej. PEN/USD) y el locale `es` son supuestos, no requisitos.
-- H4: SGC está en fallback, así que no se aplican lineamientos institucionales de UI ni de seguridad. Deben revisarse cuando SGC esté disponible.
+- **H1.** La consulta muestra un listado de tarjetas (crédito/débito, estado, número enmascarado) y el detalle de la tarjeta seleccionada: línea, disponible, saldo, fecha de corte y fecha de pago. Pendiente de confirmar con negocio.
+- **H2.** Locale `es-PE` y moneda `PEN` por defecto. Ambos son configurables.
+- **H3.** El módulo se embebe en el host como vista autónoma. El mecanismo concreto (micro-frontend o librería) no está definido.
+- **H4.** "Estándar completo" significa pruebas unitarias de dominio, repositorio y composable, más pruebas de componentes por cada capa atómica. E2E queda fuera.
+- **H5.** El validador local puede no soportar `.vue`. Esos archivos quedarían sin verificar.
+- **H6.** Las versiones de dependencias son candidatas y no fueron resueltas contra un registry.
 
-## Riesgos
+## Riesgos y mitigación
+
 | Riesgo | Mitigación |
 |---|---|
-| Texto o rol del criterio de aceptación alterado | Usar los literales exactos y verificarlos en navegador (T03). |
-| Fuga de CSS al host | Prefijo `.mf-cuentas` y sin reset global. |
-| Pruebas unitarias no ejecutables | Funciones puras más el plan en TODOS.json, declarando la limitación en el handoff. |
-| Datos percibidos como reales | Banner fijo y números enmascarados. |
-| Presentar el resultado como apto para producción | El handoff se cierra como **candidate** (T07). |
+| Exposición de PAN o datos reales | D6, fixtures ficticios y un test que confirma que solo se renderizan 4 dígitos. |
+| No compila: nada se ejecuta en este host | Estado *candidate*. Build, `vue-tsc` y `vitest` deben correr en CI. |
+| Estilos inconsistentes con el host | Tokens CSS (D8) y validación posterior con UX. |
+| Accesibilidad insuficiente | HTML semántico (`button`, `aria-live` en StatusMessage) y aserciones de roles en los tests. |
+| Alcance funcional mal interpretado (H1) | Fixtures y tipos aislados en `domain/` y `data/` para ajustarlos rápido. |
+
+## Aceptación (complementa la base, no la reemplaza)
+- `maskCard` nunca devuelve más de 4 dígitos visibles.
+- `useCards` expone los estados `loading`, `success`, `empty` y `error`, cada uno cubierto por un test.
+- Existe al menos un test por capa atómica.
+- El README documenta `npm install`, `npm run dev`, `npm test`, las variables de `.env.example`, la integración (Ninguna) y la persistencia (No requiere).
