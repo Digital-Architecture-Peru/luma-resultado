@@ -1,10 +1,10 @@
 {
   "answers": {
-    "stack": "Svelte",
+    "stack": "React + TypeScript",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
-    "type": "Notificación",
+    "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Frontend"
   },
