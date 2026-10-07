@@ -1,23 +1,52 @@
-# Microapp 25f82888-d440-484a-8dd3-8a7af403f727
+# Banca por Internet · Consulta de tarjetas
 
-Candidate generada por Microapp Builder y validada en navegador local; no es producción.
+Aplicación frontend Angular de consulta en modo solo lectura: lista tarjetas, permite abrir su detalle y muestra movimientos. La interfaz emplea componentes standalone y una estructura de UI inspirada en Atomic Design. Los datos actuales son ficticios; no se conecta a servicios externos ni persiste cambios.
 
-Nueva capacidad (guion Luma)
-- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
-- ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Tarjetas
-- ¿Qué necesitas construir? Frontend
-- Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript
-- ¿Qué pruebas? Unitarias
+## Requisitos
 
-Construye una microapp React interactiva y accesible que represente esta capacidad con datos ficticios en memoria. Lista de todos que debes ejecutar en orden:
-- [T01-read-context] Leer context-package.json, SGC-CONTEXT.json y los requisitos (acepta: Requisitos y restricciones citados en el resumen final)
-- [T02-ui] Implementar la interfaz de Banca por Internet para "Consulta" sobre Tarjetas en src/App.tsx y src/styles.css (acepta: src/App.tsx y src/styles.css modificados)
-- [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)
-- [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)
-- [T05-tests] Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)
-- [T06-docs] Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia sin definir (acepta: README del resultado publicado)
-- [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)
+- Node.js 20.19 o posterior, conforme al README existente (la versión exacta requerida debe confirmarse con el entorno de despliegue).
+- npm.
 
-SGC: fallback (SGC no configurado)
+## Compilar, ejecutar y probar
+
+Desde la raíz del proyecto:
+
+```sh
+npm install
+npm run build
+npm start
+npm test
+```
+
+`npm start` ejecuta Angular CLI (`ng serve`); abre la URL local que indique la CLI. `npm run build` ejecuta `ng build`. `npm test` está configurado como `ng test --watch=false`, para ejecutar Vitest en modo no interactivo según la configuración del proyecto. Las pruebas existentes cubren la fachada, páginas, componentes UI y el pipe de enmascaramiento.
+
+No se han ejecutado estos comandos durante la elaboración de esta documentación. En la versión actual, el script `build` no declara explícitamente un paso separado de comprobación de tipos; Angular CLI realiza la compilación configurada por el proyecto.
+
+## Navegación y comportamiento
+
+- `/` redirige a `/tarjetas`.
+- `/tarjetas` muestra tarjetas; `/tarjetas/:id` presenta el detalle y sus movimientos.
+- La interfaz distingue estados de carga, vacío, error y datos. El detalle usa el estado vacío para una tarjeta inexistente.
+- Los importes usan USD y locale `es` por configuración de entorno.
+
+## Integración
+
+La frontera de lectura es `CardsRepository`, con operaciones `list()`, `getById(id)` y `movements(cardId)`. `MockCardsAdapter` implementa ese contrato con datos locales, y `CardsFacade` entrega el estado a la interfaz mediante signals.
+
+`src/environments/environment.ts` tiene `useMock: true`. La fábrica de proveedores en `src/app/app.config.ts` lanza un error cuando `useMock` es `false`: no existe todavía un adaptador HTTP ni un contrato de API definido. Antes de integrar un backend se deben acordar autenticación/sesión con la aplicación host, rutas y esquemas de respuesta, errores, autorización, paginación/orden de movimientos y tratamiento de datos sensibles. Después se implementará un adaptador de `CardsRepository` y se configurará en el punto de composición; no se deben introducir credenciales en el código fuente.
+
+## Persistencia y datos
+
+No hay persistencia en navegador o servidor. `src/app/core/cards/adapters/mock-data.ts` contiene datos ficticios en memoria; el adaptador emite copias/filtrados de esos datos. Recargar la aplicación vuelve a la misma muestra. La aplicación no ofrece operaciones de modificación.
+
+## Seguridad y límites
+
+El modelo declara que el número de tarjeta se recibe enmascarado y no incluye PAN completo ni CVV; el pipe `maskPan` complementa la presentación enmascarada. No enviar datos reales a la implementación mock. La autenticación y autorización de una integración real quedan a cargo del contrato y del host de banca, aún por definir. No se afirma cumplimiento de requisitos corporativos o de seguridad sin una revisión específica.
+
+## Fuentes principales
+
+- `src/app/core/cards/`: modelos, puerto, adaptador ficticio y fachada.
+- `src/app/features/cards/pages/`: páginas y navegación.
+- `src/app/shared/ui/`: componentes de interfaz organizados en átomos, moléculas, organismos y plantilla.
+- `src/app/shared/pipes/`: formato de presentación.
+- `src/environments/environment.ts`: configuración no sensible de entorno.

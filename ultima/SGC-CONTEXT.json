@@ -5,7 +5,7 @@
     "domain": "Tarjetas",
     "layer": "Frontend",
     "pattern": "Component-based (Atomic Design)",
-    "stack": "React + TypeScript",
+    "stack": "Angular",
     "tests": "Unitarias"
   },
   "sgc": {
