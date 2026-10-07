@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "stack": "React + TypeScript",
+    "tests": "Unitarias",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "Banca por Internet",
+    "type": "Notificación",
+    "domain": "Tarjetas",
+    "layer": "Frontend"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
