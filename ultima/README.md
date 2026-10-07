@@ -1,48 +1,51 @@
-# Banca por Internet · Transacciones de tarjetas
+# Transacción de tarjetas — Vue 3 + TypeScript
 
-Aplicación frontend Angular 20 (componentes standalone, signals y zoneless) para registrar consumos y pagos de tarjetas. Presenta tarjetas y transacciones ficticias; no se conecta a un banco ni realiza llamadas de red. La arquitectura separa dominio, aplicación, infraestructura y UI con Atomic Design.
+Aplicación frontend mobile-first para simular pagos con tarjeta. Incluye formulario, validación, saldo disponible y movimientos. La integración actual es ficticia: los datos viven solo en memoria y se reinician al recargar o reiniciar la aplicación. No procesa pagos reales.
 
 ## Requisitos
 
-- Node.js compatible con Angular 20 (Node.js 20.19+ o 22.12+).
+- Node.js compatible con la versión de Vite 5 (Node.js 18+ recomendado).
 - npm.
 
 ## Instalar, ejecutar y probar
 
-Desde la raíz del proyecto:
-
 ```sh
 npm install
-npm start
+npm run dev
 ```
 
-Abre la URL local que informe Angular CLI (normalmente `http://localhost:4200`). Para generar la compilación de producción y ejecutar las pruebas unitarias en una sola pasada:
+Vite imprime la URL local en la terminal. Para compilar y ejecutar la suite de pruebas:
 
 ```sh
-npm run build
-npm test
+npm run build   # vue-tsc --noEmit y luego build de producción con Vite
+npm test        # Vitest, una ejecución no interactiva
 ```
 
-`npm run build` ejecuta `ng build` con la configuración de producción por defecto y comprobación de tipos/plantillas Angular. `npm test` usa el builder unit-test de Angular con Vitest y jsdom en modo no interactivo. Las pruebas se encuentran junto a las capas bajo `src/app` y cubren validación, store, controles, formulario y página. No se requiere servicio externo para desarrollar o probar.
+Para inspeccionar localmente el build, después de compilar:
 
-## Organización
+```sh
+npm run preview
+```
 
-- `src/app/domain`: modelos, validación pura y puerto abstracto `CardsGateway`.
-- `src/app/application/transactions.store.ts`: casos de uso/estado de la feature con señales.
-- `src/app/infrastructure/in-memory-cards.gateway.ts`: adaptador con datos ficticios.
-- `src/app/atoms`, `molecules`, `organisms`, `pages`: componentes de presentación.
-- `src/app/app.config.ts`: composición de dependencias Angular.
+## Estructura
 
-Las reglas de dominio validan importes positivos con hasta dos decimales, consumo dentro del crédito disponible y límite operativo, pago que no exceda la deuda, tarjeta activa y descripción de 3 a 60 caracteres. La validación del cliente mejora la experiencia; cualquier integración real debe repetir las reglas en el servidor.
+- `src/domain/`: tipos y reglas puras de validación.
+- `src/services/transactionGateway.ts`: contrato `TransactionGateway` y adaptador en memoria.
+- `src/composables/useTransactions.ts`: estado y operaciones asíncronas de la pantalla.
+- `src/components/`: interfaz organizada en átomos, moléculas, organismos, plantilla y página.
+- `src/App.vue`: composición de la página y el adaptador concreto.
+- `tests/`: pruebas unitarias de validación, gateway y componentes/página (Vitest + jsdom).
 
 ## Integración
 
-Actualmente no hay integración backend: `CardsGateway` define el puerto de lectura de tarjetas, consulta de historial y envío de transacciones. Para conectar un servicio real, implementar un adaptador (por ejemplo, `HttpCardsGateway`) que extienda/implemente ese contrato, traduzca el contrato HTTP y los errores a modelos de dominio —incluido `TransactionRejectedError` para rechazos de negocio— y reemplazar el provider `InMemoryCardsGateway` en `src/app/app.config.ts`. Configurar `provideHttpClient()` al añadir `HttpClient`. Mantener validación/autorización y límites de crédito en el servidor; no confiar en el estado del navegador. La URL del servicio debe configurarse mediante configuración de despliegue apropiada, sin incluir credenciales ni secretos en el bundle; esta plantilla no define endpoint ni configuración de entorno porque no existe integración implementada.
+No hay API, URL base ni servicio de pagos configurado. `TransactionGateway` es el límite de integración. Para conectar un backend, implementar sus tres operaciones (`listCards`, `listTransactions`, `submit`) en un adaptador que satisfaga la interfaz, y seleccionarlo desde `src/App.vue`, manteniendo la vista desacoplada del transporte. No se debe confiar en la validación del navegador: el servidor debe volver a validar tarjeta, saldo, monto y comercio, aplicar autorización y devolver errores manejables.
+
+Si el adaptador usa HTTP, puede leer una URL pública de configuración como `import.meta.env.VITE_API_BASE_URL` con tipos Vite y `.env.local` ignorado por Git. Vite incorpora las variables `VITE_*` al bundle del cliente: nunca poner secretos, tokens privados ni credenciales en ellas. Definir el endpoint, autenticación, formato de errores, límites y política de reintentos junto con el contrato del backend antes de habilitar esa integración. Actualmente la app no lee esa variable ni realiza solicitudes de red.
 
 ## Persistencia y datos
 
-El adaptador mantiene tarjetas e historial únicamente en memoria. Los cambios se pierden al recargar o reiniciar; no hay base de datos, almacenamiento local ni persistencia entre sesiones. Los datos semilla son ficticios. Una futura persistencia pertenece al backend; si se introduce, definir almacenamiento y migraciones allí, proteger datos sensibles y conservar `CardsGateway` como frontera para desacoplar UI y dominio.
+El gateway en memoria inicializa tarjetas ficticias en `src/services/transactionGateway.ts`; los movimientos y saldos modificados existen solo durante la vida de esa instancia. No hay almacenamiento local ni base de datos, y recargar restablece los valores semilla. Para persistencia real, implementarla en el servicio backend detrás del mismo contrato, con almacenamiento transaccional y controles de autorización; no tratar datos del cliente como fuente de verdad. Los identificadores, saldos y fechas actuales son únicamente datos de demostración.
 
 ## Estado de verificación
 
-Este documento describe los scripts y la estructura configurada en el repositorio. No se afirma que build o pruebas hayan sido ejecutados en el entorno de generación.
+Este documento describe los scripts declarados en `package.json`; no se ejecutaron build ni pruebas al redactarlo.
