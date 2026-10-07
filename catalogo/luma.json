@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-07T21:25:50.927Z",
+  "actualizado": "2026-10-07T21:54:31.222Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -436,6 +436,62 @@
         {
           "etapa": "Cierre",
           "segundo": 383
+        }
+      ]
+    },
+    "Consulta|Tarjetas|Frontend|React + TypeScript||": {
+      "clave": "Consulta|Tarjetas|Frontend|React + TypeScript||",
+      "answers": {
+        "where": "Banca por Internet",
+        "type": "Consulta",
+        "domain": "Tarjetas",
+        "layer": "Frontend",
+        "pattern": "Component-based (Atomic Design)",
+        "stack": "React + TypeScript",
+        "persistence": "No requiere",
+        "tests": "Unitarias"
+      },
+      "commit": "26494c380095552e9c8868792b5335c74b619535",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/56",
+      "distTree": "39183ff868231bdc3da26f288c322c16d0790a89",
+      "distRuta": "ultima/dist",
+      "fecha": "2026-10-07T21:54:16Z",
+      "duracion_s": 110,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 351537be-58bc-4732-adc9-91a368529cb8 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 0,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 0,
+          "detalle": "construcción iniciada en segundo plano (create React nuevo, tarea e7335115-36f7-40d2-bca8-bdb9f67ae4c9). Copilot CLI trabaja sin bloquear el chat; te enviaré la captura y la URL cuando termine."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 92,
+          "detalle": "tipos, build e interacción real en navegador correctos; smoke HTTP 200 del preview. Todos verificados: 6/7."
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 92,
+          "detalle": "publicando en GitHub…"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 110,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 26494c3: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/26494c380095552e9c8868792b5335c74b619535\nPull Request: https://github.com/Digita"
         }
       ]
     }
