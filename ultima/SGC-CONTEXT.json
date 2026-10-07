@@ -2,8 +2,8 @@
   "answers": {
     "stack": "React + TypeScript",
     "tests": "Unitarias",
-    "pattern": "Component-based (Atomic Design)",
-    "where": "Portal empresas",
+    "pattern": "Feature-Sliced Design",
+    "where": "Banca por Internet",
     "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Frontend"
