@@ -6,7 +6,7 @@
     "layer": "Frontend",
     "pattern": "Component-based (Atomic Design)",
     "stack": "Vue 3 + TypeScript",
-    "tests": "Estándar completo"
+    "tests": "Unitarias"
   },
   "sgc": {
     "status": "fallback",

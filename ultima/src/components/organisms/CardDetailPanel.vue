@@ -1,31 +1,28 @@
 <script setup lang="ts">
-import type { Card } from '../../domain/card'
-import { formatDate } from '../../domain/money'
-import { LOCALE } from '../../config'
-import BaseBadge from '../atoms/BaseBadge.vue'
+import type { CardDetail } from '../../domain/card'
+import { formatDate } from '../../utils/format'
 import MaskedPan from '../atoms/MaskedPan.vue'
+import StatusBadge from '../atoms/StatusBadge.vue'
 import BalanceRow from '../molecules/BalanceRow.vue'
 
-defineProps<{ card: Card }>()
+defineProps<{ card: CardDetail }>()
 </script>
 
 <template>
-  <section class="detail" :aria-label="`Detalle de ${card.alias}`">
-    <header class="detail__head">
-      <h2>{{ card.alias }}</h2>
-      <MaskedPan :last4="card.last4" />
-      <BaseBadge :tone="card.status === 'active' ? 'success' : 'danger'">
-        {{ card.status === 'active' ? 'Activa' : card.status === 'blocked' ? 'Bloqueada' : 'Vencida' }}
-      </BaseBadge>
-    </header>
-    <dl class="detail__rows">
-      <BalanceRow v-if="card.type === 'credit'" label="Límite de crédito" :amount="card.creditLimit" :currency="card.currency" />
-      <BalanceRow label="Disponible" :amount="card.availableBalance" :currency="card.currency" />
-      <BalanceRow v-if="card.type === 'credit'" label="Saldo actual" :amount="card.currentBalance" :currency="card.currency" />
-      <BalanceRow v-if="card.type === 'credit'" label="Pago mínimo" :amount="card.minimumPayment" :currency="card.currency" />
+  <section class="detail" aria-labelledby="detail-title">
+    <h2 id="detail-title">{{ card.brand }} <MaskedPan :last4="card.last4" /></h2>
+    <p><StatusBadge :status="card.status" /> · {{ card.holderAlias }}</p>
+    <dl>
+      <BalanceRow v-if="card.type === 'CREDIT'" label="Línea de crédito" :amount="card.creditLimit" />
+      <BalanceRow label="Disponible" :amount="card.availableBalance" />
+      <BalanceRow label="Saldo actual" :amount="card.currentBalance" />
     </dl>
-    <p v-if="card.type === 'credit'" class="detail__dates">
-      Fecha de corte: {{ formatDate(card.cutoffDate, LOCALE) }} · Fecha de pago: {{ formatDate(card.dueDate, LOCALE) }}
-    </p>
+    <p>Fecha de corte: <strong>{{ formatDate(card.cutoffDate) }}</strong></p>
+    <p>Fecha de pago: <strong>{{ formatDate(card.paymentDueDate) }}</strong></p>
   </section>
 </template>
+
+<style scoped>
+.detail { padding: 1rem; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+dl { margin: 0 0 1rem; }
+</style>

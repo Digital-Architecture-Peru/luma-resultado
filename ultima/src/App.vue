@@ -1,5 +1,7 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import CardsQueryPage from './pages/CardsQueryPage.vue'
+</script>
 
 <template>
-  <router-view />
+  <CardsQueryPage />
 </template>

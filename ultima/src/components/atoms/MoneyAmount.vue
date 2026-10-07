@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatMoney } from '../../domain/money'
-import { LOCALE } from '../../config'
+import { formatMoney } from '../../utils/format'
 
-const props = defineProps<{ amount: number; currency: string; signed?: boolean }>()
-const text = computed(() => formatMoney(props.amount, props.currency, LOCALE))
-const kind = computed(() => (props.signed ? (props.amount < 0 ? 'neg' : 'pos') : 'plain'))
+const props = defineProps<{ amount: number }>()
+const text = computed(() => formatMoney(props.amount))
 </script>
 
 <template>
-  <span class="money" :class="`money--${kind}`">{{ text }}</span>
+  <span class="money-amount">{{ text }}</span>
 </template>
+
+<style scoped>
+.money-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+</style>

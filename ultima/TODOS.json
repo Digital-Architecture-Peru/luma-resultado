@@ -38,7 +38,7 @@
   },
   {
     "id": "T04-tests",
-    "title": "Incluir pruebas (Estándar completo) del stack",
+    "title": "Incluir pruebas (Unitarias) del stack",
     "dependsOn": [
       "T02-source"
     ],
