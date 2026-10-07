@@ -1,71 +1,46 @@
-# Consulta de tarjetas
+# Consulta de Tarjetas - Banca por Internet (candidate)
 
-Aplicación de consulta de tarjetas ficticias con frontend React 18 + TypeScript + Vite y API Java 17 + Spring Boot 3.3.4. No requiere credenciales ni servicios externos.
+Full Stack: `backend/` (Java 17 + Spring Boot 3.3, Maven, PostgreSQL + Flyway) y `frontend/` (React 18 + TypeScript + Vite, Atomic Design). Capacidad de solo lectura sobre datos ficticios.
 
-## Requisitos
+## API
+- `GET /api/v1/cards` - tarjetas del cliente.
+- `GET /api/v1/cards/{cardId}` - detalle. Tarjeta ajena o inexistente: 404 (`application/problem+json`).
+- Header obligatorio `X-Customer-Id` (hipotesis H1: cliente ficticio; en produccion vendria del token de sesion). Falta de header o UUID invalido: 400.
+- Solo se persisten y devuelven los ultimos 4 digitos (`**** **** **** 1234`).
+- `/actuator/health` para liveness.
 
-- JDK 17 o posterior compatible con Spring Boot 3.3.
-- Apache Maven 3.6.3+ (o Maven Wrapper si se incorpora en el futuro; actualmente no hay wrapper).
-- Node.js compatible con Vite 5 (Node 18+ recomendado) y npm.
+## Backend
+Capas: `api` -> `service` -> `port (CardRepository)` -> `adapter (JdbcCardRepository)`, con SQL parametrizado (`NamedParameterJdbcTemplate`).
 
-## Ejecutar localmente
+Variables de entorno (sin valores por defecto para credenciales):
+| Variable | Descripcion |
+|---|---|
+| `DB_URL` | JDBC, por defecto `jdbc:postgresql://localhost:5432/cards` |
+| `DB_USER` | usuario de PostgreSQL (por defecto `cards`) |
+| `DB_PASSWORD` | contrasena de PostgreSQL |
+| `CORS_ALLOWED_ORIGINS` | por defecto `http://localhost:5173` |
+| `PORT`, `LOG_LEVEL` | opcionales |
 
-Abrir dos terminales desde la raíz del repositorio.
-
-Terminal 1 — API:
-
-```sh
+```
 cd backend
-mvn spring-boot:run
+mvn test                # pruebas unitarias (no requieren base de datos)
+mvn package
+DB_USER=... DB_PASSWORD=... mvn spring-boot:run   # Flyway aplica V1 (esquema) y V2 (seed ficticio)
 ```
 
-La API queda en `http://localhost:8080`; para cambiar el puerto: `PORT=8090 mvn spring-boot:run` (PowerShell: `$env:PORT='8090'; mvn spring-boot:run`).
-
-Terminal 2 — frontend:
-
-```sh
+## Frontend
+Variables opcionales: `VITE_API_BASE_URL` (por defecto `http://localhost:8080`), `VITE_CUSTOMER_ID` (por defecto `CUST-1001`).
+```
 cd frontend
 npm install
+npm test        # vitest run
+npm run build   # tsc --noEmit && vite build
 npm run dev
 ```
 
-Abrir la URL local que imprime Vite. El servidor de desarrollo reenvía `/api` a `http://localhost:8080`. Para apuntar a otro destino: `VITE_API_TARGET=http://localhost:8090 npm run dev` (PowerShell: `$env:VITE_API_TARGET='http://localhost:8090'; npm run dev`). `VITE_API_TARGET` solo configura el proxy de desarrollo de Vite; no es una variable de configuración del backend.
+## Persistencia e integracion
+- PostgreSQL: tabla `card` con CHECK de tipo/estado, indice `idx_card_customer_id`; migraciones en `backend/src/main/resources/db/migration`.
+- Integracion con el core de tarjetas: sin definir. Se reemplaza implementando `CardRepository` con otro adaptador.
 
-## Compilar y probar
-
-Backend, desde `backend/`:
-
-```sh
-mvn test
-mvn package
-```
-
-Las pruebas usan JUnit 5, Spring Test y MockMvc; comprenden pruebas del servicio y del controlador, incluidos filtrado, validación del estado y respuestas para identificadores existentes e inexistentes. `mvn package` ejecuta también la fase de pruebas.
-
-Frontend, desde `frontend/` (después de `npm install`):
-
-```sh
-npm test
-npm run build
-```
-
-Vitest corre en modo no interactivo; el build ejecuta primero `tsc --noEmit` y luego genera los artefactos Vite en `frontend/dist/`.
-
-## API e integración
-
-Base local: `http://localhost:8080/api/v1`.
-
-- `GET /tarjetas` — devuelve las tarjetas disponibles.
-- `GET /tarjetas?estado=ACTIVA|BLOQUEADA|VENCIDA` — filtra por estado. Los valores son enumeraciones exactas; un valor inválido produce HTTP 400.
-- `GET /tarjetas/{id}` — obtiene una tarjeta; si no existe, HTTP 404.
-- `GET /actuator/health` — estado de salud de Spring Boot Actuator.
-
-El frontend consume `GET /api/v1/tarjetas` mediante `crearTarjetasApi` en `frontend/src/services/tarjetasApi.ts`; el filtro `TODAS` omite el parámetro y los demás estados se envían como query. El proxy Vite evita configurar CORS para el desarrollo local. No se ha configurado un servidor de producción para el frontend ni CORS para despliegues independientes.
-
-El controlador delega al servicio (`TarjetaService`), que depende del puerto `TarjetaRepository`; el adaptador actual es `InMemoryTarjetaRepository`. La respuesta expone exclusivamente el número enmascarado. Errores de tipo de parámetro inválido y tarjeta no encontrada se serializan como `problem+json`.
-
-## Persistencia y datos
-
-No hay base de datos ni persistencia duradera: el adaptador de repositorio mantiene una lista inmutable de cuatro registros ficticios en memoria. Cada reinicio del backend vuelve a cargar esos registros; los cambios no se conservan. `TarjetaRepository` separa el servicio de la implementación de datos, permitiendo sustituir el adaptador por una integración o almacenamiento persistente posterior. No se integra con sistemas bancarios reales.
-
-`LOG_LEVEL` permite configurar el nivel raíz de logging (por defecto `INFO`); `PORT` define el puerto HTTP (por defecto `8080`). El endpoint de salud expuesto es únicamente `/actuator/health`.
+## Limites
+Sin autenticacion real, sin paginacion (se asumen <20 tarjetas por cliente), sin pruebas de integracion contra PostgreSQL.

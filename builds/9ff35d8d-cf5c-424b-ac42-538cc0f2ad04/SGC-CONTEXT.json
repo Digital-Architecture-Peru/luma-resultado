@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "stack": "React + TypeScript + Java + Spring Boot",
+    "tests": "Unitarias",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "Banca por Internet",
+    "type": "Consulta",
+    "domain": "Tarjetas",
+    "layer": "Full Stack",
+    "backendStack": "Java + Spring Boot",
+    "persistence": "PostgreSQL"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

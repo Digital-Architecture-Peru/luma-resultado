@@ -50,8 +50,21 @@
     "status": "done"
   },
   {
+    "id": "T04-db",
+    "title": "Modelar la base de datos PostgreSQL: esquema/migraciones versionadas, índices, datos ficticios y acceso parametrizado",
+    "dependsOn": [
+      "T02-source"
+    ],
+    "acceptance": "Esquema SQL válido (SQLite se ejecuta en memoria; otros motores solo revisión estática)",
+    "evidence": {
+      "kind": "validation",
+      "ref": "database"
+    },
+    "status": "done"
+  },
+  {
     "id": "T05-docs",
-    "title": "Documentar build/ejecución, integración (sin definir) y persistencia (No requiere)",
+    "title": "Documentar build/ejecución, integración (sin definir) y persistencia (PostgreSQL)",
     "dependsOn": [
       "T02-source"
     ],

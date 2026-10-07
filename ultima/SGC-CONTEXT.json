@@ -8,7 +8,7 @@
     "domain": "Tarjetas",
     "layer": "Full Stack",
     "backendStack": "Java + Spring Boot",
-    "persistence": "No requiere"
+    "persistence": "PostgreSQL"
   },
   "sgc": {
     "status": "fallback",
