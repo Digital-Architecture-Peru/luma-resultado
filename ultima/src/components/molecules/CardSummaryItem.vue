@@ -1,27 +1,29 @@
 <script setup lang="ts">
 import type { CardSummary } from '../../domain/card'
-import BaseBadge from '../atoms/BaseBadge.vue'
 import MaskedPan from '../atoms/MaskedPan.vue'
-import MoneyAmount from '../atoms/MoneyAmount.vue'
+import StatusBadge from '../atoms/StatusBadge.vue'
 
-defineProps<{ card: CardSummary }>()
-defineEmits<{ (e: 'select', id: string): void }>()
-
-const statusLabel = { active: 'Activa', blocked: 'Bloqueada', expired: 'Vencida' } as const
-const statusTone = { active: 'success', blocked: 'danger', expired: 'neutral' } as const
+defineProps<{ card: CardSummary; selected?: boolean }>()
+const emit = defineEmits<{ (e: 'select', id: string): void }>()
 </script>
 
 <template>
-  <button type="button" class="card-item" @click="$emit('select', card.id)">
-    <span class="card-item__main">
-      <strong>{{ card.alias }}</strong>
-      <MaskedPan :last4="card.last4" />
-    </span>
-    <span class="card-item__side">
-      <BaseBadge :tone="statusTone[card.status]">{{ statusLabel[card.status] }}</BaseBadge>
-      <span class="card-item__avail">
-        Disponible <MoneyAmount :amount="card.availableBalance" :currency="card.currency" />
-      </span>
-    </span>
+  <button
+    type="button"
+    class="card-item"
+    :class="{ 'card-item--selected': selected }"
+    :aria-pressed="selected ? 'true' : 'false'"
+    @click="emit('select', card.id)"
+  >
+    <span class="card-item__title">{{ card.brand }} · {{ card.type === 'CREDIT' ? 'Crédito' : 'Débito' }}</span>
+    <MaskedPan :last4="card.last4" />
+    <StatusBadge :status="card.status" />
   </button>
 </template>
+
+<style scoped>
+.card-item { display: flex; flex-direction: column; gap: 0.3rem; width: 100%; text-align: left; padding: 0.8rem; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; cursor: pointer; }
+.card-item:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+.card-item--selected { border-color: #1d4ed8; box-shadow: 0 0 0 1px #1d4ed8; }
+.card-item__title { font-weight: 600; }
+</style>

@@ -1,5 +1,5 @@
 {
-  "name": "banca-consulta-tarjetas",
+  "name": "consulta-tarjetas-banca-internet",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,12 +8,10 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.3.0"
+    "vue": "^3.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

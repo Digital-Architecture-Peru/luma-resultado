@@ -7,7 +7,7 @@
 - ¿Qué necesitas construir? Frontend
 - Patrones disponibles Component-based (Atomic Design)
 - ¿Qué stack? Vue 3 + TypeScript
-- ¿Qué pruebas? Estándar completo
+- ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
@@ -20,7 +20,7 @@ Estado: fallback (SGC no configurado)
 
 ## Hipótesis
 - El código se genera en Vue 3 + TypeScript sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
-- Integración (sin definir), persistencia (sin definir) y pruebas (Estándar completo) se implementan como candidate y requieren build real en CI.
+- Integración (sin definir), persistencia (sin definir) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
 
 ## Aceptación
 - Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
@@ -28,70 +28,63 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Tarjetas (Vue 3 + TypeScript)
+# DESIGN · Refinamiento (Consulta de Tarjetas · Vue 3 + TS)
 
-> Complementa el diseño base. No sustituye sus Hechos ni su Aceptación.
+> Complementa el diseño base y no reemplaza sus Hechos ni su Aceptación. El SGC está en **fallback**, así que no se aplicaron estándares corporativos.
 
 ## Decisiones de arquitectura
-
 | ID | Decisión | Justificación |
 |---|---|---|
-| AD-01 | Vite + Vue 3 SFC con `<script setup lang="ts">` y `strict: true` | Es la estructura idiomática de Vue 3 y aporta tipado estricto sin configuración extra. |
-| AD-02 | Atomic Design en `components/` (atoms → molecules → organisms → templates) y vistas en `pages/` | Aplica el patrón pedido. Regla: un nivel solo importa niveles inferiores. |
-| AD-03 | Puerto `CardsGateway` con dos adaptadores: `MockCardsGateway` (datos ficticios, activo por defecto) y `HttpCardsGateway` (stub que no se invoca) | La integración está sin definir, así que se aísla detrás de una interfaz. |
-| AD-04 | Selección del adaptador con `VITE_CARDS_ADAPTER=mock\|http` y `VITE_API_BASE_URL` | Se configura por entorno, sin secretos. Solo se usan variables públicas `VITE_*`. |
-| AD-05 | Estado mediante composables (`useCards`, `useCardDetail`) en lugar de Pinia | Es una consulta de solo lectura con alcance acotado, y así se evita una dependencia sin motivo. |
-| AD-06 | `vue-router` con las rutas `/tarjetas` y `/tarjetas/:id` | Navegación entre listado y detalle. Es la única dependencia de runtime adicional. |
-| AD-07 | Sin persistencia en el cliente: no se usa `localStorage` ni `sessionStorage` para datos de tarjeta | La persistencia está sin definir y los datos de tarjeta son sensibles. |
-| AD-08 | El PAN se muestra siempre enmascarado (`•••• 1234`) y el formato de montos usa `Intl.NumberFormat` | Seguridad de datos de tarjeta y formato monetario correcto. |
-| AD-09 | Pruebas con Vitest + `@vue/test-utils` + jsdom | Es el runner nativo del ecosistema Vite. |
+| D1 | Vite + SFC `<script setup lang="ts">` | Es la estructura idiomática de Vue 3 y ofrece tipado nativo con TS. |
+| D2 | Atomic Design estricto: los átomos y moléculas son presentacionales (solo props y emits). Solo `pages` accede a datos. | Aplica el patrón pedido y permite probar los componentes sin mocks de red. |
+| D3 | Puerto `CardQueryPort` con un adaptador `mockCardAdapter` por defecto | La integración está sin definir. El puerto aísla el contrato futuro y evita llamadas reales. |
+| D4 | Estado mediante el composable `useCards` (sin Pinia) | Una sola consulta de lectura no justifica una dependencia extra. |
+| D5 | Capacidad de solo lectura (listado + detalle) | El tipo de capacidad es "Consulta". Bloqueos, pagos y otras acciones quedan fuera de alcance. |
+| D6 | El dominio expone solo `last4`. No hay PAN completo ni CVV en tipos ni en mocks. | Reduce la exposición de datos sensibles desde el diseño. |
+| D7 | Moneda y locale configurables vía `import.meta.env` | El país y la moneda no están confirmados. |
+| D8 | Vitest + @vue/test-utils + jsdom | Es el runner nativo del ecosistema Vite y cubre las pruebas unitarias pedidas. |
+| D9 | Estados UI explícitos: `loading`, `empty`, `error` y `success`, con `aria-live` | La consulta debe ser observable y accesible. |
 
 ## Estructura de módulos
-
 ```
-src/
-  domain/        card.ts (tipos Card, CardSummary, Movement), mask.ts, money.ts
-  services/      CardsGateway.ts, MockCardsGateway.ts, HttpCardsGateway.ts, gatewayFactory.ts
-  mocks/         cards.fixture.ts (datos ficticios)
-  composables/   useCards.ts, useCardDetail.ts
-  components/
-    atoms/       BaseBadge, MoneyAmount, MaskedPan, BaseSpinner
-    molecules/   CardSummaryItem, BalanceRow, MovementItem
-    organisms/   CardList, CardDetailPanel, MovementList, ErrorState
-    templates/   ConsultaLayout
-  pages/         CardsListPage.vue, CardDetailPage.vue
-  router/        index.ts
-tests/unit/ · tests/components/ · tests/integration/
 package.json · vite.config.ts · tsconfig.json · .env.example · README.md
+src/
+  main.ts · App.vue
+  domain/card.ts                 # tipos: CardSummary, CardDetail, CardStatus
+  services/CardQueryPort.ts      # interfaz: listCards(), getCard(id)
+  services/mockCardAdapter.ts    # datos ficticios
+  services/index.ts              # selecciona el adaptador según VITE_CARDS_ADAPTER
+  composables/useCards.ts        # estado + carga + manejo de error
+  utils/format.ts                # maskPan(last4), formatMoney()
+  components/
+    atoms/      MaskedPan · MoneyAmount · StatusBadge
+    molecules/  CardSummaryItem · BalanceRow
+    organisms/  CardList · CardDetailPanel
+    templates/  CardsLayout
+  pages/        CardsQueryPage.vue
+tests/unit/     format · useCards (port falso) · atoms · molecules · CardList
 ```
-
-## Pruebas ("Estándar completo", interpretación)
-- **Unitarias:** enmascarado, formato de montos y la factory del gateway.
-- **Componentes:** atoms, molecules y organisms con estados de carga, vacío y error.
-- **Integración:** página completa con `MockCardsGateway` y router en memoria.
-- **Accesibilidad básica:** roles y etiquetas en listas y estados de error.
-- **Fuera de alcance:** E2E con navegador real (ver hipótesis H-04).
-
-## Hipótesis
-- **H-01:** La "Consulta" comprende listado de tarjetas, detalle (límite, disponible, saldo, fecha de corte, pago mínimo) y últimos movimientos. Ningún dato del guion lo confirma.
-- **H-02:** Moneda y locale por defecto son `es` y una moneda configurable. No se confirmó país.
-- **H-03:** La autenticación la provee el shell de Banca por Internet. No se implementa login.
-- **H-04:** "Estándar completo" no exige E2E en este host.
-- **H-05:** Las versiones de dependencias se fijan con rangos `^` y no se resuelven aquí, porque no se ejecuta `npm install`.
-- **H-06:** La verificación de sintaxis cubre `.ts` y `.json`. Los `.vue` pueden quedar sin verificar si no hay un validador local de SFC.
 
 ## Riesgos
+| Riesgo | Impacto | Mitigación |
+|---|---|---|
+| No se compila ni se ejecuta en este host | Pueden quedar errores de tipos o de build sin detectar | Se valida la sintaxis donde haya validador local. El build y los tests corren en CI. |
+| Sin lockfile ni versiones resueltas | Builds no reproducibles | Se fijan rangos mayores en `package.json`. El lock se genera en CI. |
+| Contrato de integración desconocido | Retrabajo del adaptador | Los cambios quedan confinados a `services/` gracias al puerto (D3). |
+| Exposición de datos de tarjeta | Incumplimiento regulatorio | Se aplica D6, sin logs de datos y sin secretos en `.env.example`. |
+| Design system corporativo desconocido (SGC en fallback) | Inconsistencia visual | Estilos mínimos y con scope, fáciles de sustituir. |
 
-| Riesgo | Mitigación |
-|---|---|
-| SGC en modo fallback, sin estándares corporativos | Se marca como candidate y se revisa contra el SGC real antes de CI. |
-| Contrato HTTP desconocido | El stub tipado queda aislado. El contrato real requiere AD posterior. |
-| Exposición de PAN u otros datos sensibles | AD-07 y AD-08, más pruebas que verifican el enmascarado. |
-| Atomic Design violado (imports ascendentes) | Regla documentada en el README y revisión en PR. |
-| Compilación y tests no ejecutados | El handoff declara el estado no verificado (T06). |
+## Hipótesis
+- **H1:** el usuario ya está autenticado por el shell de Banca por Internet. Auth y sesión quedan fuera de alcance.
+- **H2:** los campos de la consulta son tipo, marca, `last4`, estado, línea, disponible, saldo, fecha de corte y fecha de pago.
+- **H3:** no se incluyen movimientos en esta iteración.
+- **H4:** el locale y la moneda por defecto son placeholders configurables (D7).
+- **H5:** la persistencia es innecesaria en el cliente y queda sin definir. No se usa `localStorage`.
+- **H6:** se usa Node LTS vigente en CI. El repositorio no lo confirma.
+- **H7:** la app es standalone y no se asume integración como microfrontend.
 
-## Aceptación adicional
-Estos criterios son compatibles con la aceptación base:
-- `MaskedPan` nunca muestra más de 4 dígitos en ninguna prueba.
-- Con `VITE_CARDS_ADAPTER=mock` no hay llamadas de red. El test de integración verifica que no se invoca `fetch`.
-- El README documenta las variables de entorno, la regla de imports de Atomic Design y que la integración y la persistencia están sin definir.
+## Aceptación (complementa la base, sin reemplazarla)
+- `maskPan` nunca devuelve más de 4 dígitos visibles.
+- `useCards` expone `error` cuando el puerto falla y `empty` cuando la lista está vacía.
+- `CardList` renderiza un `CardSummaryItem` por cada tarjeta del mock.
+- Ningún archivo contiene PAN completo, CVV ni secretos.
