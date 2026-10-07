@@ -1,0 +1,31 @@
+<section class="cards" aria-labelledby="cards-title">
+  <h1 id="cards-title">Mis tarjetas</h1>
+
+  @if (store.loading()) {
+    <p role="status" class="state">Cargando tarjetas…</p>
+  } @else if (store.error()) {
+    <div role="alert" class="state state--error">
+      <p>{{ store.error() }}</p>
+      <button type="button" (click)="retry()">Reintentar</button>
+    </div>
+  } @else if (store.isEmpty()) {
+    <p role="status" class="state">No tiene tarjetas para mostrar.</p>
+  } @else {
+    <ul class="cards__list">
+      @for (card of store.cards(); track card.id) {
+        <li class="card">
+          <a [routerLink]="[card.id]" class="card__link">
+            <span class="card__alias">{{ card.alias }}</span>
+            <span class="card__pan">{{ mask(card.pan) }}</span>
+            <span class="card__meta">
+              {{ card.type === 'CREDITO' ? 'Crédito' : 'Débito' }} ·
+              <span [class]="'badge badge--' + card.status.toLowerCase()">
+                {{ card.status === 'ACTIVA' ? 'Activa' : 'Bloqueada' }}
+              </span>
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>
