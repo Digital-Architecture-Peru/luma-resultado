@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import CardsPage from './components/templates/CardsPage.vue';
-import { InMemoryCardRepository } from './services/cardRepository';
+import PaymentPage from './components/pages/PaymentPage.vue';
+import { InMemoryPaymentGateway } from './services/paymentGateway';
 
-// Único punto de composición: sustituir por el adaptador real cuando se defina la integración.
-const repository = new InMemoryCardRepository();
+// Único punto de composición: aquí se cambiará el adaptador en memoria por el real.
+const gateway = new InMemoryPaymentGateway();
 </script>
 
 <template>
-  <CardsPage :repository="repository" />
+  <PaymentPage :gateway="gateway" />
 </template>

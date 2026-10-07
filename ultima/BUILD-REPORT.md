@@ -1,13 +1,13 @@
-# Build 147b3ebe-e11c-40d5-ab63-e0addbf461dc
+# Build efdbaa31-e4e6-48a6-b8df-baf0dc3940ba
 
 Stack: Vue 3 + TypeScript · capa Frontend
 
 Candidate generada por Microapp Builder; no es producción.
 
-20 archivos; sintaxis verificada en 10/10; sin validador local: 10; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (9); dist/ generado. (candidate).
+23 archivos; sintaxis verificada en 11/11; sin validador local: 12; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (22); dist/ generado. (candidate).
 
-Verificación: OK · build · pruebas unitarias (9) · dist/ incluido
-Correcciones aplicadas: 1
+Verificación: OK · build · pruebas unitarias (22) · dist/ incluido
+Correcciones aplicadas: 0
 
 Recursos incrustados en el builder (hash SHA-256):
 - .github/agents/builder.agent.md 009faefb1498
@@ -20,16 +20,19 @@ Recursos incrustados en el builder (hash SHA-256):
 - src/App.vue: sin verificar (sin validador local)
 - src/assets/main.css: sin verificar (sin validador local)
 - src/components/atoms/BaseButton.vue: sin verificar (sin validador local)
-- src/components/atoms/StatusBadge.vue: sin verificar (sin validador local)
-- src/components/molecules/CardFilter.vue: sin verificar (sin validador local)
-- src/components/molecules/CardSummary.vue: sin verificar (sin validador local)
-- src/components/organisms/CardList.vue: sin verificar (sin validador local)
-- src/components/templates/CardsPage.test.ts: sintaxis OK (typescript.transpileModule)
-- src/components/templates/CardsPage.vue: sin verificar (sin validador local)
-- src/composables/useCards.ts: sintaxis OK (typescript.transpileModule)
-- src/domain/card.test.ts: sintaxis OK (typescript.transpileModule)
-- src/domain/card.ts: sintaxis OK (typescript.transpileModule)
+- src/components/atoms/BaseInput.vue: sin verificar (sin validador local)
+- src/components/atoms/BaseSelect.vue: sin verificar (sin validador local)
+- src/components/molecules/FormField.vue: sin verificar (sin validador local)
+- src/components/organisms/PaymentForm.vue: sin verificar (sin validador local)
+- src/components/organisms/PaymentHistory.vue: sin verificar (sin validador local)
+- src/components/organisms/PaymentReceiptCard.vue: sin verificar (sin validador local)
+- src/components/pages/PaymentPage.vue: sin verificar (sin validador local)
+- src/composables/usePayment.ts: sintaxis OK (typescript.transpileModule)
+- src/domain/payment.ts: sintaxis OK (typescript.transpileModule)
 - src/main.ts: sintaxis OK (typescript.transpileModule)
-- src/services/cardRepository.ts: sintaxis OK (typescript.transpileModule)
+- src/services/paymentGateway.ts: sintaxis OK (typescript.transpileModule)
+- tests/domain.test.ts: sintaxis OK (typescript.transpileModule)
+- tests/PaymentPage.test.ts: sintaxis OK (typescript.transpileModule)
+- tests/usePayment.test.ts: sintaxis OK (typescript.transpileModule)
 - tsconfig.json: sintaxis OK (JSON.parse)
 - vite.config.ts: sintaxis OK (typescript.transpileModule)

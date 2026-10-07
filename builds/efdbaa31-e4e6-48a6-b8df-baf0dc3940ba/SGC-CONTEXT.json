@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "stack": "Vue 3 + TypeScript",
+    "tests": "Unitarias",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "Banca por Internet",
+    "type": "Transacción",
+    "domain": "Pagos",
+    "layer": "Frontend"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

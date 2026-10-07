@@ -1,9 +1,16 @@
 <script setup lang="ts">
-defineProps<{ disabled?: boolean }>();
+withDefaults(
+  defineProps<{
+    type?: 'button' | 'submit';
+    variant?: 'primary' | 'ghost';
+    disabled?: boolean;
+  }>(),
+  { type: 'button', variant: 'primary', disabled: false }
+);
 </script>
 
 <template>
-  <button type="button" class="btn" :disabled="disabled">
+  <button :type="type" :disabled="disabled" :class="['btn', `btn--${variant}`]">
     <slot />
   </button>
 </template>

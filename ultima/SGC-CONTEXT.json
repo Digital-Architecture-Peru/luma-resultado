@@ -4,8 +4,8 @@
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
-    "type": "Consulta",
-    "domain": "Tarjetas",
+    "type": "Transacción",
+    "domain": "Pagos",
     "layer": "Frontend"
   },
   "sgc": {
