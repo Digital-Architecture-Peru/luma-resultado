@@ -1,0 +1,17 @@
+{
+  "answers": {
+    "stack": ".NET",
+    "tests": "Unitarias",
+    "pattern": "Component-based (Atomic Design)",
+    "where": "Banca por Internet",
+    "type": "Consulta",
+    "domain": "Tarjetas",
+    "layer": "Backend",
+    "persistence": "No requiere"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

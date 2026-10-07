@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-source",
-    "title": "Implementar la capa Backend en Java + Quarkus para \"Consulta\" sobre Tarjetas con patrón Component-based (Atomic Design)",
+    "title": "Implementar la capa Backend en .NET para \"Consulta\" sobre Tarjetas con patrón Component-based (Atomic Design)",
     "dependsOn": [
       "T01-read-context"
     ],
