@@ -1,14 +1,12 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{
-    id: string;
-    label: string;
-    modelValue: string;
-    error?: string;
-    inputmode?: 'text' | 'decimal';
-  }>(),
-  { error: '', inputmode: 'text' },
-);
+defineProps<{
+  id: string;
+  modelValue: string;
+  invalid?: boolean;
+  describedBy?: string;
+  inputmode?: 'text' | 'decimal';
+  maxlength?: number;
+}>();
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>();
 
@@ -18,17 +16,15 @@ function onInput(event: Event): void {
 </script>
 
 <template>
-  <div class="field">
-    <label :for="id">{{ label }}</label>
-    <input
-      :id="id"
-      :value="modelValue"
-      :inputmode="inputmode"
-      :aria-invalid="error ? 'true' : 'false'"
-      :aria-describedby="error ? `${id}-error` : undefined"
-      autocomplete="off"
-      @input="onInput"
-    />
-    <p v-if="error" :id="`${id}-error`" class="field-error">{{ error }}</p>
-  </div>
+  <input
+    :id="id"
+    class="input"
+    type="text"
+    :value="modelValue"
+    :inputmode="inputmode"
+    :maxlength="maxlength"
+    :aria-invalid="invalid ? 'true' : 'false'"
+    :aria-describedby="describedBy"
+    @input="onInput"
+  />
 </template>

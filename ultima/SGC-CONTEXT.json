@@ -1,9 +1,9 @@
 {
   "answers": {
     "stack": "Vue 3 + TypeScript",
-    "tests": "Unitarias",
+    "tests": "Estándar completo",
     "pattern": "Component-based (Atomic Design)",
-    "where": "App móvil",
+    "where": "Portal empresas",
     "type": "Transacción",
     "domain": "Tarjetas",
     "layer": "Frontend"
