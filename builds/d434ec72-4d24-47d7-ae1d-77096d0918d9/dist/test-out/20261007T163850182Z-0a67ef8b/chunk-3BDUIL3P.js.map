@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/domain/card.model.ts"],
+  "sourcesContent": ["export type CardStatus = 'ACTIVE' | 'BLOCKED';\nexport type TransactionType = 'PURCHASE' | 'PAYMENT';\n\nexport const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {\n  PURCHASE: 'Consumo',\n  PAYMENT: 'Pago de tarjeta',\n};\n\nexport interface Card {\n  readonly id: string;\n  readonly alias: string;\n  readonly maskedNumber: string;\n  readonly currency: string;\n  readonly creditLimit: number;\n  readonly availableCredit: number;\n  readonly status: CardStatus;\n}\n\nexport interface TransactionRequest {\n  readonly cardId: string;\n  readonly type: TransactionType;\n  readonly amount: number;\n  readonly description: string;\n}\n\nexport interface Transaction extends TransactionRequest {\n  readonly id: string;\n  readonly createdAt: string;\n  readonly status: 'APPROVED';\n}\n\nexport class TransactionRejectedError extends Error {\n  constructor(readonly reasons: readonly string[]) {\n    super(reasons.join(' '));\n    this.name = 'TransactionRejectedError';\n  }\n}\n"],
+  "mappings": ";AAGO,IAAM,0BAA2D;EACtE,UAAU;EACV,SAAS;;AA0BL,IAAO,2BAAP,cAAwC,MAAK;EAC5B;EAArB,YAAqB,SAA0B;AAC7C,UAAM,QAAQ,KAAK,GAAG,CAAC;AADJ,SAAA,UAAA;AAEnB,SAAK,OAAO;EACd;;",
+  "names": []
+}

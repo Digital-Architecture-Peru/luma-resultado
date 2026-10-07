@@ -1,8 +1,12 @@
-import { ApplicationConfig } from '@angular/core';
-import { CardRepository } from './domain/card.repository';
-import { InMemoryCardRepository } from './infrastructure/in-memory-card.repository';
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+import { CardsGateway } from './domain/cards.gateway';
+import { InMemoryCardsGateway } from './infrastructure/in-memory-cards.gateway';
 
-/** Único punto de composición: aquí se cambia el adaptador de datos. */
+// Único punto de composición: para integrar un backend real basta
+// sustituir InMemoryCardsGateway por un adaptador HTTP que implemente CardsGateway.
 export const appConfig: ApplicationConfig = {
-  providers: [{ provide: CardRepository, useClass: InMemoryCardRepository }],
+  providers: [
+    provideZonelessChangeDetection(),
+    { provide: CardsGateway, useClass: InMemoryCardsGateway },
+  ],
 };

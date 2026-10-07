@@ -1,27 +1,37 @@
-export type CardStatus = 'ACTIVE' | 'BLOCKED' | 'EXPIRED';
+export type CardStatus = 'ACTIVE' | 'BLOCKED';
+export type TransactionType = 'PURCHASE' | 'PAYMENT';
 
-export type StatusFilter = CardStatus | 'ALL';
+export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
+  PURCHASE: 'Consumo',
+  PAYMENT: 'Pago de tarjeta',
+};
 
-/** Nunca se maneja el número completo: solo los últimos 4 dígitos. */
 export interface Card {
   readonly id: string;
-  readonly holder: string;
-  readonly last4: string;
-  readonly brand: string;
-  readonly status: CardStatus;
-  readonly expiry: string;
-  readonly creditLimit: number;
-  readonly balance: number;
+  readonly alias: string;
+  readonly maskedNumber: string;
   readonly currency: string;
+  readonly creditLimit: number;
+  readonly availableCredit: number;
+  readonly status: CardStatus;
 }
 
-export interface CardQuery {
-  readonly text: string;
-  readonly status: StatusFilter;
+export interface TransactionRequest {
+  readonly cardId: string;
+  readonly type: TransactionType;
+  readonly amount: number;
+  readonly description: string;
 }
 
-export const STATUS_LABELS: Readonly<Record<CardStatus, string>> = {
-  ACTIVE: 'Activa',
-  BLOCKED: 'Bloqueada',
-  EXPIRED: 'Vencida',
-};
+export interface Transaction extends TransactionRequest {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly status: 'APPROVED';
+}
+
+export class TransactionRejectedError extends Error {
+  constructor(readonly reasons: readonly string[]) {
+    super(reasons.join(' '));
+    this.name = 'TransactionRejectedError';
+  }
+}
