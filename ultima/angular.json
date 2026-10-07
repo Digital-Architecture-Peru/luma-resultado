@@ -1,21 +1,21 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
+  "cli": { "analytics": false },
   "newProjectRoot": "projects",
   "projects": {
-    "consulta-tarjetas": {
+    "banca-tarjetas": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/consulta-tarjetas",
+            "outputPath": "dist/banca-tarjetas",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "styles": ["src/styles.css"]
           },
@@ -26,12 +26,20 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
+          "builder": "@angular/build:dev-server",
           "configurations": {
-            "production": { "buildTarget": "consulta-tarjetas:build:production" },
-            "development": { "buildTarget": "consulta-tarjetas:build:development" }
+            "production": { "buildTarget": "banca-tarjetas:build:production" },
+            "development": { "buildTarget": "banca-tarjetas:build:development" }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "banca-tarjetas:build:development",
+            "runner": "vitest"
+          }
         }
       }
     }
