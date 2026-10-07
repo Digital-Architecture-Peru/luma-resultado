@@ -1,53 +1,76 @@
-# Consulta de Tarjetas (Banca por Internet)
+# Consulta de tarjetas — API .NET 8
 
-API de solo lectura construida con Java 17 y Quarkus 3.15.1. Expone tarjetas ficticias de ejemplo; no es una integración con un core bancario ni un servicio listo para producción.
+API HTTP de solo lectura para consultar tarjetas asociadas a un cliente. Implementada con ASP.NET Core Minimal API y datos ficticios en memoria. La solución no usa base de datos ni requiere servicios externos.
 
 ## Requisitos
 
-- JDK 17
-- Apache Maven 3.8+ (el repositorio no incluye Maven Wrapper)
+- .NET SDK 8.0 o posterior. Los proyectos apuntan a `net8.0`; `RollForward=LatestMajor` permite ejecutarlos con un runtime más nuevo si el runtime 8 no está instalado.
+- Acceso a NuGet para restaurar los paquetes del proyecto de pruebas (xUnit y Microsoft.NET.Test.Sdk).
 
-## Compilar, ejecutar y probar
+## Compilar y probar
 
 Desde la raíz del repositorio:
 
-```bash
-mvn test       # pruebas unitarias JUnit 5
-mvn package    # compila y empaqueta la aplicación Quarkus
-mvn quarkus:dev # modo desarrollo, servidor en http://localhost:8080
+```sh
+cd backend
+dotnet restore CardsQuery.sln
+dotnet build CardsQuery.sln
+dotnet test CardsQuery.sln
 ```
 
-En otra terminal, con el servicio en ejecución, se puede verificar:
+`dotnet test` ejecuta las pruebas de átomos y del servicio de consulta. Para ejecutar solo las pruebas:
 
-```bash
-curl -i 'http://localhost:8080/v1/cards'
-curl -i 'http://localhost:8080/v1/cards?status=ACTIVE&page=0&size=10'
-curl -i 'http://localhost:8080/v1/cards/CARD-001'
-curl -i 'http://localhost:8080/health'
+```sh
+dotnet test tests/CardsQuery.Tests/CardsQuery.Tests.csproj
 ```
 
-Las opciones `PORT` y `LOG_LEVEL` configuran el puerto HTTP (por defecto `8080`) y el nivel de log (por defecto `INFO`), respectivamente. Por ejemplo: `PORT=8081 LOG_LEVEL=DEBUG mvn quarkus:dev`.
+## Ejecutar la API
+
+Desde `backend/`:
+
+```sh
+dotnet run --project src/CardsQuery.Api/CardsQuery.Api.csproj
+```
+
+ASP.NET Core informa la URL de escucha al iniciar. Para fijar una URL, por ejemplo:
+
+```sh
+ASPNETCORE_URLS=http://localhost:5080 dotnet run --project src/CardsQuery.Api/CardsQuery.Api.csproj
+```
+
+En PowerShell se puede configurar con `$env:ASPNETCORE_URLS = 'http://localhost:5080'` antes de ejecutar. No hay credenciales ni configuración de base de datos.
+
+Comprobación rápida, usando la URL indicada por el proceso:
+
+```sh
+curl http://localhost:5080/health
+curl 'http://localhost:5080/v1/customers/cust-001/cards?page=1&pageSize=10'
+curl http://localhost:5080/v1/customers/cust-001/cards/card-001
+```
 
 ## API
 
-- `GET /v1/cards?status=ACTIVE|BLOCKED|EXPIRED&page=0&size=10`: lista paginada. `page` comienza en cero; `size` acepta de 1 a 50. `status` puede omitirse.
-- `GET /v1/cards/{id}`: detalle por identificador; por ejemplo, `CARD-001`.
-- `GET /health`: endpoint SmallRye Health.
+- `GET /health` — responde `200` con `{"status":"UP"}`.
+- `GET /v1/customers/{customerId}/cards/` — lista las tarjetas del cliente. Parámetros opcionales: `status` (`Active`, `Blocked` o `Expired`), `page` (por defecto `1`) y `pageSize` (por defecto `10`, rango permitido `1–50`). La lista se ordena por identificador; `total` representa el total tras aplicar el filtro de estado y antes de paginar.
+- `GET /v1/customers/{customerId}/cards/{cardId}` — devuelve el detalle de una tarjeta perteneciente a ese cliente.
 
-El número PAN se enmascara en los DTO antes de responder. Consultas inválidas devuelven `400`, identificadores bien formados pero no encontrados devuelven `404`, y los errores mapeados usan `application/problem+json`.
+Los DTO de respuesta incluyen números enmascarados, nunca el número completo. La fecha de expiración se formatea como `MM/yy`; `ExpiresSoon` indica expiración dentro de los próximos 60 días, calculada con la fecha UTC actual.
 
-## Organización
-
-- `api/`: recursos HTTP y mapeo de errores.
-- `organisms/`: caso de uso `CardQueryService`, puerto `CardCatalog` y adaptador `InMemoryCardCatalog`.
-- `molecules/`: conversión del modelo a DTO.
-- `atoms/`: validación de identificadores y enmascaramiento PAN.
-- `model/`, `dto/`: dominio y contratos de respuesta.
+Errores de consulta devuelven `400` como Problem Details (`application/problem+json`); tarjeta inexistente o ajena al cliente devuelve `404`. Un cliente válido sin tarjetas produce una lista vacía. Ejemplos de datos ficticios: `cust-001` (tarjetas `card-001`, `card-002`, `card-003`) y `cust-002` (`card-004`).
 
 ## Integración y persistencia
 
-Actualmente no hay persistencia, base de datos, migraciones ni conexión con sistemas externos. `InMemoryCardCatalog` entrega una lista inmutable de datos ficticios inicializada en memoria y sus cambios no sobreviven al reinicio. La aplicación depende del puerto `CardCatalog`; una integración futura puede proporcionar otro adaptador para esa interfaz y configurar credenciales/conectividad mediante variables de entorno o configuración segura, sin incorporar datos reales a este adaptador. Antes de producción deben definirse autenticación/autorización, gestión de secretos, auditoría y controles de acceso con el sistema consumidor.
+La aplicación registra `ICardReader` como abstracción de lectura y actualmente la implementa con `InMemoryCardReader`. Ese adaptador mantiene una colección estática de datos de demostración: los cambios no persisten al reiniciar y no existe integración bancaria configurada. Para conectar una fuente real, implemente otro adaptador de `ICardReader` e intercambie su registro en `Program.cs`; el servicio de consulta y los contratos HTTP permanecen desacoplados del origen de datos. No se incluye esquema ni migración de base de datos.
 
-## Pruebas disponibles
+## Estructura
 
-`mvn test` ejecuta pruebas de JUnit 5 para enmascaramiento PAN y el servicio de consulta: filtros, paginación, parámetros inválidos, detalle y tarjetas no encontradas. No se documentan pruebas de integración HTTP ni persistencia porque no están presentes en el código actual.
+- `backend/src/CardsQuery.Api/Atoms/`: máscara de tarjeta y valor monetario.
+- `backend/src/CardsQuery.Api/Domain/`: entidad, puerto de lectura y excepciones del dominio.
+- `backend/src/CardsQuery.Api/Molecules/`: DTO y mapeo de salida.
+- `backend/src/CardsQuery.Api/Organisms/`: servicio de consulta, validación, filtro y paginación.
+- `backend/src/CardsQuery.Api/Adapters/`: adaptador de datos en memoria.
+- `backend/tests/CardsQuery.Tests/`: pruebas unitarias.
+
+## Seguridad y alcance
+
+La API es solo de demostración: no implementa autenticación ni autorización. Antes de exponer información real, incorpore controles de identidad y autorización (incluida la asociación del cliente autenticado con `customerId`), transporte seguro y un adaptador de datos aprobado. Los datos incluidos son ficticios.

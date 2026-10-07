@@ -1,6 +1,6 @@
 {
   "answers": {
-    "stack": "Java + Quarkus",
+    "stack": ".NET",
     "tests": "Unitarias",
     "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
