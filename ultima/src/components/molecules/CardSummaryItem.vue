@@ -1,29 +1,39 @@
 <script setup lang="ts">
-import type { CardSummary } from '../../domain/card'
+import type { Card } from '../../domain/card'
 import MaskedPan from '../atoms/MaskedPan.vue'
-import StatusBadge from '../atoms/StatusBadge.vue'
+import BaseBadge from '../atoms/BaseBadge.vue'
 
-defineProps<{ card: CardSummary; selected?: boolean }>()
-const emit = defineEmits<{ (e: 'select', id: string): void }>()
+defineProps<{ card: Card; selected: boolean }>()
+defineEmits<{ (e: 'select', id: string): void }>()
 </script>
 
 <template>
   <button
     type="button"
-    class="card-item"
-    :class="{ 'card-item--selected': selected }"
-    :aria-pressed="selected ? 'true' : 'false'"
-    @click="emit('select', card.id)"
+    class="item"
+    :class="{ 'item--selected': selected }"
+    :aria-pressed="selected"
+    @click="$emit('select', card.id)"
   >
-    <span class="card-item__title">{{ card.brand }} · {{ card.type === 'CREDIT' ? 'Crédito' : 'Débito' }}</span>
+    <strong>{{ card.alias }}</strong>
     <MaskedPan :last4="card.last4" />
-    <StatusBadge :status="card.status" />
+    <BaseBadge :status="card.status" />
   </button>
 </template>
 
 <style scoped>
-.card-item { display: flex; flex-direction: column; gap: 0.3rem; width: 100%; text-align: left; padding: 0.8rem; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; cursor: pointer; }
-.card-item:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
-.card-item--selected { border-color: #1d4ed8; box-shadow: 0 0 0 1px #1d4ed8; }
-.card-item__title { font-weight: 600; }
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem;
+  border: 1px solid #c8ccd4;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.item:focus-visible { outline: 3px solid #1a56db; outline-offset: 2px; }
+.item--selected { border-color: #1a56db; background: #eef3ff; }
 </style>
