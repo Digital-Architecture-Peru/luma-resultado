@@ -1,21 +1,21 @@
 {
   "status": "candidate",
-  "generation": "7aa89e73-30ed-44d7-9821-b1cc2942c969",
+  "generation": "81f8718b-98b7-4890-8715-dc0f5bc1a64f",
   "planRevision": 1,
   "files": [
     {
       "path": "src/App.tsx",
-      "hash": "5018c46b7a5d04190926bf75ac2fe080a9d4b2e2738f0769c4bdcda418252f6c"
+      "hash": "ddf1995c7b04f22c5e7649d135a3727ccfa23122bec551201124400974bad189"
     },
     {
       "path": "src/styles.css",
-      "hash": "d5eaba5699656081d1d6a921f98603908ff437e13ad6ac7cda31f89278238fc2"
+      "hash": "084e0b88b8db64062bbbe6947b3ef32b1d6b4dbc8d7c92bd73b8d41a9f89cb05"
     }
   ],
   "validations": [
     {
       "kind": "build",
-      "elapsedMs": 3423.9393999995664,
+      "elapsedMs": 3430.8930000001565,
       "passed": true
     },
     {
@@ -23,7 +23,7 @@
       "kind": "browser-interaction",
       "check": {
         "buttonName": "Probar capacidad",
-        "expectedText": "Consulta de Cuentas"
+        "expectedText": "Consulta de Pagos"
       },
       "viewport": {
         "width": 1280,
@@ -31,11 +31,11 @@
       },
       "screenshot": {
         "path": "evidence/preview.png",
-        "hash": "0daa24cba3e6e1469f51f496ac7f1195baed88a7a9f9126beff54788c5ce617d"
+        "hash": "088136c9a6528710b3b4636383addf9cdd97da2c13b5cbafa12a906fc4ea1d71"
       },
-      "elapsedMs": 649.2601000005379
+      "elapsedMs": 628.4947999995202
     }
   ],
   "deviations": [],
-  "agentSessionId": "ef43f264-8352-4ee0-afce-88f4380e047d"
+  "agentSessionId": "0c8b3cb6-e64c-40d6-91a9-cd38a998d372"
 }
