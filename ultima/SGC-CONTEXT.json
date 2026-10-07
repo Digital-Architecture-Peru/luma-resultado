@@ -1,11 +1,11 @@
 {
   "answers": {
-    "where": "App móvil",
-    "type": "Consulta",
-    "domain": "Cuentas",
+    "where": "Portal empresas",
+    "type": "Transacción",
+    "domain": "Pagos",
     "layer": "Frontend",
-    "stack": "Angular",
-    "pattern": "Component-based (Atomic Design)",
+    "stack": "React + TypeScript",
+    "pattern": "Feature-Sliced Design",
     "persistence": "No requiere",
     "integration": "Ninguna",
     "tests": "Unitarias"
