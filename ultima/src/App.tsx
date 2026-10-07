@@ -1,229 +1,280 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 
-type TipoCuenta = 'Ahorros' | 'Corriente' | 'Plazo Fijo';
-type EstadoCuenta = 'Activa' | 'Inactiva' | 'Bloqueada';
+type EstadoPago = 'Pagado' | 'Pendiente' | 'Rechazado';
 
-interface Movimiento {
+interface Pago {
   id: string;
-  fecha: string;
-  descripcion: string;
+  beneficiario: string;
+  referencia: string;
   monto: number;
+  fecha: string;
+  estado: EstadoPago;
 }
 
-interface Cuenta {
-  id: string;
-  numero: string;
-  titular: string;
-  tipo: TipoCuenta;
-  estado: EstadoCuenta;
-  saldo: number;
-  movimientos: Movimiento[];
-}
-
-const CUENTAS_INICIALES: Cuenta[] = [
-  {
-    id: 'c1',
-    numero: '001-0023456-7',
-    titular: 'María Fernández',
-    tipo: 'Ahorros',
-    estado: 'Activa',
-    saldo: 4582.3,
-    movimientos: [
-      { id: 'm1', fecha: '2026-10-01', descripcion: 'Depósito nómina', monto: 1200 },
-      { id: 'm2', fecha: '2026-10-03', descripcion: 'Pago de servicios', monto: -85.4 },
-      { id: 'm3', fecha: '2026-10-05', descripcion: 'Transferencia recibida', monto: 300 },
-    ],
-  },
-  {
-    id: 'c2',
-    numero: '001-0098123-4',
-    titular: 'Jorge Ramírez',
-    tipo: 'Corriente',
-    estado: 'Activa',
-    saldo: 12890.75,
-    movimientos: [
-      { id: 'm4', fecha: '2026-09-28', descripcion: 'Pago a proveedor', monto: -2300 },
-      { id: 'm5', fecha: '2026-10-02', descripcion: 'Depósito en efectivo', monto: 5000 },
-    ],
-  },
-  {
-    id: 'c3',
-    numero: '001-0045678-9',
-    titular: 'Luisa Martínez',
-    tipo: 'Plazo Fijo',
-    estado: 'Bloqueada',
-    saldo: 25000,
-    movimientos: [{ id: 'm6', fecha: '2026-08-15', descripcion: 'Apertura de depósito', monto: 25000 }],
-  },
-  {
-    id: 'c4',
-    numero: '001-0011222-3',
-    titular: 'Carlos Peña',
-    tipo: 'Ahorros',
-    estado: 'Inactiva',
-    saldo: 0,
-    movimientos: [],
-  },
+const PAGOS_INICIALES: Pago[] = [
+  { id: 'p-1001', beneficiario: 'Compañía de Luz Nacional', referencia: 'FAC-88231', monto: 125000, fecha: '2026-09-02', estado: 'Pagado' },
+  { id: 'p-1002', beneficiario: 'Telecom Andina S.A.', referencia: 'FAC-77190', monto: 68900, fecha: '2026-09-18', estado: 'Pagado' },
+  { id: 'p-1003', beneficiario: 'Universidad del Valle', referencia: 'MAT-2026-02', monto: 980000, fecha: '2026-10-01', estado: 'Pendiente' },
+  { id: 'p-1004', beneficiario: 'Seguros Confianza', referencia: 'POL-55012', monto: 215300, fecha: '2026-09-25', estado: 'Rechazado' },
+  { id: 'p-1005', beneficiario: 'Administración Edificio Aurora', referencia: 'CUO-0926', monto: 340000, fecha: '2026-09-28', estado: 'Pendiente' },
 ];
 
-const formatoMoneda = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' });
-const formatoFecha = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('es-ES');
+const ESTADOS: EstadoPago[] = ['Pagado', 'Pendiente', 'Rechazado'];
 
-function estadoBadgeClase(estado: EstadoCuenta): string {
-  if (estado === 'Activa') return 'badge badge--success';
-  if (estado === 'Inactiva') return 'badge badge--muted';
-  return 'badge badge--danger';
+const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const formatoFecha = new Intl.DateTimeFormat('es-CO', { year: 'numeric', month: 'short', day: '2-digit' });
+
+function nuevoId(pagos: Pago[]): string {
+  const maxNum = pagos.reduce((max, p) => {
+    const n = Number(p.id.replace('p-', ''));
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 1000);
+  return `p-${maxNum + 1}`;
+}
+
+interface PagoFormState {
+  beneficiario: string;
+  referencia: string;
+  monto: string;
+  fecha: string;
+  estado: EstadoPago;
+}
+
+const FORM_VACIO: PagoFormState = { beneficiario: '', referencia: '', monto: '', fecha: '', estado: 'Pendiente' };
+
+function Badge({ estado }: { estado: EstadoPago }) {
+  const clase = estado === 'Pagado' ? 'badge badge--success' : estado === 'Pendiente' ? 'badge badge--warning' : 'badge badge--danger';
+  return <span className={clase}>{estado}</span>;
 }
 
 export default function App() {
-  const [capacidadProbada, setCapacidadProbada] = useState(false);
-  const [cuentas] = useState<Cuenta[]>(CUENTAS_INICIALES);
-  const [termino, setTermino] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<'Todos' | EstadoCuenta>('Todos');
-  const [seleccionId, setSeleccionId] = useState<string | null>(null);
-  const [confirmarOcultarId, setConfirmarOcultarId] = useState<string | null>(null);
+  const [pagos, setPagos] = useState<Pago[]>(PAGOS_INICIALES);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<'Todos' | EstadoPago>('Todos');
+  const [formulario, setFormulario] = useState<PagoFormState>(FORM_VACIO);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [confirmandoBorrarId, setConfirmandoBorrarId] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string>('');
+  const [estadoCapacidad, setEstadoCapacidad] = useState<string>('');
+  const [errorFormulario, setErrorFormulario] = useState<string>('');
 
-  const cuentasFiltradas = useMemo(() => {
-    const t = termino.trim().toLowerCase();
-    return cuentas.filter((c) => {
-      const coincideTermino =
-        t.length === 0 || c.numero.toLowerCase().includes(t) || c.titular.toLowerCase().includes(t);
-      const coincideEstado = filtroEstado === 'Todos' || c.estado === filtroEstado;
-      return coincideTermino && coincideEstado;
+  const pagosFiltrados = useMemo(() => {
+    const termino = busqueda.trim().toLowerCase();
+    return pagos.filter((p) => {
+      const coincideTexto =
+        termino === '' ||
+        p.beneficiario.toLowerCase().includes(termino) ||
+        p.referencia.toLowerCase().includes(termino);
+      const coincideEstado = filtroEstado === 'Todos' || p.estado === filtroEstado;
+      return coincideTexto && coincideEstado;
     });
-  }, [cuentas, termino, filtroEstado]);
+  }, [pagos, busqueda, filtroEstado]);
 
-  const cuentaSeleccionada = useMemo(
-    () => cuentas.find((c) => c.id === seleccionId) ?? null,
-    [cuentas, seleccionId]
+  const totalFiltrado = useMemo(
+    () => pagosFiltrados.reduce((suma, p) => suma + p.monto, 0),
+    [pagosFiltrados]
   );
 
-  function manejarConsultar(id: string) {
-    setSeleccionId(id);
-    setMensaje('Cuenta consultada correctamente.');
+  function iniciarEdicion(pago: Pago) {
+    setEditandoId(pago.id);
+    setFormulario({
+      beneficiario: pago.beneficiario,
+      referencia: pago.referencia,
+      monto: String(pago.monto),
+      fecha: pago.fecha,
+      estado: pago.estado,
+    });
+    setErrorFormulario('');
+    setMensaje('');
   }
 
-  function manejarPedirConfirmacion(id: string) {
-    setConfirmarOcultarId(id);
+  function cancelarEdicion() {
+    setEditandoId(null);
+    setFormulario(FORM_VACIO);
+    setErrorFormulario('');
   }
 
-  function manejarConfirmarOcultar(id: string) {
-    if (seleccionId === id) {
-      setSeleccionId(null);
+  function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const beneficiario = formulario.beneficiario.trim();
+    const referencia = formulario.referencia.trim();
+    const montoNumero = Number(formulario.monto);
+
+    if (!beneficiario || !referencia || !formulario.fecha) {
+      setErrorFormulario('Completa beneficiario, referencia y fecha.');
+      return;
     }
-    setConfirmarOcultarId(null);
-    setMensaje('Detalle de la cuenta ocultado de la vista actual (dato ficticio, sin persistencia).');
+    if (!Number.isFinite(montoNumero) || montoNumero <= 0) {
+      setErrorFormulario('El monto debe ser un número mayor a cero.');
+      return;
+    }
+
+    if (editandoId) {
+      setPagos((actual) =>
+        actual.map((p) =>
+          p.id === editandoId
+            ? { ...p, beneficiario, referencia, monto: montoNumero, fecha: formulario.fecha, estado: formulario.estado }
+            : p
+        )
+      );
+      setMensaje(`Pago de ${beneficiario} actualizado.`);
+    } else {
+      const id = nuevoId(pagos);
+      setPagos((actual) => [
+        { id, beneficiario, referencia, monto: montoNumero, fecha: formulario.fecha, estado: formulario.estado },
+        ...actual,
+      ]);
+      setMensaje(`Pago de ${beneficiario} registrado.`);
+    }
+
+    setErrorFormulario('');
+    setEditandoId(null);
+    setFormulario(FORM_VACIO);
   }
 
-  function manejarCancelarOcultar() {
-    setConfirmarOcultarId(null);
+  function pedirConfirmacionBorrado(id: string) {
+    setConfirmandoBorrarId(id);
+    setMensaje('');
+  }
+
+  function cancelarBorrado() {
+    setConfirmandoBorrarId(null);
+  }
+
+  function confirmarBorrado(id: string) {
+    const pago = pagos.find((p) => p.id === id);
+    setPagos((actual) => actual.filter((p) => p.id !== id));
+    setConfirmandoBorrarId(null);
+    if (editandoId === id) {
+      cancelarEdicion();
+    }
+    setMensaje(pago ? `Pago de ${pago.beneficiario} eliminado.` : 'Pago eliminado.');
+  }
+
+  function probarCapacidad() {
+    setEstadoCapacidad('Consulta de Pagos');
   }
 
   return (
-    <main className="app">
-      <header className="app__header">
+    <main className="app-shell">
+      <header className="app-header">
         <div>
-          <p className="app__eyebrow">Banca por Internet · Cuentas</p>
-          <h1 className="app__title">Consulta de Cuentas</h1>
-          <p className="app__subtitle">
-            Busca una cuenta, revisa su saldo y movimientos recientes. Datos ficticios en memoria, sin conexión
-            externa.
+          <p className="app-kicker">Banca por Internet · Pagos</p>
+          <h1>Consulta de Pagos</h1>
+          <p className="app-subtitle">
+            Revisa, busca y administra pagos registrados en memoria para esta capacidad de prueba.
           </p>
         </div>
-        <div className="app__demo">
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => setCapacidadProbada(true)}
-          >
+        <div className="app-header__action">
+          <button type="button" className="btn btn--primary" onClick={probarCapacidad}>
             Probar capacidad
           </button>
-          <p role="status" className="app__demo-status">
-            {capacidadProbada ? 'Consulta de Cuentas' : ''}
+          <p role="status" className="status-pill" aria-live="polite">
+            {estadoCapacidad}
           </p>
         </div>
       </header>
 
       {mensaje && (
-        <p role="status" className="toast">
+        <p role="status" className="feedback feedback--success" aria-live="polite">
           {mensaje}
         </p>
       )}
 
-      <section className="panel" aria-labelledby="buscar-heading">
-        <h2 id="buscar-heading" className="panel__title">
-          Buscar cuentas
+      <section className="panel" aria-labelledby="titulo-filtros">
+        <h2 id="titulo-filtros" className="panel__title">
+          Buscar pagos
         </h2>
-        <div className="form-row">
-          <div className="field">
-            <label htmlFor="termino-busqueda">Número de cuenta o titular</label>
+        <div className="filtros">
+          <div className="campo">
+            <label htmlFor="busqueda">Beneficiario o referencia</label>
             <input
-              id="termino-busqueda"
+              id="busqueda"
               type="search"
-              placeholder="Ej. 001-0023456-7 o María Fernández"
-              value={termino}
-              onChange={(e) => setTermino(e.target.value)}
+              placeholder="Ej. Telecom Andina, FAC-77190"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
             />
           </div>
-          <div className="field">
+          <div className="campo">
             <label htmlFor="filtro-estado">Estado</label>
             <select
               id="filtro-estado"
               value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value as 'Todos' | EstadoCuenta)}
+              onChange={(e) => setFiltroEstado(e.target.value as 'Todos' | EstadoPago)}
             >
               <option value="Todos">Todos</option>
-              <option value="Activa">Activa</option>
-              <option value="Inactiva">Inactiva</option>
-              <option value="Bloqueada">Bloqueada</option>
+              {ESTADOS.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
             </select>
           </div>
         </div>
+        <p className="resumen">
+          {pagosFiltrados.length} resultado(s) · total {formatoMoneda.format(totalFiltrado)}
+        </p>
       </section>
 
-      <section className="panel" aria-labelledby="resultados-heading">
-        <h2 id="resultados-heading" className="panel__title">
-          Resultados ({cuentasFiltradas.length})
+      <section className="panel" aria-labelledby="titulo-tabla">
+        <h2 id="titulo-tabla" className="panel__title">
+          Pagos registrados
         </h2>
-        {cuentasFiltradas.length === 0 ? (
-          <p className="estado-vacio">No se encontraron cuentas con ese criterio.</p>
+        {pagosFiltrados.length === 0 ? (
+          <div className="estado-vacio">
+            <p>No hay pagos que coincidan con la búsqueda.</p>
+          </div>
         ) : (
           <div className="tabla-wrap">
             <table className="tabla">
               <thead>
                 <tr>
-                  <th scope="col">Número</th>
-                  <th scope="col">Titular</th>
-                  <th scope="col">Tipo</th>
+                  <th scope="col">Beneficiario</th>
+                  <th scope="col">Referencia</th>
+                  <th scope="col">Fecha</th>
+                  <th scope="col" className="num">Monto</th>
                   <th scope="col">Estado</th>
-                  <th scope="col" className="num">
-                    Saldo
-                  </th>
                   <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {cuentasFiltradas.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.numero}</td>
-                    <td>{c.titular}</td>
-                    <td>{c.tipo}</td>
+                {pagosFiltrados.map((pago) => (
+                  <tr key={pago.id}>
+                    <td>{pago.beneficiario}</td>
+                    <td>{pago.referencia}</td>
+                    <td>{formatoFecha.format(new Date(pago.fecha))}</td>
+                    <td className="num">{formatoMoneda.format(pago.monto)}</td>
                     <td>
-                      <span className={estadoBadgeClase(c.estado)}>{c.estado}</span>
+                      <Badge estado={pago.estado} />
                     </td>
-                    <td className="num">{formatoMoneda.format(c.saldo)}</td>
                     <td className="acciones">
-                      <button type="button" className="btn btn--secondary" onClick={() => manejarConsultar(c.id)}>
-                        Ver detalle
+                      <button type="button" className="btn btn--ghost" onClick={() => iniciarEdicion(pago)}>
+                        Editar
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => manejarPedirConfirmacion(c.id)}
-                      >
-                        Ocultar
-                      </button>
+                      {confirmandoBorrarId === pago.id ? (
+                        <span className="confirmacion">
+                          <span>¿Eliminar?</span>
+                          <button
+                            type="button"
+                            className="btn btn--danger btn--sm"
+                            onClick={() => confirmarBorrado(pago.id)}
+                          >
+                            Sí, eliminar
+                          </button>
+                          <button type="button" className="btn btn--ghost btn--sm" onClick={cancelarBorrado}>
+                            Cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn--danger"
+                          onClick={() => pedirConfirmacionBorrado(pago.id)}
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -233,75 +284,84 @@ export default function App() {
         )}
       </section>
 
-      {confirmarOcultarId && (
-        <section className="panel panel--confirm" role="alertdialog" aria-labelledby="confirm-heading">
-          <h2 id="confirm-heading" className="panel__title">
-            Confirmar acción
-          </h2>
-          <p>¿Deseas ocultar esta cuenta de los resultados actuales? Es solo una vista local y no se elimina nada.</p>
-          <div className="acciones">
-            <button
-              type="button"
-              className="btn btn--danger"
-              onClick={() => manejarConfirmarOcultar(confirmarOcultarId)}
-            >
-              Sí, ocultar
-            </button>
-            <button type="button" className="btn btn--secondary" onClick={manejarCancelarOcultar}>
-              Cancelar
-            </button>
+      <section className="panel" aria-labelledby="titulo-formulario">
+        <h2 id="titulo-formulario" className="panel__title">
+          {editandoId ? 'Editar pago' : 'Registrar pago nuevo'}
+        </h2>
+        <form className="formulario" onSubmit={manejarEnvio} noValidate>
+          <div className="campo">
+            <label htmlFor="beneficiario">Beneficiario</label>
+            <input
+              id="beneficiario"
+              type="text"
+              value={formulario.beneficiario}
+              onChange={(e) => setFormulario((f) => ({ ...f, beneficiario: e.target.value }))}
+              required
+            />
           </div>
-        </section>
-      )}
-
-      {cuentaSeleccionada && (
-        <section className="panel" aria-labelledby="detalle-heading">
-          <h2 id="detalle-heading" className="panel__title">
-            Detalle de {cuentaSeleccionada.titular}
-          </h2>
-          <dl className="detalle-grid">
-            <div>
-              <dt>Número</dt>
-              <dd>{cuentaSeleccionada.numero}</dd>
-            </div>
-            <div>
-              <dt>Tipo</dt>
-              <dd>{cuentaSeleccionada.tipo}</dd>
-            </div>
-            <div>
-              <dt>Estado</dt>
-              <dd>
-                <span className={estadoBadgeClase(cuentaSeleccionada.estado)}>{cuentaSeleccionada.estado}</span>
-              </dd>
-            </div>
-            <div>
-              <dt>Saldo disponible</dt>
-              <dd className="num">{formatoMoneda.format(cuentaSeleccionada.saldo)}</dd>
-            </div>
-          </dl>
-
-          <h3 className="panel__subtitle">Movimientos recientes</h3>
-          {cuentaSeleccionada.movimientos.length === 0 ? (
-            <p className="estado-vacio">Sin movimientos registrados.</p>
-          ) : (
-            <ul className="movimientos">
-              {cuentaSeleccionada.movimientos.map((m) => (
-                <li key={m.id} className="movimientos__item">
-                  <span className="movimientos__fecha">{formatoFecha(m.fecha)}</span>
-                  <span className="movimientos__desc">{m.descripcion}</span>
-                  <span className={`movimientos__monto ${m.monto < 0 ? 'num-neg' : 'num-pos'}`}>
-                    {formatoMoneda.format(m.monto)}
-                  </span>
-                </li>
+          <div className="campo">
+            <label htmlFor="referencia">Referencia</label>
+            <input
+              id="referencia"
+              type="text"
+              value={formulario.referencia}
+              onChange={(e) => setFormulario((f) => ({ ...f, referencia: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="monto">Monto (COP)</label>
+            <input
+              id="monto"
+              type="number"
+              min="1"
+              step="1"
+              value={formulario.monto}
+              onChange={(e) => setFormulario((f) => ({ ...f, monto: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="fecha">Fecha</label>
+            <input
+              id="fecha"
+              type="date"
+              value={formulario.fecha}
+              onChange={(e) => setFormulario((f) => ({ ...f, fecha: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="estado">Estado</label>
+            <select
+              id="estado"
+              value={formulario.estado}
+              onChange={(e) => setFormulario((f) => ({ ...f, estado: e.target.value as EstadoPago }))}
+            >
+              {ESTADOS.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
               ))}
-            </ul>
+            </select>
+          </div>
+          {errorFormulario && (
+            <p role="alert" className="feedback feedback--error">
+              {errorFormulario}
+            </p>
           )}
-        </section>
-      )}
-
-      <footer className="app__footer">
-        <p>Entorno de demostración: datos ficticios en memoria, sin persistencia ni conexión externa.</p>
-      </footer>
+          <div className="formulario__acciones">
+            <button type="submit" className="btn btn--primary">
+              {editandoId ? 'Guardar cambios' : 'Registrar pago'}
+            </button>
+            {editandoId && (
+              <button type="button" className="btn btn--ghost" onClick={cancelarEdicion}>
+                Cancelar edición
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
     </main>
   );
 }
