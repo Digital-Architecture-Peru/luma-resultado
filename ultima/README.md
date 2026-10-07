@@ -1,88 +1,24 @@
-# Consulta de Tarjetas — Banca por Internet
+# Microapp 2e62ef2a-49a7-4a8e-95dc-0d1ef9ac4fd3
 
-Aplicación full stack de consulta con React 18 + TypeScript + Vite y Java 17 + Quarkus 3. Presenta tarjetas ficticias; no procesa pagos ni contiene datos reales.
+Candidate generada por Microapp Builder y validada en navegador local; no es producción.
 
-## Requisitos
+Nueva capacidad (guion Luma)
+- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
+- ¿Qué tipo de capacidad? Consulta
+- ¿Sobre qué dominio? Tarjetas
+- ¿Qué necesitas construir? Frontend
+- Patrones disponibles Component-based (Atomic Design)
+- ¿Qué stack? React + TypeScript
+- ¿Persistencia? No requiere
+- ¿Qué pruebas? Unitarias
 
-- JDK 17 y Maven 3.8+ (`mvn -version`).
-- Node.js compatible con Vite 5 (Node 18+) y npm.
-- Para desarrollo, dos terminales; el puerto 8080 para API y 5173 para Vite deben estar disponibles.
+Construye una microapp React interactiva y accesible que represente esta capacidad con datos ficticios en memoria. Lista de todos que debes ejecutar en orden:
+- [T01-read-context] Leer context-package.json, SGC-CONTEXT.json y los requisitos (acepta: Requisitos y restricciones citados en el resumen final)
+- [T02-ui] Implementar la interfaz de Banca por Internet para "Consulta" sobre Tarjetas en src/App.tsx y src/styles.css (acepta: src/App.tsx y src/styles.css modificados)
+- [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)
+- [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)
+- [T05-tests] Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)
+- [T06-docs] Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia No requiere (acepta: README del resultado publicado)
+- [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)
 
-## Desarrollo local
-
-Terminal 1 — iniciar el API:
-
-```sh
-cd backend
-mvn quarkus:dev
-```
-
-API disponible en `http://localhost:8080`; health check en `http://localhost:8080/q/health`.
-
-Terminal 2 — instalar dependencias y arrancar el frontend:
-
-```sh
-cd frontend
-npm install
-npm run dev
-```
-
-Abrir `http://localhost:5173`. Vite reenvía `/api` a `http://localhost:8080` por defecto. Para apuntar a otro backend durante desarrollo: `BACKEND_URL=http://host:puerto npm run dev` (en PowerShell: `$env:BACKEND_URL='http://host:puerto'; npm run dev`). Si se configura `VITE_API_BASE`, el cliente usa ese valor en lugar de `/api/v1`; en ese caso el servidor API debe permitir el origen del frontend mediante CORS.
-
-## Build y pruebas
-
-Backend — compilar, ejecutar pruebas unitarias e integración y generar el artefacto Quarkus:
-
-```sh
-cd backend
-mvn test
-mvn package
-```
-
-Frontend — instalación reproducible según `package-lock.json` (si está disponible) y type-check/build y pruebas Vitest:
-
-```sh
-cd frontend
-npm install
-npm test
-npm run build
-```
-
-Las pruebas backend incluyen JUnit y RestAssured; las frontend usan Vitest y Testing Library. `mvn package` también ejecuta las pruebas del ciclo Maven. Para ejecutar la aplicación empaquetada en modo JVM: `java -jar backend/target/quarkus-app/quarkus-run.jar` desde la raíz después de `mvn package`.
-
-## API
-
-Base local: `http://localhost:8080/api/v1`.
-
-- `GET /tarjetas` — devuelve las cuatro tarjetas ficticias.
-- `GET /tarjetas?estado=ACTIVA|BLOQUEADA|VENCIDA` — filtra por estado; no distingue mayúsculas/minúsculas.
-- `GET /tarjetas/{id}` — consulta detalle; IDs de muestra: `tc-001`, `td-002`, `tc-003`, `td-004`.
-- `GET /q/health` — estado de salud de Quarkus.
-
-Los errores de solicitud usan `application/problem+json`: estado inválido o ID mal formado responde 400; ID válido inexistente responde 404. Los datos expuestos incluyen únicamente número de tarjeta enmascarado.
-
-## Configuración
-
-Configuraciones backend (variables de entorno; valores predeterminados entre paréntesis):
-
-- `PORT` (`8080`): puerto HTTP.
-- `CORS_ORIGINS` (`http://localhost:5173`): origen permitido para el navegador.
-- `LOG_LEVEL` (`INFO`): nivel de log.
-
-Frontend:
-
-- `BACKEND_URL` (`http://localhost:8080`): destino del proxy de Vite en desarrollo.
-- `VITE_API_BASE` (`/api/v1`): base de URL que usa el cliente. Para apuntar a un backend remoto, configure URL accesible desde el navegador y CORS en ese backend.
-
-No se requieren credenciales ni archivos de secretos.
-
-## Integración y persistencia
-
-La UI consume el API REST a través de `frontend/src/api/tarjetasApi.ts` (`TarjetasApi`); `App` recibe ese puerto, lo que permite sustituirlo en pruebas. El API separa recurso HTTP (`TarjetaResource`), lógica (`TarjetaService`) y acceso (`TarjetaRepository`). `DatosFicticiosTarjetaRepository` es el adaptador actual y devuelve una lista inmutable en memoria.
-
-No hay base de datos, migraciones ni persistencia: los registros son datos de demostración constantes y no cambian entre reinicios. La integración con un core bancario o una base de datos no está implementada; requeriría proporcionar un adaptador de `TarjetaRepository` y definir autenticación, autorización, manejo de errores, disponibilidad y contratos con el sistema externo antes de usar datos reales. Esta app es solo de consulta y no debe recibir números completos, CVV ni secretos.
-
-## Estructura
-
-- `backend/`: proyecto Maven Quarkus; código en `src/main/java`, configuración en `src/main/resources`, pruebas en `src/test/java`.
-- `frontend/`: proyecto npm React + TypeScript + Vite; UI por componentes y pruebas en `src`.
+SGC: fallback (SGC no configurado)
