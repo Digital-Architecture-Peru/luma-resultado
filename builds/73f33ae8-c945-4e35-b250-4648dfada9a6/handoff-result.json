@@ -1,0 +1,41 @@
+{
+  "status": "candidate",
+  "generation": "3edccd22-33ae-4305-94bc-82a7274213f8",
+  "planRevision": 1,
+  "files": [
+    {
+      "path": "src/App.tsx",
+      "hash": "a9f85321525ab5e61a659b5dec0125aea169259cff07e0e59c8f05c9576a01cf"
+    },
+    {
+      "path": "src/styles.css",
+      "hash": "ed7069d19cfc2f074a8f54c1ad860acf9a0b190ae9f1ddb74bae633300561f3a"
+    }
+  ],
+  "validations": [
+    {
+      "kind": "build",
+      "elapsedMs": 3528.1032999996096,
+      "passed": true
+    },
+    {
+      "passed": true,
+      "kind": "browser-interaction",
+      "check": {
+        "buttonName": "Probar capacidad",
+        "expectedText": "Consulta de Tarjetas"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "screenshot": {
+        "path": "evidence/preview.png",
+        "hash": "780bfa4c8e78fdcaf76335217c26c7c6b1925983a099309bf36d29396b220812"
+      },
+      "elapsedMs": 656.1206000000238
+    }
+  ],
+  "deviations": [],
+  "agentSessionId": "57615af9-571f-46cf-9828-c3baa7300afc"
+}
