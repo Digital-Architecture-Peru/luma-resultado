@@ -1,11 +1,14 @@
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+/// <reference types="vitest" />
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: { '/api': process.env.BACKEND_URL ?? 'http://localhost:8080' },
+  },
   test: {
-    environment: "jsdom",
-    setupFiles: ["./src/setupTests.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    environment: 'jsdom',
+    include: ['src/**/*.test.tsx', 'src/**/*.test.ts'],
   },
 });

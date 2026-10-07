@@ -1,14 +1,14 @@
 {
   "answers": {
-    "stack": "React + TypeScript + Java + Spring Boot",
-    "tests": "Unitarias",
-    "pattern": "Component-based (Atomic Design)",
     "where": "Banca por Internet",
+    "pattern": "Component-based (Atomic Design)",
+    "tests": "Unitarias",
+    "stack": "React + TypeScript + Java + Quarkus",
     "type": "Consulta",
     "domain": "Tarjetas",
     "layer": "Full Stack",
-    "backendStack": "Java + Spring Boot",
-    "persistence": "PostgreSQL"
+    "backendStack": "Java + Quarkus",
+    "persistence": "No requiere"
   },
   "sgc": {
     "status": "fallback",
