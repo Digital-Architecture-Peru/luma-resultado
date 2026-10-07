@@ -5,84 +5,92 @@
 - ¿Qué tipo de capacidad? Consulta
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
-- Patrones disponibles Micro-frontends
-- ¿Qué stack? Angular
+- Patrones disponibles Component-based (Atomic Design)
+- ¿Qué stack? React + TypeScript
 - ¿Qué pruebas? Unitarias
 
 ## Contexto SGC
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular (capa Frontend) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Micro-frontends.
-- Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
-- Integración sin definir y persistencia sin definir detrás de interfaces; configuración por variables de entorno, sin secretos.
-- Datos de ejemplo ficticios; sin llamadas a sistemas reales.
+- Microapp React/TypeScript para "Consulta" sobre Tarjetas en Banca por Internet, capa Frontend.
+- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
+- Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
+- Accesible (etiquetas, foco, contraste) y responsive.
 
 ## Hipótesis
-- El código se genera en Angular sin compilarlo ni ejecutarlo en este host: solo se verifica sintaxis donde hay validador local; el resto queda sin verificar.
-- Integración (sin definir), persistencia (sin definir) y pruebas (Unitarias) se implementan como candidate y requieren build real en CI.
+- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (sin definir) se documentan; React/TypeScript se valida con build y navegador.
 
 ## Aceptación
-- Sin errores de sintaxis en los archivos verificables; pruebas y README presentes; publicación con commit.
+- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
 
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Consulta de Tarjetas (MFE Angular)
+# DESIGN · Refinamiento: Consulta de Tarjetas (Banca por Internet)
 
-> Complementa el diseño base sin modificar sus criterios de aceptación. El estado SGC es **fallback (no configurado)**, por lo que no hay restricciones corporativas confirmadas. Todo lo que no proviene del guion se registra como hipótesis.
+> Complementa el diseño base y no modifica sus criterios de aceptación: `tsc` y build correctos, interacción real en navegador y smoke HTTP 200 del preview.
 
 ## Decisiones de arquitectura
-
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| AD1 | **Remote** Angular que expone `./routes` mediante federación de módulos (H1). También puede ejecutarse de forma aislada con datos mock. | Cumple el patrón Micro-frontends y permite probar el remote sin depender del shell. |
-| AD2 | Componentes *standalone* con *signals* y sin NgModules. | Es el estilo idiomático actual de Angular y reduce la superficie que se expone al shell. |
-| AD3 | Patrón puerto/adaptador: `CardsGateway` (clase abstracta usada como token DI), con `MockCardsGateway` activo y `HttpCardsGateway` como stub no cableado. | La integración está sin definir. El contrato queda aislado y se puede sustituir sin tocar la UI. |
-| AD4 | **Sin persistencia.** El estado vive en memoria (`CardsStore` con signals). No se guarda nada en `localStorage` ni en `sessionStorage`. | La persistencia está sin definir y almacenar datos de tarjeta en el navegador implica riesgo. |
-| AD5 | Alcance de solo lectura: listado de tarjetas y detalle (saldo, línea, disponible, fecha de corte). | La capacidad pedida es "Consulta". No incluye operaciones transaccionales. |
-| AD6 | El PAN siempre se muestra enmascarado (`**** 1234`) mediante la función pura `maskPan`. Los datos son ficticios. | Reduce la exposición de datos sensibles y permite probarlo de forma unitaria y determinista. |
-| AD7 | La sesión y la autenticación se delegan al shell. El remote no maneja tokens. | Evita incluir secretos y mantiene una única responsabilidad (H3). |
-| AD8 | La configuración se lee de `environment.ts` (`useMock`, `apiBaseUrl` vacío y `currency`). | Permite configurar por entorno sin incluir secretos. |
-| AD9 | La UI contempla los estados *cargando*, *vacío* y *error*. Usa roles ARIA y una tabla o lista semántica. | Hace la UX verificable y accesible. |
+| D1 | Separar la UI en `atoms/molecules/organisms`; `App.tsx` actúa como *template/page* | Aplica el patrón Atomic Design elegido y permite reutilizar componentes. |
+| D2 | Poner la lógica de dominio en funciones puras (`domain/`), sin JSX | Se puede probar con pruebas unitarias sin DOM. |
+| D3 | Usar datos ficticios en un módulo `data/` de solo lectura | La persistencia y la integración están sin definir. Sin red ni `localStorage`. |
+| D4 | Mostrar el PAN siempre enmascarado (`•••• 1234`) | Buena práctica PCI aunque los datos sean ficticios. |
+| D5 | Usar `useState` local, sin librería de estado | Alcance pequeño. No se agregan dependencias nuevas. |
+| D6 | Mostrar el feedback en `<p role="status">` y usar `<button>` nativo | Cubre el criterio "Capacidad simulada" y da accesibilidad sin ARIA extra. |
+| D7 | Formatear moneda y fechas con `Intl` | API nativa del navegador. El locale y la moneda vienen en los datos mock. |
 
-## Estructura de módulos
+## Estructura de módulos (React + TS)
+```
+src/
+  App.tsx              # template: header, lista, detalle, botón de prueba
+  styles.css           # tokens (color/espaciado), foco visible, responsive
+  data/mockCards.ts    # tarjetas ficticias (id, alias, last4, tipo, límite, disponible, corte, moneda)
+  domain/cards.ts      # maskPan, formatAmount, usagePercent
+  components/
+    atoms/             # Button, Badge, Amount
+    molecules/         # CardSummary
+    organisms/         # CardList, CardDetail, CapabilityProbe
+```
+Si el builder debe limitarse a `App.tsx` y `styles.css`, puede declarar los componentes dentro de `App.tsx` con la misma jerarquía y documentarlo en el README.
 
-```
-cards-query-mfe/
-  package.json · angular.json · tsconfig*.json · federation.config.js
-  src/main.ts            (initFederation → bootstrap)
-  src/bootstrap.ts
-  src/environments/environment.ts
-  src/app/app.config.ts · app.routes.ts
-  src/app/cards/
-    cards.routes.ts                 (expuesto: ./routes)
-    domain/card.model.ts · mask-pan.ts
-    data/cards.gateway.ts · mock-cards.gateway.ts · mock-cards.data.ts · http-cards.gateway.ts
-    state/cards.store.ts
-    ui/card-list/ · ui/card-detail/ (ts, html, scss)
-  *.spec.ts junto a mask-pan, mock gateway, store y card-list
-  README.md
-```
+## Interacción
+1. Al cargar se ven la lista de tarjetas y el botón "Probar capacidad".
+2. Al seleccionar una tarjeta se muestra su detalle (disponible, límite, fecha de corte).
+3. Al pulsar "Probar capacidad", el `role=status` muestra "Capacidad simulada".
 
 ## Hipótesis
-- **H1:** La federación usa Native Federation (`@angular-architects/native-federation`), compatible con el builder esbuild. Si el shell usa Webpack Module Federation, hay que ajustar `federation.config.js`.
-- **H2:** La versión de Angular y el runner de pruebas (Jasmine/Karma o Vitest) se fijan en el manifiesto y se confirman en CI. Los specs se escriben con TestBed y `expect` estándar para minimizar dependencias del runner.
-- **H3:** El shell provee el enrutamiento raíz y la sesión, y monta el remote en `/tarjetas`.
-- **H4:** La moneda y el idioma son configurables. Por defecto se usa `es` y la moneda definida en `environment`.
-- **H5:** No existe un contrato de API. El modelo `Card` es una propuesta que debe validarse con el backend.
+- **H1:** el SGC está en *fallback*. No hay reglas corporativas de UI ni de seguridad confirmadas. Se aplican buenas prácticas genéricas.
+- **H2:** "Consulta" significa solo lectura: listar tarjetas y ver su detalle. No incluye bloqueos, pagos ni movimientos transaccionales.
+- **H3:** el locale y la moneda son configurables en los mock. El valor concreto no está confirmado.
+- **H4:** las tarjetas mock usan números no válidos. Solo se exponen los últimos 4 dígitos.
+- **H5:** puede no existir un runner de pruebas instalado y no se agregan dependencias. En ese caso, las unitarias se documentan como plan en `TODOS.json` sobre `domain/`.
+- **H6:** la integración futura sería un API de tarjetas. No hay contrato definido.
+
+## Plan de pruebas unitarias (T05)
+- **U1:** `maskPan('4111')` devuelve `•••• 4111`.
+- **U2:** `formatAmount` respeta la moneda del mock.
+- **U3:** `usagePercent` maneja límite 0 sin `NaN`.
+- **U4** (si hay runner con DOM): el clic en el botón muestra "Capacidad simulada" en `role=status`.
 
 ## Riesgos
-
 | Riesgo | Mitigación |
 |---|---|
-| Versiones de `@angular/*` compartidas incompatibles entre shell y remote | Declarar `shared` como singleton con `strictVersion` y documentarlo en el README. |
-| Estilos del remote que afectan al shell | Usar encapsulación por defecto y no incluir estilos globales. |
-| Exposición del PAN o de datos reales | Mantener datos ficticios, aplicar `maskPan` y prohibir el almacenamiento en el navegador. |
-| El validador local no cubre TS ni plantillas HTML | Reportar esos archivos como **no verificados**. La compilación real queda para CI. |
-| Contrato del gateway distinto al backend real | El adaptador aislado (AD3) limita el cambio a la capa `data/`. |
+| Se confunden los mock con datos reales | Etiqueta visible "Datos ficticios" y aviso en el README. |
+| Sin runner de pruebas instalado | Aplicar H5 y reportarlo en `handoff-result.json`. |
+| Restricciones SGC no aplicadas (fallback) | Registrarlo como pendiente en el handoff. |
+| Contraste o foco insuficientes | Tokens con contraste AA y `:focus-visible` explícito. |
+| Se interpreta como listo para producción | El handoff se marca como *candidate*. |
 
-## Notas para builder y tester
-- El orden de ejecución es T01 a T06. En el resumen final se deben citar el estado SGC *fallback* y las hipótesis H1 a H5.
-- El README debe cubrir: `npm install`, el modo standalone, el registro del remote en el shell, la integración (sin definir, mock activo) y la persistencia (sin definir, solo en memoria).
-- El cierre se marca como **candidate**: sin compilación, sin ejecución de pruebas y sin afirmar que está listo para producción.
+## Trazabilidad
+| Tarea | Elementos de diseño |
+|---|---|
+| T01 | H1 |
+| T02 | Estructura de módulos y D1 |
+| T03 | D6 |
+| T04 | D5 y D2 |
+| T05 | U1–U4 |
+| T06 | D1–D7 y H6 |
+| T07 | Riesgo de "producción" |
