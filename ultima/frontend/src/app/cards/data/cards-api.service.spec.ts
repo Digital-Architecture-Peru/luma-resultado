@@ -1,51 +1,35 @@
-import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { environment } from '../../../environments/environment';
 import { CardsApiService } from './cards-api.service';
-import { CardSummary } from './card.model';
 
 describe('CardsApiService', () => {
   let service: CardsApiService;
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-    });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     service = TestBed.inject(CardsApiService);
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => {
-    http.verify();
-  });
+  afterEach(() => http.verify());
 
-  it('given a list call, when subscribed, then GETs /api/v1/cards', () => {
-    const expected: CardSummary[] = [
-      {
-        id: 'a',
-        maskedPan: '**** **** **** 1111',
-        brand: 'VISA',
-        cardType: 'CREDIT',
-        status: 'ACTIVE',
-        availableBalance: 10,
-        currency: 'USD',
-      },
-    ];
-    let received: CardSummary[] = [];
+  it('given the API, when getCards, then GETs /cards with the customer header', () => {
+    let result: unknown[] = [];
+    service.getCards().subscribe((cards) => (result = cards));
 
-    service.list().subscribe((cards) => (received = cards));
-
-    const req = http.expectOne('/api/v1/cards');
+    const req = http.expectOne(`${environment.apiBaseUrl}/cards`);
     expect(req.request.method).toBe('GET');
-    req.flush(expected);
-    expect(received).toEqual(expected);
+    expect(req.request.headers.get('X-Customer-Id')).toBe(environment.devCustomerId);
+    req.flush([]);
+    expect(result).toEqual([]);
   });
 
-  it('given an id, when get is called, then GETs the detail URL', () => {
-    service.get('abc').subscribe();
-
-    const req = http.expectOne('/api/v1/cards/abc');
+  it('given an id, when getCard, then GETs /cards/{id}', () => {
+    service.getCard('abc').subscribe();
+    const req = http.expectOne(`${environment.apiBaseUrl}/cards/abc`);
     expect(req.request.method).toBe('GET');
     req.flush({});
   });

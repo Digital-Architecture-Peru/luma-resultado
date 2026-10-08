@@ -1,6 +1,6 @@
-import { Component, Input } from '@angular/core';
-import { CardSummaryItemComponent } from '../molecules/card-summary-item.component';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CardSummary } from '../data/card.model';
+import { CardSummaryItemComponent } from '../molecules/card-summary-item.component';
 
 @Component({
   selector: 'app-card-list',
@@ -8,22 +8,25 @@ import { CardSummary } from '../data/card.model';
   imports: [CardSummaryItemComponent],
   template: `
     @if (cards.length === 0) {
-      <p class="empty">No tienes tarjetas para mostrar.</p>
+      <p class="empty">No tienes tarjetas registradas.</p>
     } @else {
-      <ul class="list">
+      <ul class="list" aria-label="Mis tarjetas">
         @for (card of cards; track card.id) {
-          <li><app-card-summary-item [card]="card" /></li>
+          <li>
+            <app-card-summary-item [card]="card" [selected]="card.id === selectedId"
+                                   (chosen)="selectedCard.emit($event)" />
+          </li>
         }
       </ul>
     }
   `,
-  styles: [
-    `
-      .list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
-      .empty { color: var(--muted); }
-    `,
-  ],
+  styles: [`
+    .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .empty { color: var(--muted); }
+  `],
 })
 export class CardListComponent {
-  @Input({ required: true }) cards: CardSummary[] = [];
+  @Input() cards: CardSummary[] = [];
+  @Input() selectedId: string | null = null;
+  @Output() selectedCard = new EventEmitter<string>();
 }

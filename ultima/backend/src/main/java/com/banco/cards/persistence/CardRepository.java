@@ -4,10 +4,12 @@ import com.banco.cards.domain.Card;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface CardRepository {
+/** Consultas derivadas (parametrizadas por JPA); siempre filtradas por cliente. */
+public interface CardRepository extends JpaRepository<Card, UUID> {
 
-    List<Card> findByCustomerId(String customerId);
+    List<Card> findByCustomerIdOrderByStatusAscCreatedAtDesc(String customerId);
 
-    Optional<Card> findByIdAndCustomerId(UUID cardId, String customerId);
+    Optional<Card> findByIdAndCustomerId(UUID id, String customerId);
 }

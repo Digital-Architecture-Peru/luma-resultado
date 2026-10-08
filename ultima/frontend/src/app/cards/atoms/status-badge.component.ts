@@ -4,31 +4,23 @@ import { CardStatus } from '../data/card.model';
 const LABELS: Record<CardStatus, string> = {
   ACTIVE: 'Activa',
   BLOCKED: 'Bloqueada',
-  CANCELLED: 'Cancelada',
+  EXPIRED: 'Vencida',
 };
 
 @Component({
   selector: 'app-status-badge',
   standalone: true,
-  template: `<span class="badge" [class]="'badge ' + status.toLowerCase()">{{ label }}</span>`,
-  styles: [
-    `
-      .badge {
-        display: inline-block;
-        padding: 2px var(--space-2);
-        border: 1px solid currentColor;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 600;
-      }
-      .active { color: var(--success); }
-      .blocked { color: var(--warning); }
-      .cancelled { color: var(--danger); }
-    `,
-  ],
+  template: `<span class="badge" [class]="status.toLowerCase()">{{ label }}</span>`,
+  styles: [`
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem;
+      font-weight: 600; border: 1px solid currentColor; }
+    .active { color: var(--success); }
+    .blocked { color: var(--danger); }
+    .expired { color: var(--warning); }
+  `],
 })
 export class StatusBadgeComponent {
-  @Input({ required: true }) status!: CardStatus;
+  @Input({ required: true }) status: CardStatus = 'ACTIVE';
 
   get label(): string {
     return LABELS[this.status];

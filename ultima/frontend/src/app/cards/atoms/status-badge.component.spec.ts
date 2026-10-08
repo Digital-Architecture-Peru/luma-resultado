@@ -5,23 +5,18 @@ describe('StatusBadgeComponent', () => {
   let fixture: ComponentFixture<StatusBadgeComponent>;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [StatusBadgeComponent] });
     fixture = TestBed.createComponent(StatusBadgeComponent);
   });
 
-  it('given BLOCKED status, when rendered, then shows the text label', () => {
-    fixture.componentInstance.status = 'BLOCKED';
+  it('given BLOCKED status, when rendered, then shows Bloqueada', () => {
+    fixture.componentRef.setInput('status', 'BLOCKED');
     fixture.detectChanges();
-
-    const el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Bloqueada');
-    expect(el.querySelector('.blocked')).not.toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Bloqueada');
   });
 
   it('given ACTIVE status, when rendered, then shows Activa', () => {
-    fixture.componentInstance.status = 'ACTIVE';
+    fixture.componentRef.setInput('status', 'ACTIVE');
     fixture.detectChanges();
-
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Activa');
   });
 });

@@ -1,5 +1,4 @@
-import { Component, Input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { AmountComponent } from '../atoms/amount.component';
 import { MaskedPanComponent } from '../atoms/masked-pan.component';
 import { StatusBadgeComponent } from '../atoms/status-badge.component';
@@ -8,39 +7,26 @@ import { CardSummary } from '../data/card.model';
 @Component({
   selector: 'app-card-summary-item',
   standalone: true,
-  imports: [RouterLink, AmountComponent, MaskedPanComponent, StatusBadgeComponent],
+  imports: [AmountComponent, MaskedPanComponent, StatusBadgeComponent],
   template: `
-    <a class="item" [routerLink]="['/cards', card.id]">
-      <div class="main">
-        <strong>{{ card.brand }} · {{ card.cardType === 'CREDIT' ? 'Crédito' : 'Débito' }}</strong>
-        <app-masked-pan [value]="card.maskedPan" />
-      </div>
-      <div class="side">
-        <app-status-badge [status]="card.status" />
-        <span class="muted">Disponible: <app-amount [value]="card.availableBalance" [currency]="card.currency" /></span>
-      </div>
-    </a>
+    <button type="button" class="item" [class.selected]="selected" [attr.aria-pressed]="selected"
+            (click)="chosen.emit(card.id)">
+      <span class="type">{{ card.type === 'CREDIT' ? 'Crédito' : 'Débito' }}</span>
+      <app-masked-pan [pan]="card.maskedPan" />
+      <app-status-badge [status]="card.status" />
+      <span class="balance">Disponible <app-amount [value]="card.availableBalance" [currency]="card.currency" /></span>
+    </button>
   `,
-  styles: [
-    `
-      .item {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: var(--space-3);
-        padding: var(--space-4);
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-sm);
-        color: var(--text);
-        text-decoration: none;
-      }
-      .main, .side { display: flex; flex-direction: column; gap: var(--space-1); }
-      .muted { color: var(--muted); }
-    `,
-  ],
+  styles: [`
+    .item { display: grid; gap: 4px; width: 100%; text-align: start; min-height: 44px; padding: 12px 16px;
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; font: inherit; }
+    .item.selected { border-color: var(--primary); border-width: 2px; }
+    .type { color: var(--muted); font-size: 0.85rem; }
+  `],
 })
 export class CardSummaryItemComponent {
   @Input({ required: true }) card!: CardSummary;
+  @Input() selected = false;
+  @Output() chosen = new EventEmitter<string>();
 }
