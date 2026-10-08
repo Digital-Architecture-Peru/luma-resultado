@@ -1,4 +1,4 @@
-# Microapp 778fff65-52b6-4439-9d13-58ec554e959b
+# Microapp 25fe1bfd-7f6b-4a3e-a93e-91c0294f1e56
 
 Candidate generada por Microapp Builder y validada en navegador local; no es producción.
 
