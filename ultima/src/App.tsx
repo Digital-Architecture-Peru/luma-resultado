@@ -1,165 +1,204 @@
 import { useMemo, useState } from 'react';
 
-type EstadoTarjeta = 'Activa' | 'Bloqueada';
+type EstadoTarjeta = 'Activa' | 'Bloqueada' | 'Vencida';
 
 interface Tarjeta {
   id: string;
   titular: string;
-  ultimos4: string;
+  numeroMasked: string;
   tipo: 'Débito' | 'Crédito';
   estado: EstadoTarjeta;
   saldo: number;
+  limite: number;
 }
 
 const TARJETAS_INICIALES: Tarjeta[] = [
-  { id: 't1', titular: 'Ana Pérez', ultimos4: '4821', tipo: 'Crédito', estado: 'Activa', saldo: 3250000 },
-  { id: 't2', titular: 'Ana Pérez', ultimos4: '1190', tipo: 'Débito', estado: 'Activa', saldo: 870000 },
-  { id: 't3', titular: 'Carlos Ruiz', ultimos4: '7742', tipo: 'Crédito', estado: 'Bloqueada', saldo: 0 },
-  { id: 't4', titular: 'Marta Gómez', ultimos4: '3309', tipo: 'Débito', estado: 'Activa', saldo: 1540000 },
-  { id: 't5', titular: 'Luis Fernández', ultimos4: '5567', tipo: 'Crédito', estado: 'Activa', saldo: 980000 },
+  { id: 'c1', titular: 'Ana María Torres', numeroMasked: '**** **** **** 4821', tipo: 'Débito', estado: 'Activa', saldo: 3250.75, limite: 5000 },
+  { id: 'c2', titular: 'Luis Fernando Gómez', numeroMasked: '**** **** **** 1190', tipo: 'Crédito', estado: 'Activa', saldo: 1820.4, limite: 8000 },
+  { id: 'c3', titular: 'Carla Ibarra Soto', numeroMasked: '**** **** **** 7734', tipo: 'Crédito', estado: 'Bloqueada', saldo: 0, limite: 6000 },
+  { id: 'c4', titular: 'Miguel Ángel Rojas', numeroMasked: '**** **** **** 5502', tipo: 'Débito', estado: 'Vencida', saldo: 540.1, limite: 2000 },
+  { id: 'c5', titular: 'Patricia Elena Vidal', numeroMasked: '**** **** **** 3309', tipo: 'Crédito', estado: 'Activa', saldo: 4120.0, limite: 10000 },
 ];
 
-const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+function formatoMoneda(valor: number): string {
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(valor);
+}
 
 export default function App() {
-  const [tarjetas, setTarjetas] = useState<Tarjeta[]>(TARJETAS_INICIALES);
-  const [busqueda, setBusqueda] = useState('');
-  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
-  const [mensajeAccion, setMensajeAccion] = useState('');
+  const [tarjetas] = useState<Tarjeta[]>(TARJETAS_INICIALES);
+  const [termino, setTermino] = useState('');
+  const [estadoFiltro, setEstadoFiltro] = useState<'Todos' | EstadoTarjeta>('Todos');
+  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const [mensajeCapacidad, setMensajeCapacidad] = useState('');
 
-  const resultados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    if (!termino) return tarjetas;
-    return tarjetas.filter(
-      (t) => t.titular.toLowerCase().includes(termino) || t.ultimos4.includes(termino)
-    );
-  }, [busqueda, tarjetas]);
+  const tarjetasFiltradas = useMemo(() => {
+    const texto = termino.trim().toLowerCase();
+    return tarjetas.filter((t) => {
+      const coincideTexto =
+        texto === '' ||
+        t.titular.toLowerCase().includes(texto) ||
+        t.numeroMasked.toLowerCase().includes(texto);
+      const coincideEstado = estadoFiltro === 'Todos' || t.estado === estadoFiltro;
+      return coincideTexto && coincideEstado;
+    });
+  }, [tarjetas, termino, estadoFiltro]);
 
-  function pedirConfirmacion(id: string) {
-    setConfirmandoId(id);
-    setMensajeAccion('');
-  }
+  const tarjetaSeleccionada = useMemo(
+    () => tarjetas.find((t) => t.id === seleccionadaId) ?? null,
+    [tarjetas, seleccionadaId]
+  );
 
-  function cancelarConfirmacion() {
-    setConfirmandoId(null);
-  }
-
-  function alternarEstado(id: string) {
-    setTarjetas((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        const nuevoEstado: EstadoTarjeta = t.estado === 'Activa' ? 'Bloqueada' : 'Activa';
-        setMensajeAccion(
-          `Tarjeta terminada en ${t.ultimos4} ahora está ${nuevoEstado === 'Activa' ? 'activa' : 'bloqueada'}.`
-        );
-        return { ...t, estado: nuevoEstado };
-      })
-    );
-    setConfirmandoId(null);
-  }
-
-  function probarCapacidad() {
+  function manejarProbarCapacidad() {
     setMensajeCapacidad('Consulta de Tarjetas');
+  }
+
+  function limpiarBusqueda() {
+    setTermino('');
+    setEstadoFiltro('Todos');
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
-        <h1>Consulta de Tarjetas</h1>
-        <p className="app-subtitle">Banca por Internet · Frontend React + TypeScript (datos ficticios en memoria)</p>
-        <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
+        <div>
+          <p className="app-eyebrow">Banca por Internet</p>
+          <h1>Consulta de Tarjetas</h1>
+          <p className="app-subtitle">
+            Revisa el estado, saldo y límite de las tarjetas asociadas en un entorno de datos
+            ficticios.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={manejarProbarCapacidad}
+        >
           Probar capacidad
         </button>
-        <p role="status" aria-live="polite" className="status-line">
-          {mensajeCapacidad}
-        </p>
       </header>
 
-      <section className="card panel" aria-labelledby="buscar-titulo">
-        <h2 id="buscar-titulo">Buscar tarjetas</h2>
-        <label htmlFor="busqueda-input" className="field-label">
-          Titular o últimos 4 dígitos
-        </label>
-        <input
-          id="busqueda-input"
-          type="text"
-          className="input"
-          placeholder="Ej. Ana Pérez o 4821"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
+      <p role="status" aria-live="polite" className="status-banner">
+        {mensajeCapacidad}
+      </p>
 
-        {mensajeAccion && (
-          <p role="status" aria-live="polite" className="status-line status-line--muted">
-            {mensajeAccion}
-          </p>
-        )}
+      <section className="panel" aria-labelledby="busqueda-titulo">
+        <h2 id="busqueda-titulo" className="panel-title">
+          Buscar tarjetas
+        </h2>
+        <div className="filtros">
+          <div className="campo">
+            <label htmlFor="busqueda-input">Titular o número</label>
+            <input
+              id="busqueda-input"
+              type="search"
+              placeholder="Ej. Ana Torres o 4821"
+              value={termino}
+              onChange={(e) => setTermino(e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="estado-select">Estado</label>
+            <select
+              id="estado-select"
+              value={estadoFiltro}
+              onChange={(e) => setEstadoFiltro(e.target.value as 'Todos' | EstadoTarjeta)}
+            >
+              <option value="Todos">Todos</option>
+              <option value="Activa">Activa</option>
+              <option value="Bloqueada">Bloqueada</option>
+              <option value="Vencida">Vencida</option>
+            </select>
+          </div>
+          <button type="button" className="btn btn-secondary" onClick={limpiarBusqueda}>
+            Limpiar filtros
+          </button>
+        </div>
+      </section>
 
-        <div className="table-wrap">
-          {resultados.length === 0 ? (
-            <p className="empty-state">No se encontraron tarjetas para "{busqueda}".</p>
-          ) : (
+      <section className="panel" aria-labelledby="resultados-titulo">
+        <h2 id="resultados-titulo" className="panel-title">
+          Resultados ({tarjetasFiltradas.length})
+        </h2>
+        {tarjetasFiltradas.length === 0 ? (
+          <p className="estado-vacio">No se encontraron tarjetas con los criterios indicados.</p>
+        ) : (
+          <div className="tabla-wrapper">
             <table className="tabla-tarjetas">
               <thead>
                 <tr>
                   <th scope="col">Titular</th>
-                  <th scope="col">Tarjeta</th>
+                  <th scope="col">Número</th>
                   <th scope="col">Tipo</th>
                   <th scope="col">Estado</th>
-                  <th scope="col" className="col-numero">Saldo</th>
-                  <th scope="col">Acción</th>
+                  <th scope="col" className="col-num">
+                    Saldo
+                  </th>
+                  <th scope="col">Detalle</th>
                 </tr>
               </thead>
               <tbody>
-                {resultados.map((t) => (
-                  <tr key={t.id}>
+                {tarjetasFiltradas.map((t) => (
+                  <tr key={t.id} className={t.id === seleccionadaId ? 'fila-activa' : ''}>
                     <td>{t.titular}</td>
-                    <td>•••• {t.ultimos4}</td>
+                    <td>{t.numeroMasked}</td>
                     <td>{t.tipo}</td>
                     <td>
-                      <span className={`badge ${t.estado === 'Activa' ? 'badge-success' : 'badge-danger'}`}>
-                        {t.estado}
-                      </span>
+                      <span className={`badge badge-${t.estado.toLowerCase()}`}>{t.estado}</span>
                     </td>
-                    <td className="col-numero">{formatoMoneda.format(t.saldo)}</td>
+                    <td className="col-num">{formatoMoneda(t.saldo)}</td>
                     <td>
-                      {confirmandoId === t.id ? (
-                        <div className="confirm-inline">
-                          <span>
-                            ¿Confirmar {t.estado === 'Activa' ? 'bloqueo' : 'activación'}?
-                          </span>
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => alternarEstado(t.id)}
-                          >
-                            Sí, confirmar
-                          </button>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={cancelarConfirmacion}>
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => pedirConfirmacion(t.id)}
-                        >
-                          {t.estado === 'Activa' ? 'Bloquear' : 'Activar'}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        aria-pressed={t.id === seleccionadaId}
+                        onClick={() => setSeleccionadaId(t.id)}
+                      >
+                        Ver detalle
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
+      {tarjetaSeleccionada && (
+        <section className="panel detalle" aria-labelledby="detalle-titulo">
+          <h2 id="detalle-titulo" className="panel-title">
+            Detalle de {tarjetaSeleccionada.titular}
+          </h2>
+          <dl className="detalle-grid">
+            <div>
+              <dt>Número</dt>
+              <dd>{tarjetaSeleccionada.numeroMasked}</dd>
+            </div>
+            <div>
+              <dt>Tipo</dt>
+              <dd>{tarjetaSeleccionada.tipo}</dd>
+            </div>
+            <div>
+              <dt>Estado</dt>
+              <dd>{tarjetaSeleccionada.estado}</dd>
+            </div>
+            <div>
+              <dt>Saldo actual</dt>
+              <dd>{formatoMoneda(tarjetaSeleccionada.saldo)}</dd>
+            </div>
+            <div>
+              <dt>Límite</dt>
+              <dd>{formatoMoneda(tarjetaSeleccionada.limite)}</dd>
+            </div>
+          </dl>
+          <button type="button" className="btn btn-secondary" onClick={() => setSeleccionadaId(null)}>
+            Cerrar detalle
+          </button>
+        </section>
+      )}
+
       <footer className="app-footer">
-        <p>Candidato: datos en memoria, sin persistencia ni red. Sujeto a verificación posterior.</p>
+        <p>Datos ficticios en memoria. Sin persistencia, red ni base de datos.</p>
       </footer>
     </main>
   );
