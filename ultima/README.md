@@ -1,32 +1,75 @@
-# Consulta de Tarjetas · Banca por Internet (candidate)
+# Consulta de tarjetas — Angular + Quarkus
 
-Full Stack: `backend/` (Java 17 + Spring Boot 3.2, JPA, Flyway, PostgreSQL) y `frontend/` (Angular 17, Atomic Design).
-API de solo lectura: `GET /api/v1/cards` y `GET /api/v1/cards/{cardId}`. Datos ficticios; solo se guarda el PAN enmascarado (últimos 4 dígitos).
+Aplicación de consulta de solo lectura: Angular 17, Java 17/Quarkus 3.15 y PostgreSQL. Flyway administra el esquema y los datos ficticios. No se almacena ni expone PAN completo ni CVV.
 
-## Backend
-Variables de entorno (sin valores por defecto para credenciales): `DB_URL` (opcional, por defecto `jdbc:postgresql://localhost:5432/cards`), `DB_USER`, `DB_PASSWORD`, `CORS_ALLOWED_ORIGIN` (por defecto `http://localhost:4200`), `LOG_LEVEL`.
+## Requisitos
 
-```
+Node.js/npm, JDK 17, Maven y PostgreSQL accesible para ejecutar la aplicación.
+
+## Compilar y probar
+
+Desde la raíz:
+
+```sh
 cd backend
-mvn test                                   # pruebas unitarias (JUnit 5 + Mockito + MockMvc standalone)
-SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run
+mvn package
 ```
-Flyway aplica `V1__schema.sql` y `V2__seed.sql` al arrancar.
 
-**Advertencia:** el perfil `dev` activa `HeaderCustomerContextProvider`, que toma el cliente del header `X-Customer-Id`. Es un stub solo para desarrollo; en producción debe sustituirse por una implementación de `CustomerContextProvider` basada en la autenticación real del canal (OAuth2/JWT, aún sin definir).
+Esto compila y ejecuta las pruebas JUnit 5/Mockito. Las pruebas backend no requieren base de datos: el perfil `test` deshabilita Dev Services y las migraciones de arranque.
 
-## Frontend
-```
+```sh
 cd frontend
 npm install
 npm run build
-npm test        # Karma + Jasmine, ChromeHeadless, una sola pasada
-npm start       # http://localhost:4200
+npm test
 ```
-`src/environments/environment.ts` define `apiBaseUrl` y el cliente ficticio de desarrollo.
 
-## Integración
-Sin definir: no hay conexión con el core de tarjetas; PostgreSQL es la fuente de la consulta.
+El build verifica TypeScript y compila Angular; Vitest se ejecuta en modo no interactivo. Las pruebas frontend actuales cubren el servicio HTTP y helpers/modelo, no la integración extremo a extremo.
+
+## Configuración y ejecución
+
+Crea una base `cards` y un usuario `cards_app` con permiso de crear tablas e índices. Configuración backend por entorno:
+
+| Variable | Valor predeterminado |
+|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/cards` |
+| `DB_USER` | `cards_app` |
+| `DB_PASSWORD` | vacío; definir antes de ejecutar |
+| `DB_POOL_MAX` | `10` |
+| `PORT` | `8080` |
+| `CORS_ORIGINS` | `http://localhost:4200` |
+| `DEMO_CUSTOMER_ID` | `11111111-1111-1111-1111-111111111111` |
+| `LOG_LEVEL` | `INFO` |
+
+No guardes credenciales en el repositorio. En POSIX, establece `DB_PASSWORD` en el entorno y arranca:
+
+```sh
+cd backend
+mvn quarkus:dev
+```
+
+Flyway aplica las migraciones al inicio. Health: `http://localhost:8080/q/health`. En otra terminal:
+
+```sh
+cd frontend
+npm start
+```
+
+Abre `http://localhost:4200`. `frontend/proxy.conf.json` envía `/api` a `http://localhost:8080`.
+
+## API e integración
+
+- `GET /api/v1/cards`: lista tarjetas del cliente actual.
+- `GET /api/v1/cards/{cardId}`: obtiene detalle por UUID.
+
+La respuesta presenta id, número enmascarado y últimos cuatro dígitos, marca, tipo, estado, titular, límite, saldo disponible y moneda. UUID inválido, tarjeta inexistente o ajena produce `404 application/problem+json`. Angular consume estas rutas con `CardService`.
+
+`CustomerContext` usa un cliente fijo configurable mediante `DEMO_CUSTOMER_ID`; es un stub, no autenticación. Antes de desplegar, integrar autenticación/autorización real (por ejemplo OIDC/JWT) y resolver el cliente desde una identidad validada. CORS y el proxy son configuración, no controles de acceso. El saldo/cupo se leen de la tabla local; una integración con un core de tarjetas no está definida.
 
 ## Persistencia
-Tabla `card` (índice `(customer_id, status)`); acceso con Spring Data JPA (consultas parametrizadas) siempre filtrado por cliente.
+
+`PgCardRepository` implementa `CardRepository` con JDBC y consultas parametrizadas. Tanto el listado como la consulta individual filtran por `customer_id`. Las migraciones Flyway están en `backend/src/main/resources/db/migration/`: V1 crea tabla, restricciones e índices; V2 carga registros ficticios de dos clientes. Flyway aplica cada versión una sola vez por base. Para reiniciar los datos de desarrollo, recrea la base local; no edites migraciones ya aplicadas.
+
+## Límites de verificación
+
+Las pruebas existentes no validan PostgreSQL real ni integración completa. Compilación, pruebas y arranque no se han ejecutado durante la preparación de esta documentación; dependen de las herramientas y servicios instalados localmente.

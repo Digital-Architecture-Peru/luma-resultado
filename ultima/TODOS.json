@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-source",
-    "title": "Implementar la capa Full Stack en Angular + Java + Spring Boot para \"Consulta\" sobre Tarjetas con patrón Component-based (Atomic Design)",
+    "title": "Implementar la capa Full Stack en Angular + Java + Quarkus para \"Consulta\" sobre Tarjetas con patrón Component-based (Atomic Design)",
     "dependsOn": [
       "T01-read-context"
     ],
