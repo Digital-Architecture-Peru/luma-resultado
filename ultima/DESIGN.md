@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Quarkus
+- ¿Qué stack? Angular + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Quarkus (capa Full Stack) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + .NET (capa Full Stack) para "Consulta" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,76 +29,63 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: consulta de Tarjetas (Banca por Internet)
+# DESIGN – Refinamiento (Consulta de Tarjetas · Angular + .NET · PostgreSQL)
 
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Repo con `frontend/` (Angular) y `backend/` (Quarkus) independientes | Cada uno tiene su propio build (npm / Maven) y se puede verificar por separado |
-| D2 | API REST de solo lectura: `GET /api/v1/cards` y `GET /api/v1/cards/{cardId}` | La capacidad es Consulta, así que no hay mutaciones |
-| D3 | Puerto `CardRepository` con adaptador PostgreSQL y SQL parametrizado (JDBC/Agroal o Panache) | Cumple "persistencia detrás de interfaces" y aísla la integración (sin definir) |
-| D4 | Nunca se persiste ni se expone el PAN completo, solo `last4` y `maskedNumber` (`**** **** **** 1234`). Sin CVV | Minimiza la exposición a PCI DSS |
-| D5 | `cardId` es un UUID opaco | Evita identificadores derivados del PAN |
-| D6 | Filtro obligatorio por `customer_id` en cada consulta, obtenido de `CustomerContext` | Mitiga IDOR (acceso a tarjetas de otro cliente) |
-| D7 | Errores en formato `application/problem+json` (404 si no existe o no pertenece al cliente) | Contrato uniforme que no filtra existencia |
-| D8 | Migraciones Flyway: `V1__schema.sql` y `V2__seed_ficticio.sql` | Esquema versionado; los datos ficticios quedan separados |
-| D9 | Angular con standalone components organizados por Atomic Design y `CardService` vía `HttpClient` | Sigue el patrón pedido y facilita las pruebas unitarias |
-| D10 | Pruebas unitarias: JUnit 5 + Mockito (recurso y servicio) y specs de Angular (componentes y servicio) | Sin Testcontainers, porque las pruebas son solo unitarias |
+| D1 | API .NET 8 de solo lectura (`GET`), separada en capas Api / Application / Domain / Infrastructure | La capacidad es una consulta. Las capas aíslan la integración "sin definir" detrás de interfaces. |
+| D2 | Endpoints `GET /api/v1/cards` y `GET /api/v1/cards/{cardId}`, con movimientos opcionales en `GET /api/v1/cards/{cardId}/movements?page&size` | Cubren la lista, el detalle y los movimientos. La versión va en la ruta y la paginación evita respuestas grandes. |
+| D3 | El cliente se identifica por un claim del contexto y nunca por un parámetro de la URL | Previene IDOR: un cliente no puede consultar tarjetas de otro. |
+| D4 | El PAN solo se expone enmascarado (`**** 1234`) y en BD se guarda solo `last4` | Minimiza el alcance PCI. Los datos son ficticios. |
+| D5 | Persistencia con Npgsql y SQL parametrizado tras `ICardQueryRepository`; migraciones SQL versionadas (`V001__`, `V002__`) | Da control explícito del SQL de lectura, evita inyección y permite usar un fake en memoria en las pruebas. |
+| D6 | Montos en `numeric(18,2)` / `decimal`, fechas en UTC (`timestamptz`) y moneda ISO-4217 | Evita errores de redondeo y de zona horaria. |
+| D7 | Angular con componentes standalone organizados por Atomic Design | Cumple el patrón pedido y facilita el reúso y las pruebas unitarias por nivel. |
+| D8 | Configuración por variables de entorno (`ConnectionStrings__Cards`, `API_BASE_URL`) | Evita secretos en el repositorio. |
 
 ## Estructura de módulos
 ```
-backend/  pom.xml
-  src/main/java/.../cards/
-    api/            CardResource, CardDto, ProblemMapper
-    application/    CardQueryService
-    domain/         Card, CardType, CardStatus, CardRepository (puerto)
-    infrastructure/ PgCardRepository, CustomerContext (stub)
-  src/main/resources/ application.properties (vars de entorno)
-    db/migration/   V1__schema.sql, V2__seed_ficticio.sql
-  src/test/java/... CardQueryServiceTest, CardResourceTest
-frontend/ package.json, angular.json
-  src/app/cards/
-    atoms/      badge-status, masked-number, amount
-    molecules/  card-summary
-    organisms/  card-list, card-detail
-    templates/  cards-layout
-    pages/      cards-page
-    data/       card.service.ts, card.model.ts (+ *.spec.ts)
+backend/
+  Cards.sln
+  src/Cards.Api/            Program.cs, Endpoints/CardsEndpoints.cs, CurrentCustomer.cs
+  src/Cards.Application/    ICardQueryRepository.cs, CardQueryService.cs, Dtos/
+  src/Cards.Domain/         Card.cs, CardMovement.cs, CardStatus.cs
+  src/Cards.Infrastructure/ NpgsqlCardQueryRepository.cs
+  tests/Cards.UnitTests/    CardQueryServiceTests.cs, MaskingTests.cs (xUnit + fake repo)
+db/migrations/              V001__schema.sql, V002__indexes.sql, V003__seed_ficticio.sql
+frontend/src/app/
+  atoms/        badge-status, money, masked-pan
+  molecules/    card-summary-item, movement-row
+  organisms/    card-list, card-detail-panel, movement-table
+  templates/    cards-layout
+  pages/        cards-page, card-detail-page
+  core/         cards-api.service.ts, models.ts
+  *.spec.ts junto a cada componente y servicio
 README.md
 ```
 
-## Modelo de datos (PostgreSQL)
-Tabla `card`:
-- `id uuid PK`
-- `customer_id uuid NOT NULL`
-- `last4 char(4)`
-- `brand`
-- `card_type` (CHECK CREDIT/DEBIT)
-- `status` (CHECK ACTIVE/BLOCKED/CANCELLED)
-- `holder_name`
-- `credit_limit numeric(15,2)`
-- `available_balance numeric(15,2)`
-- `currency char(3)`
-- `created_at timestamptz`
-
-Índices: `idx_card_customer(customer_id)` e `idx_card_customer_status(customer_id, status)`.
+## Modelo de datos (resumen)
+- **`cards`**: `id uuid PK`, `customer_id uuid`, `last4 char(4)`, `brand`, `product`, `status`, `credit_limit`, `available`, `currency char(3)`, `expiry_month`, `expiry_year`.
+- **`card_movements`**: `id`, `card_id FK`, `posted_at timestamptz`, `description`, `amount`, `currency`.
+- **Índices**: `cards(customer_id)` y `card_movements(card_id, posted_at DESC)`.
 
 ## Hipótesis
-- H1: la autenticación es externa. `CustomerContext` es un stub configurable por variable de entorno y no implementa OIDC/JWT real.
-- H2: las versiones objetivo son Angular 17+ y Quarkus 3.x con Java 17+. Si la toolchain no está, se marca como no verificado.
-- H3: el saldo y el límite vienen de la propia tabla. No hay integración con un core de tarjetas (integración sin definir).
-- H4: la moneda y los montos son ficticios y no hay paginación. Se asume que cada cliente tiene menos de 20 tarjetas.
-- H5: el SQL PostgreSQL solo se revisa de forma estática y no se ejecuta en esta entrega.
+- H1: La autenticación ya la provee Banca por Internet. En desarrollo se usa el stub `X-Demo-Customer-Id`, que se desactiva fuera de `Development`.
+- H2: Los movimientos están dentro del alcance como consulta paginada. Si no aplican, se retiran sin afectar el resto.
+- H3: Las pruebas unitarias del frontend usan Jasmine/Karma (configuración por defecto de Angular). Requieren un navegador headless que puede no estar disponible localmente.
+- H4: Las versiones objetivo son .NET 8 LTS y Angular 17 o superior. No hay confirmación desde SGC (estado fallback).
+- H5: La integración con el core de tarjetas queda sin definir. Solo existe la interfaz y la implementación PostgreSQL de ejemplo.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Exposición de datos de tarjeta | D4 + logs sin PAN ni datos del cliente |
-| IDOR | D6 + pruebas unitarias del caso "tarjeta ajena → 404" |
-| Toolchain ausente (Maven/Node) | Validar sintaxis por archivo y declarar "no verificado" en el handoff |
-| Diferencias de versión Angular/Quarkus | Fijar versiones en `package.json` y `pom.xml` y documentarlas en el README |
-| Dev Services de Quarkus requieren Docker | Pruebas unitarias con mocks; datasource por variables de entorno |
+| Sin toolchain (`dotnet`/`npm`) no se compila ni se prueba | Marcar como no verificado en el handoff y entregar solo un candidate |
+| El SQL de PostgreSQL no se ejecuta (solo revisión estática) | Usar SQL estándar, revisarlo y no afirmar que fue ejecutado |
+| Exposición de datos sensibles | Aplicar D3 y D4 y no registrar en logs datos de tarjeta |
+| CORS o URL del API mal configuradas | Leer `API_BASE_URL` del entorno y documentarlo en el README |
 
-## Aceptación (complemento, sin contradecir la base)
-- Las pruebas cubren: listado filtrado por cliente, detalle inexistente o ajeno → 404, y enmascarado en DTO y UI.
-- El README documenta build y ejecución, variables de entorno, la integración pendiente y las migraciones, y lista lo no verificado.
+## Trazabilidad con la aceptación
+- La sintaxis se valida sobre los archivos verificables.
+- Los `*.spec.ts` y `Cards.UnitTests` cubren la existencia de pruebas.
+- El README documenta build, ejecución, integración (sin definir) y persistencia (PostgreSQL).
+- No se afirma compilación ni paso a producción.

@@ -1,75 +1,37 @@
-# Consulta de tarjetas — Angular + Quarkus
+# Consulta de Tarjetas · Banca por Internet (candidate)
 
-Aplicación de consulta de solo lectura: Angular 17, Java 17/Quarkus 3.15 y PostgreSQL. Flyway administra el esquema y los datos ficticios. No se almacena ni expone PAN completo ni CVV.
+Full Stack: **Angular 17** (Atomic Design) + **.NET 8** (Api/Application/Domain/Infrastructure) + **PostgreSQL**. Datos ficticios, sin secretos.
 
-## Requisitos
+## Estructura
+- `backend/` API de solo lectura: `GET /api/v1/cards`, `GET /api/v1/cards/{id}`, `GET /api/v1/cards/{id}/movements?page&size`, `GET /health`.
+- `db/migrations/` `V001` esquema, `V002` índices, `V003` seed ficticio (cliente demo `11111111-1111-1111-1111-111111111111`).
+- `frontend/src/app/` `atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/`, `core/`.
 
-Node.js/npm, JDK 17, Maven y PostgreSQL accesible para ejecutar la aplicación.
+## Seguridad
+- El cliente sale del claim `customer_id`, nunca de la URL. En `Development` se acepta el header `X-Demo-Customer-Id` (stub; el proxy de `ng serve` lo inyecta). Fuera de Development sin claim → 401.
+- Solo se guarda `last4`; el API devuelve `**** 1234`.
 
-## Compilar y probar
+## Configuración (variables de entorno)
+- `ConnectionStrings__Cards` (p. ej. `Host=localhost;Database=cards;Username=cards_app;Password=<DB_PASSWORD>`), `Cors__AllowedOrigins` (por defecto `http://localhost:4200`), `ASPNETCORE_ENVIRONMENT=Development`, `DB_PASSWORD` para docker-compose.
+- Frontend: base `/api/v1` (token `API_BASE_URL`); en desarrollo `frontend/proxy.conf.json` apunta a `http://localhost:5080`.
 
-Desde la raíz:
-
-```sh
-cd backend
-mvn package
+## Ejecutar
+```
+export DB_PASSWORD=...            # elija una
+docker compose up -d              # PostgreSQL + migraciones/seed
+cd backend && dotnet run --project src/Cards.Api --urls http://localhost:5080
+cd frontend && npm install && npm start
 ```
 
-Esto compila y ejecuta las pruebas JUnit 5/Mockito. Las pruebas backend no requieren base de datos: el perfil `test` deshabilita Dev Services y las migraciones de arranque.
-
-```sh
-cd frontend
-npm install
-npm run build
-npm test
+## Build y pruebas
+```
+cd backend && dotnet build && dotnet test      # xUnit con repositorio fake
+cd frontend && npm install && npm run build && npm test   # Jest (jest-preset-angular), sin navegador
 ```
 
-El build verifica TypeScript y compila Angular; Vitest se ejecuta en modo no interactivo. Las pruebas frontend actuales cubren el servicio HTTP y helpers/modelo, no la integración extremo a extremo.
+## Integración y persistencia
+- Integración con el core de tarjetas: **sin definir**; solo existe el puerto `ICardQueryRepository` y su implementación Npgsql (SQL parametrizado).
+- Persistencia PostgreSQL: montos `numeric(18,2)`, fechas `timestamptz` (UTC).
 
-## Configuración y ejecución
-
-Crea una base `cards` y un usuario `cards_app` con permiso de crear tablas e índices. Configuración backend por entorno:
-
-| Variable | Valor predeterminado |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/cards` |
-| `DB_USER` | `cards_app` |
-| `DB_PASSWORD` | vacío; definir antes de ejecutar |
-| `DB_POOL_MAX` | `10` |
-| `PORT` | `8080` |
-| `CORS_ORIGINS` | `http://localhost:4200` |
-| `DEMO_CUSTOMER_ID` | `11111111-1111-1111-1111-111111111111` |
-| `LOG_LEVEL` | `INFO` |
-
-No guardes credenciales en el repositorio. En POSIX, establece `DB_PASSWORD` en el entorno y arranca:
-
-```sh
-cd backend
-mvn quarkus:dev
-```
-
-Flyway aplica las migraciones al inicio. Health: `http://localhost:8080/q/health`. En otra terminal:
-
-```sh
-cd frontend
-npm start
-```
-
-Abre `http://localhost:4200`. `frontend/proxy.conf.json` envía `/api` a `http://localhost:8080`.
-
-## API e integración
-
-- `GET /api/v1/cards`: lista tarjetas del cliente actual.
-- `GET /api/v1/cards/{cardId}`: obtiene detalle por UUID.
-
-La respuesta presenta id, número enmascarado y últimos cuatro dígitos, marca, tipo, estado, titular, límite, saldo disponible y moneda. UUID inválido, tarjeta inexistente o ajena produce `404 application/problem+json`. Angular consume estas rutas con `CardService`.
-
-`CustomerContext` usa un cliente fijo configurable mediante `DEMO_CUSTOMER_ID`; es un stub, no autenticación. Antes de desplegar, integrar autenticación/autorización real (por ejemplo OIDC/JWT) y resolver el cliente desde una identidad validada. CORS y el proxy son configuración, no controles de acceso. El saldo/cupo se leen de la tabla local; una integración con un core de tarjetas no está definida.
-
-## Persistencia
-
-`PgCardRepository` implementa `CardRepository` con JDBC y consultas parametrizadas. Tanto el listado como la consulta individual filtran por `customer_id`. Las migraciones Flyway están en `backend/src/main/resources/db/migration/`: V1 crea tabla, restricciones e índices; V2 carga registros ficticios de dos clientes. Flyway aplica cada versión una sola vez por base. Para reiniciar los datos de desarrollo, recrea la base local; no edites migraciones ya aplicadas.
-
-## Límites de verificación
-
-Las pruebas existentes no validan PostgreSQL real ni integración completa. Compilación, pruebas y arranque no se han ejecutado durante la preparación de esta documentación; dependen de las herramientas y servicios instalados localmente.
+## Estado
+Candidate: no se ejecutó build ni pruebas ni el SQL contra PostgreSQL.

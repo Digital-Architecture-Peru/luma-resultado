@@ -7,8 +7,8 @@
     "domain": "Tarjetas",
     "layer": "Full Stack",
     "persistence": "PostgreSQL",
-    "stack": "Angular + Java + Quarkus",
-    "backendStack": "Java + Quarkus"
+    "stack": "Angular + .NET",
+    "backendStack": ".NET"
   },
   "sgc": {
     "status": "fallback",
