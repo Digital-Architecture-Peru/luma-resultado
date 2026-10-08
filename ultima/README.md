@@ -1,24 +1,30 @@
-# Microapp 25fe1bfd-7f6b-4a3e-a93e-91c0294f1e56
+# Consulta de Tarjetas — Banca por Internet (candidate)
 
-Candidate generada por Microapp Builder y validada en navegador local; no es producción.
+Full Stack: Angular 17 (standalone, Atomic Design) + Spring Boot 3.2 (Java 17, Maven) + PostgreSQL (Flyway).
+Alcance: solo lectura (`GET /api/v1/cards`, `GET /api/v1/cards/{cardId}`). Movimientos y extractos quedan fuera.
 
-Nueva capacidad (guion Luma)
-- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
-- ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Tarjetas
-- ¿Qué necesitas construir? Frontend
-- Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript
-- ¿Persistencia? No requiere
-- ¿Qué pruebas? Unitarias
+## Backend
+Variables de entorno (ver `backend/.env.example`): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `STUB_CUSTOMER_ID` (opcional), `LOG_LEVEL`.
+```
+cd backend
+mvn test        # pruebas unitarias (Mockito, @WebMvcTest)
+mvn package
+DB_URL=... DB_USER=... DB_PASSWORD=... java -jar target/cards-query-0.1.0.jar
+```
+Las migraciones Flyway (`V1__schema.sql`, `V2__seed_ficticio.sql`) se aplican al arrancar. Datos ficticios; solo se guardan los últimos 4 dígitos y el PAN enmascarado (nunca PAN completo, CVV ni vencimiento).
+Los errores usan `ProblemDetail` (RFC 7807); una tarjeta ajena responde 404 igual que una inexistente.
 
-Construye una microapp React interactiva y accesible que represente esta capacidad con datos ficticios en memoria. Lista de todos que debes ejecutar en orden:
-- [T01-read-context] Leer context-package.json, SGC-CONTEXT.json y los requisitos (acepta: Requisitos y restricciones citados en el resumen final)
-- [T02-ui] Implementar la interfaz de Banca por Internet para "Consulta" sobre Tarjetas en src/App.tsx y src/styles.css (acepta: src/App.tsx y src/styles.css modificados)
-- [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)
-- [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)
-- [T05-tests] Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)
-- [T06-docs] Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia No requiere (acepta: README del resultado publicado)
-- [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)
+## Frontend
+```
+cd frontend
+npm install
+npm start       # ng serve con proxy /api -> http://localhost:8080
+npm run build
+npm test        # Karma + ChromeHeadless (requiere Chrome)
+```
 
-SGC: fallback (SGC no configurado)
+## Integración
+Sin definir. `CurrentCustomerProvider` es el puerto; `StubCustomerProvider` devuelve un cliente ficticio fijo (`CUST-0001`). No hay autenticación real: no usar en producción.
+
+## No verificado
+Nada se ha compilado ni ejecutado: Maven, npm, Karma y el esquema PostgreSQL (solo revisión estática) quedan pendientes.
