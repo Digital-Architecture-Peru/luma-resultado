@@ -4,13 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import com.banco.cards.api.dto.CardDetailDto;
+import com.banco.cards.api.dto.CardSummaryDto;
 import com.banco.cards.domain.Card;
-import com.banco.cards.domain.CardNotFoundException;
 import com.banco.cards.domain.CardStatus;
+import com.banco.cards.domain.CardType;
 import com.banco.cards.persistence.CardRepository;
-import com.banco.cards.security.CurrentCustomerProvider;
+import com.banco.cards.security.CustomerContextProvider;
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,50 +25,60 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class CardQueryServiceTest {
 
-    private static final String CUSTOMER = "CUST-0001";
+    private static final String CUSTOMER = "CUST-TEST";
+    private static final UUID CARD_ID = UUID.fromString("11111111-1111-4111-8111-111111111111");
 
     @Mock
     private CardRepository repository;
-
     @Mock
-    private CurrentCustomerProvider customerProvider;
+    private CustomerContextProvider context;
 
     private CardQueryService service;
 
     @BeforeEach
     void setUp() {
-        service = new CardQueryService(repository, customerProvider);
-        when(customerProvider.currentCustomerId()).thenReturn(CUSTOMER);
+        service = new CardQueryService(repository, context);
+        when(context.currentCustomerId()).thenReturn(CUSTOMER);
     }
 
-    private Card sampleCard(UUID id) {
-        return new Card(id, CUSTOMER, "1111", "**** **** **** 1111", "VISA", "CREDIT",
-                CardStatus.ACTIVE, new BigDecimal("5000.00"), new BigDecimal("100.00"), "USD",
-                Instant.parse("2026-01-01T00:00:00Z"));
-    }
-
-    @Test
-    void givenCustomerWithCards_whenList_thenReturnsRepositoryResultForCurrentCustomer() {
-        Card card = sampleCard(UUID.randomUUID());
-        when(repository.findByCustomerId(CUSTOMER)).thenReturn(List.of(card));
-
-        assertEquals(List.of(card), service.listMyCards());
+    private Card sampleCard() {
+        return new Card(CARD_ID, CUSTOMER, "4821", CardType.CREDIT, CardStatus.ACTIVE,
+                new BigDecimal("5000.00"), new BigDecimal("3250.75"), "USD", 11, 2028, OffsetDateTime.now());
     }
 
     @Test
-    void givenOwnedCard_whenGet_thenReturnsCard() {
-        UUID id = UUID.randomUUID();
-        Card card = sampleCard(id);
-        when(repository.findByIdAndCustomerId(id, CUSTOMER)).thenReturn(Optional.of(card));
+    void givenCustomerWithCards_whenList_thenReturnsMaskedSummaries() {
+        when(repository.findByCustomerIdOrderByStatusAscCreatedAtDesc(CUSTOMER)).thenReturn(List.of(sampleCard()));
 
-        assertEquals(card, service.getMyCard(id));
+        List<CardSummaryDto> result = service.listCards();
+
+        assertEquals(1, result.size());
+        assertEquals("**** **** **** 4821", result.get(0).maskedPan());
+        assertEquals(new BigDecimal("3250.75"), result.get(0).availableBalance());
     }
 
     @Test
-    void givenUnknownOrForeignCard_whenGet_thenThrowsNotFound() {
-        UUID id = UUID.randomUUID();
-        when(repository.findByIdAndCustomerId(id, CUSTOMER)).thenReturn(Optional.empty());
+    void givenCustomerWithoutCards_whenList_thenReturnsEmpty() {
+        when(repository.findByCustomerIdOrderByStatusAscCreatedAtDesc(CUSTOMER)).thenReturn(List.of());
 
-        assertThrows(CardNotFoundException.class, () -> service.getMyCard(id));
+        assertEquals(0, service.listCards().size());
+    }
+
+    @Test
+    void givenOwnedCard_whenGet_thenReturnsDetail() {
+        when(repository.findByIdAndCustomerId(CARD_ID, CUSTOMER)).thenReturn(Optional.of(sampleCard()));
+
+        CardDetailDto detail = service.getCard(CARD_ID);
+
+        assertEquals(CARD_ID, detail.id());
+        assertEquals(new BigDecimal("5000.00"), detail.creditLimit());
+        assertEquals(2028, detail.expiryYear());
+    }
+
+    @Test
+    void givenForeignOrMissingCard_whenGet_thenThrowsNotFound() {
+        when(repository.findByIdAndCustomerId(CARD_ID, CUSTOMER)).thenReturn(Optional.empty());
+
+        assertThrows(CardNotFoundException.class, () -> service.getCard(CARD_ID));
     }
 }

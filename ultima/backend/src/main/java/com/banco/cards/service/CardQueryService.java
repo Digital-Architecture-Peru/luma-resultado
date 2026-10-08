@@ -1,31 +1,38 @@
 package com.banco.cards.service;
 
-import com.banco.cards.domain.Card;
-import com.banco.cards.domain.CardNotFoundException;
+import com.banco.cards.api.dto.CardDetailDto;
+import com.banco.cards.api.dto.CardSummaryDto;
 import com.banco.cards.persistence.CardRepository;
-import com.banco.cards.security.CurrentCustomerProvider;
+import com.banco.cards.security.CustomerContextProvider;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class CardQueryService {
 
     private final CardRepository repository;
-    private final CurrentCustomerProvider customerProvider;
+    private final CustomerContextProvider customerContext;
 
-    public CardQueryService(CardRepository repository, CurrentCustomerProvider customerProvider) {
+    public CardQueryService(CardRepository repository, CustomerContextProvider customerContext) {
         this.repository = repository;
-        this.customerProvider = customerProvider;
+        this.customerContext = customerContext;
     }
 
-    public List<Card> listMyCards() {
-        return repository.findByCustomerId(customerProvider.currentCustomerId());
+    public List<CardSummaryDto> listCards() {
+        String customerId = customerContext.currentCustomerId();
+        return repository.findByCustomerIdOrderByStatusAscCreatedAtDesc(customerId).stream()
+                .map(CardSummaryDto::from)
+                .toList();
     }
 
     /** Una tarjeta ajena se trata igual que una inexistente para no revelar su existencia. */
-    public Card getMyCard(UUID cardId) {
-        return repository.findByIdAndCustomerId(cardId, customerProvider.currentCustomerId())
-                .orElseThrow(() -> new CardNotFoundException(cardId));
+    public CardDetailDto getCard(UUID cardId) {
+        String customerId = customerContext.currentCustomerId();
+        return repository.findByIdAndCustomerId(cardId, customerId)
+                .map(CardDetailDto::from)
+                .orElseThrow(CardNotFoundException::new);
     }
 }

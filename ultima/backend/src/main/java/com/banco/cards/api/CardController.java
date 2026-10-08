@@ -1,5 +1,7 @@
 package com.banco.cards.api;
 
+import com.banco.cards.api.dto.CardDetailDto;
+import com.banco.cards.api.dto.CardSummaryDto;
 import com.banco.cards.service.CardQueryService;
 import java.util.List;
 import java.util.UUID;
@@ -20,11 +22,11 @@ public class CardController {
 
     @GetMapping
     public List<CardSummaryDto> list() {
-        return service.listMyCards().stream().map(CardSummaryDto::from).toList();
+        return service.listCards();
     }
 
     @GetMapping("/{cardId}")
     public CardDetailDto detail(@PathVariable UUID cardId) {
-        return CardDetailDto.from(service.getMyCard(cardId));
+        return service.getCard(cardId);
     }
 }
