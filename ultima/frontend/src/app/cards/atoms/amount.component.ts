@@ -1,14 +1,17 @@
-import { CurrencyPipe } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import { formatAmount } from '../data/card.model';
 
 @Component({
   selector: 'app-amount',
   standalone: true,
-  imports: [CurrencyPipe],
-  template: `<span class="amount">{{ value | currency: currency : 'symbol' : '1.2-2' }}</span>`,
+  template: `<span class="amount">{{ text }}</span>`,
   styles: [`.amount { font-variant-numeric: tabular-nums; font-weight: 600; }`],
 })
 export class AmountComponent {
   @Input({ required: true }) value = 0;
-  @Input() currency = 'USD';
+  @Input({ required: true }) currency = 'USD';
+
+  get text(): string {
+    return formatAmount(this.value, this.currency);
+  }
 }

@@ -1,56 +1,56 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { CardDetail, CardSummary } from '../data/card.model';
-import { CardsApiService } from '../data/cards-api.service';
-import { CardDetailPanelComponent } from '../organisms/card-detail-panel.component';
-import { CardListComponent } from '../organisms/card-list.component';
+import { Card } from '../data/card.model';
+import { CardService } from '../data/card.service';
 import { CardsLayoutComponent } from '../templates/cards-layout.component';
-
-type LoadState = 'loading' | 'success' | 'error';
+import { CardListComponent } from '../organisms/card-list.component';
+import { CardDetailComponent } from '../organisms/card-detail.component';
 
 @Component({
   selector: 'app-cards-page',
   standalone: true,
-  imports: [CardsLayoutComponent, CardListComponent, CardDetailPanelComponent],
+  imports: [CardsLayoutComponent, CardListComponent, CardDetailComponent],
   template: `
     <app-cards-layout>
-      <div status role="status">
-        @if (state() === 'loading') { <p>Cargando tarjetas…</p> }
-        @if (state() === 'error') { <p class="error">{{ errorMessage() }}</p> }
-      </div>
-      <app-card-list list [cards]="cards()" [selectedId]="detail()?.id ?? null"
-                     (selectedCard)="select($event)" />
-      <app-card-detail-panel detail [card]="detail()" />
+      @if (loading()) {
+        <p role="status">Cargando tarjetas…</p>
+      }
+      @if (error()) {
+        <p role="alert">{{ error() }}</p>
+      }
+      @if (selectedCard(); as card) {
+        <app-card-detail [card]="card" (closed)="selectedCard.set(null)" />
+      } @else if (!loading() && !error()) {
+        <app-card-list [cards]="cards()" (selected)="open($event)" />
+      }
     </app-cards-layout>
   `,
-  styles: [`.error { color: var(--danger); font-weight: 600; }`],
 })
 export class CardsPageComponent implements OnInit {
-  readonly state = signal<LoadState>('loading');
-  readonly errorMessage = signal('');
-  readonly cards = signal<CardSummary[]>([]);
-  readonly detail = signal<CardDetail | null>(null);
+  readonly cards = signal<Card[]>([]);
+  readonly selectedCard = signal<Card | null>(null);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
 
-  constructor(private readonly api: CardsApiService) {}
+  constructor(private readonly service: CardService) {}
 
   ngOnInit(): void {
-    this.api.getCards().subscribe({
+    this.service.list().subscribe({
       next: (cards) => {
         this.cards.set(cards);
-        this.state.set('success');
+        this.loading.set(false);
       },
-      error: () => this.fail('No pudimos cargar tus tarjetas. Intenta nuevamente.'),
+      error: () => {
+        this.error.set('No fue posible consultar tus tarjetas. Intenta nuevamente.');
+        this.loading.set(false);
+      },
     });
   }
 
-  select(id: string): void {
-    this.api.getCard(id).subscribe({
-      next: (card) => this.detail.set(card),
-      error: () => this.fail('No pudimos cargar el detalle de la tarjeta.'),
+  open(cardId: string): void {
+    this.error.set(null);
+    this.service.get(cardId).subscribe({
+      next: (card) => this.selectedCard.set(card),
+      error: () => this.error.set('No fue posible consultar el detalle de la tarjeta.'),
     });
-  }
-
-  private fail(message: string): void {
-    this.errorMessage.set(message);
-    this.state.set('error');
   }
 }

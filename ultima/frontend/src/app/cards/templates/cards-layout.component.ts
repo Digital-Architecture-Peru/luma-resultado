@@ -6,18 +6,13 @@ import { Component } from '@angular/core';
   template: `
     <main class="layout">
       <h1>Mis tarjetas</h1>
-      <div class="status"><ng-content select="[status]" /></div>
-      <div class="grid">
-        <div><ng-content select="[list]" /></div>
-        <div><ng-content select="[detail]" /></div>
-      </div>
+      <ng-content />
     </main>
   `,
-  styles: [`
-    .layout { max-width: 72rem; margin-inline: auto; padding: 24px clamp(1rem, 4vw, 2rem); }
-    h1 { margin-block: 0 16px; font-size: 1.6rem; }
-    .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
-    .status:empty { display: none; }
-  `],
+  styles: [
+    `
+      .layout { max-inline-size: 72rem; margin-inline: auto; padding: var(--space-6) clamp(1rem, 4vw, 2rem); }
+    `,
+  ],
 })
 export class CardsLayoutComponent {}
