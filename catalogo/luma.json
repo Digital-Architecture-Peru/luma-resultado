@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-08T00:37:29.010Z",
+  "actualizado": "2026-10-08T15:41:10.338Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -621,6 +621,44 @@
           "etapa": "Cierre",
           "segundo": 487,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit d41e2da: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/d41e2da16e2d329211d6818c79d9155e86fc4ac0\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Consulta|Tarjetas|Frontend|Vue 3 + TypeScript||": {
+      "clave": "Consulta|Tarjetas|Frontend|Vue 3 + TypeScript||",
+      "answers": {
+        "type": "Consulta",
+        "domain": "Tarjetas",
+        "layer": "Frontend",
+        "stack": "Vue 3 + TypeScript",
+        "persistence": "No requiere"
+      },
+      "commit": "3c383f31f902754e3d44bb983afa45fc5627a861",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/45",
+      "distTree": "abab8cdce26cc6f00d07991980b269cc0f238c94",
+      "distRuta": "ultima/dist",
+      "fecha": "2026-10-07T18:14:37Z",
+      "duracion_s": 245,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0
+        },
+        {
+          "etapa": "Build",
+          "segundo": 0
+        },
+        {
+          "etapa": "Test",
+          "segundo": 100
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 208
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 245
         }
       ]
     }
