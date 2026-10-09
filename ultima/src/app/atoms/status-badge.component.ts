@@ -1,23 +1,13 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
-import { AccountStatus } from '../core/account.model';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { PaymentStatus, STATUS_LABELS } from '../domain/payment.model';
 
-const LABELS: Record<AccountStatus, string> = {
-  ACTIVA: 'Activa',
-  BLOQUEADA: 'Bloqueada',
-  INACTIVA: 'Inactiva',
-};
-
-/** Átomo: estado con texto además de color. */
+/** Átomo: estado del pago con texto (no solo color). */
 @Component({
   selector: 'app-status-badge',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="badge" [attr.data-status]="status">{{ label }}</span>`,
+  template: `<span class="badge" [class]="'badge-' + status().toLowerCase()">{{ label() }}</span>`,
 })
 export class StatusBadgeComponent {
-  @Input({ required: true }) status!: AccountStatus;
-
-  get label(): string {
-    return LABELS[this.status];
-  }
+  readonly status = input.required<PaymentStatus>();
+  protected readonly label = computed(() => STATUS_LABELS[this.status()]);
 }

@@ -1,32 +1,26 @@
 {
-  "name": "banca-internet-consulta-cuentas",
+  "name": "consulta-pagos-banca-internet",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "start": "ng serve",
-    "build": "tsc -p tsconfig.app.json --noEmit && ng build",
-    "test": "jest --ci"
+    "build": "ng build",
+    "test": "ng test --watch=false"
   },
   "dependencies": {
-    "@angular/animations": "17.3.12",
-    "@angular/common": "17.3.12",
-    "@angular/compiler": "17.3.12",
-    "@angular/core": "17.3.12",
-    "@angular/forms": "17.3.12",
-    "@angular/platform-browser": "17.3.12",
-    "@angular/platform-browser-dynamic": "17.3.12",
-    "rxjs": "7.8.1",
-    "tslib": "2.6.3",
-    "zone.js": "0.14.10"
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.8.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "17.3.11",
-    "@angular/cli": "17.3.11",
-    "@angular/compiler-cli": "17.3.12",
-    "@types/jest": "29.5.12",
-    "jest": "29.7.0",
-    "jest-environment-jsdom": "29.7.0",
-    "jest-preset-angular": "14.0.4",
-    "typescript": "5.4.5"
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "jsdom": "^26.1.0",
+    "typescript": "~5.8.2",
+    "vitest": "^3.2.0"
   }
 }

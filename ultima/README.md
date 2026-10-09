@@ -1,13 +1,13 @@
-# Banca por Internet · Consulta de cuentas
+# Consulta de pagos — Banca por Internet
 
-Aplicación frontend Angular 17 para consultar cuentas: resumen de saldos activos por moneda, listado, búsqueda por alias o número enmascarado y filtro por tipo. Interfaz en español y datos de demostración ficticios; no realiza operaciones bancarias ni llamadas de red.
+Aplicación frontend de consulta de pagos construida con Angular 20 y TypeScript estricto. Presenta pagos ficticios, permite buscar por referencia, beneficiario o concepto, filtrar por estado, ordenar por fecha (más reciente primero) y consultar el total de pagos completados visibles agrupado por moneda. No ejecuta pagos ni modifica datos.
 
 ## Requisitos
 
-- Node.js 18.19+ o 20+.
-- npm compatible con la versión de Node.
+- Node.js compatible con Angular 20: `^20.19.0`, `^22.12.0` o `^24.0.0`.
+- npm (incluido con Node.js).
 
-## Instalar, ejecutar y compilar
+## Instalar, compilar y ejecutar
 
 Desde la raíz del proyecto:
 
@@ -16,13 +16,15 @@ npm install
 npm start
 ```
 
-Abre <http://localhost:4200>. El servidor de desarrollo recarga al cambiar fuentes. Para generar el bundle de producción y realizar el chequeo TypeScript configurado:
+El servidor de desarrollo de Angular muestra la URL local en la terminal (normalmente `http://localhost:4200/`) y recarga al cambiar archivos.
+
+Para generar el bundle de producción:
 
 ```sh
 npm run build
 ```
 
-El resultado de Angular se genera bajo `dist/consulta-cuentas/`. No se incluye configuración de despliegue; servir ese artefacto requiere el hosting estático elegido y su configuración para rutas SPA si se incorporan rutas.
+La configuración predeterminada del build es producción; los archivos generados quedan en `dist/`. El compilador aplica comprobaciones de tipos y plantillas Angular estrictas configuradas en `tsconfig.json`.
 
 ## Pruebas
 
@@ -30,22 +32,31 @@ El resultado de Angular se genera bajo `dist/consulta-cuentas/`. No se incluye c
 npm test
 ```
 
-El script ejecuta Jest en modo no interactivo (`--ci`), con `jest-preset-angular` y entorno jsdom. Las pruebas unitarias cubren el pipe monetario, insignias de estado, consultas y página de cuentas. Para ejecutar una prueba concreta, por ejemplo:
+El script ejecuta Angular CLI con Vitest en una sola pasada, sin modo watch. Las pruebas cubren consultas de dominio (búsqueda sin distinción de tildes, filtro, orden, totales y formato), el badge de estado y la página (carga, búsqueda, vacío y error).
 
-```sh
-npx jest src/app/core/account-query.spec.ts --runInBand
-```
+## Organización
 
-## Estructura y flujo de datos
+- `src/app/domain/`: tipos, consultas puras y puerto abstracto `PaymentRepository`.
+- `src/app/infrastructure/`: `MockPaymentRepository`, adaptador actual con datos ficticios en memoria.
+- `src/app/atoms/`, `molecules/`, `organisms/`, `pages/`: presentación en componentes Angular organizados con Atomic Design.
+- `src/app/app.config.ts`: composición de dependencias; actualmente enlaza `PaymentRepository` con `MockPaymentRepository`.
 
-La aplicación usa componentes standalone y Angular 17. `src/app/app.config.ts` es el punto de composición de dependencias y actualmente enlaza el puerto abstracto `AccountRepository` con `InMemoryAccountRepository`. La página `AccountsPageComponent` carga cuentas, mantiene estado de carga/error y filtros mediante signals; `account-query.ts` contiene las funciones puras para filtrar y sumar saldos activos sin mezclar monedas. Los componentes se agrupan por responsabilidad en `atoms/`, `molecules/`, `organisms/` y `pages/`.
+La página carga a través del repositorio y representa estados de carga, error y éxito. El filtrado, orden y total se calculan en el cliente; el total mostrado corresponde a los resultados visibles, y se calcula solo con pagos completados.
 
-El adaptador de memoria devuelve los seis registros ficticios definidos en `src/app/core/in-memory-account.repository.ts`, con latencia simulada de 300 ms. No existe API configurada ni persistencia local o remota: los filtros y datos viven solo durante la sesión; al recargar se vuelven a cargar las muestras. No se almacenan datos en localStorage, cookies ni base de datos.
+## Integración con un servicio
 
-## Integración futura
+No hay backend ni API configurada en este proyecto. Para conectar un servicio real:
 
-La integración con backend está pendiente de definir. Para conectarla, implementar un adaptador que extienda `AccountRepository`, solicite datos mediante `HttpClient` y mapear/validar la respuesta al modelo `Account`; cambiar el proveedor en `app.config.ts` para usar ese adaptador. Configurar el origen del servicio por entorno/build, no incrustar credenciales o tokens en el frontend (los secretos no pueden protegerse en código entregado al navegador). Acordar con el backend autenticación, autorización, contrato y manejo de errores antes de habilitar datos reales. La aplicación presente es solo de consulta y no debe considerarse un canal bancario real.
+1. Definir el contrato HTTP con el equipo de backend: ruta, método, autenticación, formato de respuesta, paginación, errores y convenciones de fechas y monedas.
+2. Crear un adaptador que extienda `PaymentRepository`, implemente `list(): Promise<Payment[]>` y traduzca/valide la respuesta de la API al modelo de dominio. No acoplar los componentes a detalles HTTP.
+3. Configurar `HttpClient` en `src/app/app.config.ts` mediante `provideHttpClient()` y registrar el adaptador con `{ provide: PaymentRepository, useClass: ... }` en sustitución del mock.
+4. Proveer la URL del servicio mediante configuración de entorno apropiada para el despliegue. Las variables incluidas en un frontend son públicas: nunca poner credenciales, secretos o claves privadas en el bundle.
+5. Añadir pruebas del adaptador para respuestas correctas, errores HTTP y datos inválidos; conservar pruebas de dominio y página con repositorios falsos.
 
-## Estado de verificación
+La interfaz de repositorio devuelve una promesa. Un adaptador HTTP puede convertir la respuesta de `HttpClient` a esa forma, por ejemplo con `firstValueFrom`; debe permitir que los errores se propaguen para que la página presente su estado de error. Acordar si búsqueda y paginación serán locales o del servidor antes de integrar grandes volúmenes de datos.
 
-La documentación describe los scripts y archivos existentes. Build y pruebas no se han ejecutado en esta sesión.
+## Persistencia y datos
+
+La aplicación actual no tiene persistencia: `MockPaymentRepository` entrega una copia de `SAMPLE_PAYMENTS` al consultarse. Los registros son demostrativos, viven solo en el código cliente y no deben confundirse con transacciones reales. No se escribe en `localStorage`, IndexedDB ni en una base de datos.
+
+En un despliegue real, el backend debe ser la fuente de verdad y gestionar la persistencia y autorización. La API debe limitar cada consulta a los pagos autorizados para el usuario autenticado; el cliente no es una frontera de seguridad. Evitar almacenar datos financieros sensibles en almacenamiento persistente del navegador salvo que exista una necesidad y evaluación de seguridad explícitas.

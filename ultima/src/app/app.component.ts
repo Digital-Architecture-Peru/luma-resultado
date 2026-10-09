@@ -1,13 +1,17 @@
-import { Component } from '@angular/core';
-import { AccountsPageComponent } from './pages/accounts-page.component';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { PaymentsPageComponent } from './pages/payments-page.component';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [AccountsPageComponent],
+  imports: [PaymentsPageComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="topbar"><strong>Banca por Internet</strong></header>
-    <main class="container"><app-accounts-page /></main>
+    <header class="app-header">
+      <span class="brand">Banca por Internet</span>
+    </header>
+    <main class="container">
+      <app-payments-page />
+    </main>
   `,
 })
 export class AppComponent {}
