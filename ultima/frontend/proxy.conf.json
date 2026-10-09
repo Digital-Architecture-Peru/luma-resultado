@@ -1,7 +1,0 @@
-{
-  "/api": {
-    "target": "http://localhost:5080",
-    "secure": false,
-    "headers": { "X-Demo-Customer-Id": "11111111-1111-1111-1111-111111111111" }
-  }
-}
