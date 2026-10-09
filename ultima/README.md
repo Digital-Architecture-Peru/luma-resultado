@@ -1,105 +1,85 @@
-# Transacciones de pagos — banca por Internet
+# Pagos — banca por Internet
 
-Aplicación de ejemplo Full Stack: frontend React 18 + TypeScript servido por Vite y API Java 17 + Spring Boot 3.2.5. La base de datos de ejecución es PostgreSQL. Los registros seed y el gateway son ficticios; no usar para transacciones reales.
+Aplicación de ejemplo para crear pagos: frontend React + TypeScript y API Java + Quarkus, con PostgreSQL y migraciones Flyway. Los datos son ficticios. No incluye autenticación ni integración con un proveedor bancario: `LocalPaymentGateway` simula autorización local; no usar para transacciones reales.
 
 ## Requisitos
 
-- Java 17 y Maven.
-- Node.js y npm compatibles con las dependencias del proyecto.
-- PostgreSQL accesible desde el backend.
+- JDK 17 o posterior y Maven 3.9 o posterior.
+- Node.js 18 o posterior y npm.
+- PostgreSQL accesible por JDBC. Para ejecución local, crear base `payments` y usuario `payments_app` con permisos de conexión y escritura sobre esa base. Configurar las credenciales en el entorno; no guardarlas en el repositorio.
 
-## Configurar y ejecutar
+## Configuración
 
-### 1. Preparar PostgreSQL
+El backend usa estas variables (con los valores indicados como defaults en `application.properties`):
 
-Crea una base de datos llamada `payments` (y un usuario con permisos de conexión, creación/lectura/escritura de tablas). Por ejemplo, desde una instalación local:
+| Variable | Default | Uso |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/payments` | URL JDBC PostgreSQL |
+| `DB_USER` | `payments_app` | Usuario de base de datos |
+| `DB_PASSWORD` | sin valor documentado | Contraseña de base de datos |
+| `PORT` | `8080` | Puerto HTTP del backend |
+| `CORS_ORIGINS` | `http://localhost:5173` | Orígenes permitidos por CORS |
+| `PAYMENTS_MAX_AMOUNT` | `50000` | Máximo permitido por regla de negocio |
+| `PAYMENTS_STUB_DECLINE_ABOVE` | `20000` | Umbral de rechazo del gateway simulado |
+| `LOG_LEVEL` | `INFO` | Nivel de logging |
 
-```sql
-CREATE DATABASE payments;
-```
+El datasource requiere `DB_PASSWORD`; establecerla en el entorno antes de iniciar Quarkus. No se necesita configurar una URL en frontend en desarrollo: Vite proxy pasa `/api` al backend local. Para otra ubicación de API, `VITE_API_URL` define el prefijo de URL (sin incluir `/api/v1/payments`).
 
-Configura las variables de entorno para el proceso backend:
+## Ejecutar en desarrollo
 
-```text
-DB_URL=jdbc:postgresql://localhost:5432/payments
-DB_USER=<usuario local>
-DB_PASSWORD=<contraseña local>
-PAYMENTS_FAKE_LIMIT=10000.00
-PORT=8080
-LOG_LEVEL=INFO
-```
+Iniciar primero PostgreSQL y establecer `DB_USER` y `DB_PASSWORD` (y opcionalmente `DB_URL`). En una terminal:
 
-`backend/env.example.txt` documenta los nombres/valores de ejemplo; no es un archivo `.env` que Spring cargue automáticamente. Exporta estas variables en tu entorno o en la configuración de ejecución de tu IDE. No pongas contraseñas reales en el repositorio.
-
-### 2. Arrancar la API
-
-```bash
+```sh
 cd backend
-mvn spring-boot:run
+mvn quarkus:dev
 ```
 
-Spring Boot escucha en `http://localhost:8080`. Flyway aplica las migraciones versionadas en `backend/src/main/resources/db/migration`: `V1` crea la tabla e índices y `V2` añade pagos ficticios de ejemplo. La inicialización requiere que la base de datos esté disponible.
-
-### 3. Arrancar la interfaz
+Quarkus queda disponible en `http://localhost:8080`. Al arrancar, Flyway ejecuta las migraciones y el seed ficticio.
 
 En otra terminal:
 
-```bash
+```sh
 cd frontend
 npm install
 npm run dev
 ```
 
-Abre la URL que indique Vite (normalmente `http://localhost:5173`). El servidor Vite reenvía `/api` a `http://localhost:8080` según `frontend/vite.config.ts`; por ello, en desarrollo deben estar activos frontend y backend.
+Abrir `http://localhost:5173`. El servidor de desarrollo reenvía las solicitudes `/api` a `http://localhost:8080`; el backend permite por defecto el origen local indicado.
 
 ## Compilar y probar
 
-Ejecuta los comandos en sus respectivas carpetas:
+Backend, desde `backend/`:
 
-```bash
-# Backend: compila y ejecuta pruebas JUnit 5 / Mockito
-cd backend
-mvn verify
-
-# Frontend: instala dependencias, hace type-check + build Vite y ejecuta Vitest
-cd ../frontend
-npm install
-npm run build
-npm test
+```sh
+mvn test
+mvn package
 ```
 
-Las pruebas unitarias del backend usan dobles y no requieren PostgreSQL; `mvn verify` no equivale a una prueba de integración con una base real. Los tests del frontend corren en Vitest/jsdom sin backend. La compilación del frontend realiza `tsc --noEmit` antes de empaquetar.
+Las pruebas unitarias del servicio y del dominio están en `src/test/java`. `mvn package` produce el artefacto Quarkus.
 
-## API
+Frontend, desde `frontend/`:
 
-Base URL: `/api/v1/payments`.
+```sh
+npm install
+npm test
+npm run build
+```
 
-- `POST /api/v1/payments`: crea un pago. Requiere encabezado `Idempotency-Key` (máximo 64 caracteres) y un cuerpo JSON:
+Vitest ejecuta pruebas no interactivas. El build ejecuta `tsc --noEmit` y Vite.
 
-  ```json
-  {
-    "sourceAccount": "ES00-FAKE-0001",
-    "beneficiary": "ES00-FAKE-9001",
-    "amount": "120.50",
-    "currency": "EUR",
-    "reference": "Pago de ejemplo"
-  }
-  ```
+## API e integración
 
-  `amount` se envía como string decimal, positivo y con hasta dos decimales; cuentas y beneficiario tienen máximo 34 caracteres, moneda son tres letras mayúsculas y referencia hasta 140 caracteres. Responde `201` con el pago y estado `COMPLETED` o `REJECTED`. La clave repetida con la misma cuenta, beneficiario e importe reproduce el pago original; reutilizarla para una solicitud distinta da `409`. Una clave ausente o una solicitud inválida da `400`.
-- `GET /api/v1/payments/{id}`: obtiene por UUID; `404` si no existe.
-- `GET /api/v1/payments?account=<cuenta>&page=0&size=20`: lista los pagos de la cuenta de origen, más recientes primero. `account` es obligatorio; paginación comienza en cero.
+- `POST /api/v1/payments` recibe JSON con `originAccount`, `beneficiary`, `amount`, `currency` (`PEN` o `USD`) y `concept`. Admite cabecera `Idempotency-Key`; responde `201` con el pago creado o errores de validación/conflicto (`400`/`409`).
+- `GET /api/v1/payments/{id}` consulta por UUID y responde `200` o `404`.
+- Los errores se devuelven como `application/problem+json`. En el cliente web, `paymentsClient` transforma respuestas no exitosas en `ApiError`.
+- El flujo de aplicación valida y crea el pago, invoca `PaymentGateway` y guarda el resultado. `LocalPaymentGateway` es exclusivamente un stub configurable; integrar un proveedor real requiere implementar el puerto `PaymentGateway`, definir credenciales seguras y diseñar timeouts, reintentos y conciliación.
 
-Los errores se devuelven como `application/problem+json`. La API no implementa autenticación ni autorización: no exponerla públicamente.
+## Persistencia y datos
 
-## Diseño, integración y persistencia
+`JdbcPaymentRepository` implementa `PaymentRepository` mediante JDBC y consultas parametrizadas. PostgreSQL persiste pagos en la tabla `payments`; Flyway aplica `backend/src/main/resources/db/migration/V1__schema.sql` (tabla, restricciones e índice) y `V2__seed.sql` (tres registros ficticios) al inicio (`quarkus.flyway.migrate-at-start=true`). Las claves de idempotencia tienen restricción única. El seed se ejecuta como parte de la migración inicial y no debe considerarse un mecanismo para reinicializar una base ya migrada.
 
-El backend separa entrada HTTP (`api`), casos de uso (`application`), dominio (`domain`) e infraestructura (`infrastructure`). `PaymentGateway` y `PaymentRepository` son puertos del dominio; sus adaptadores actuales son `FakePaymentGateway` y `JdbcPaymentRepository` con `JdbcTemplate`. El frontend organiza componentes con Atomic Design; `src/services/paymentsApi.ts` realiza la llamada HTTP y usa el proxy Vite en desarrollo.
+El repositorio valida reglas del dominio y la base impone restricciones de monto positivo, moneda y estado. La aplicación no incorpora autenticación/autorización; debe añadirse antes de exponerla fuera de un entorno local controlado.
 
-El gateway ficticio rechaza un importe estrictamente superior a `PAYMENTS_FAKE_LIMIT`; los importes hasta el umbral se aprueban. El umbral predeterminado es `10000.00`. Para integrar un proveedor real, debe añadirse un adaptador seguro de `PaymentGateway` y configurar credenciales fuera del código. Antes de producción se requieren, entre otros aspectos, autenticación/autorización, control de fraude y saldo, manejo de fallos/reintentos del proveedor, monitoreo y pruebas de integración.
+## Hipótesis y límites
 
-PostgreSQL conserva los pagos en `payment`: importe `NUMERIC(19,2)`, UUID, estado y fecha; clave de idempotencia única e índices para buscar por cuenta/fecha. Flyway aplica migraciones; el seed contiene únicamente cuentas y transacciones ficticias. La persistencia JDBC usa parámetros para los valores SQL. Para desarrollo la idempotencia sobrevive reinicios porque la clave se guarda en base de datos.
-
-## Límites conocidos
-
-El proveedor es simulado y no se ejecutan cargos. No hay autenticación/autorización, verificación de fondos, soporte de pagos programados ni conversión multimoneda. Antes de producción hacen falta revisión de seguridad y privacidad, configuración/observabilidad operativa y pruebas con PostgreSQL y el proveedor real.
+PEN/USD, máximo 50 000, dos decimales y rechazo simulado por encima de 20 000 son reglas asumidas por esta demo, no requisitos confirmados de un sistema bancario. No se ejecutaron builds ni pruebas durante la preparación de esta documentación; consultar los comandos anteriores para verificarlos en el entorno local.

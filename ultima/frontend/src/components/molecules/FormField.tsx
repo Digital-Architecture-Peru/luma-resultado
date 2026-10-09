@@ -1,20 +1,20 @@
-import type { InputHTMLAttributes } from 'react';
-import { Input } from '../atoms/Input';
+import type { ReactNode } from 'react';
 
-interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
+interface FormFieldProps {
   id: string;
   label: string;
   error?: string;
+  children: ReactNode;
 }
 
-export function FormField({ id, label, error, ...rest }: FormFieldProps) {
-  const errorId = `${id}-error`;
+/** Etiqueta + control + mensaje de error asociado. */
+export function FormField({ id, label, error, children }: FormFieldProps) {
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <Input id={id} aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} {...rest} />
+      {children}
       {error && (
-        <p id={errorId} role="alert" className="field-error">
+        <p id={`${id}-error`} className="field-error" role="alert">
           {error}
         </p>
       )}
