@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+payments:
+  gateway:
+    fake-limit: ${PAYMENTS_FAKE_LIMIT:10000.00}
+
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
