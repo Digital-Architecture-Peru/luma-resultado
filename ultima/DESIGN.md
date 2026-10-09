@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Quarkus
+- ¿Qué stack? Angular + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Quarkus (capa Full Stack) para "Consulta" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + .NET (capa Full Stack) para "Consulta" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,62 +29,85 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN (refinamiento)
+# DESIGN · Refinamiento
 
 ## Decisiones de arquitectura
+
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Repositorio con `frontend/` (Angular) y `backend/` (Quarkus), cada uno con su manifiesto | Un build idiomático por stack; T03 y T04 se verifican por separado |
-| D2 | Backend por capas: `resource` → `service` → `repository` (puerto) → adaptador Panache | La consulta es de solo lectura; el puerto permite probar el servicio con mocks sin base de datos |
-| D3 | API REST v1: `GET /api/v1/pagos?cuentaId&desde&hasta&estado&page&size` y `GET /api/v1/pagos/{id}`. Errores en `application/problem+json` | El contrato es explícito y paginado, y los errores tienen un formato estándar |
-| D4 | `monto` como `BigDecimal` (NUMERIC(18,2)), `moneda` ISO 4217 y fechas en UTC (`timestamptz`) | Evita errores de redondeo y de zona horaria |
-| D5 | Migraciones versionadas con Flyway: `V1__esquema.sql`, `V2__datos_ficticios.sql`. Índices `(cuenta_id, fecha_pago DESC)` y `(estado)` | Cubre T04-db con versionado; los índices corresponden a los filtros de D3 |
-| D6 | Consultas parametrizadas (parámetros nombrados de Panache), sin concatenar SQL | Previene inyección SQL |
-| D7 | Frontend Atomic Design con componentes standalone y un servicio `PagosApiService` (HttpClient) | Cumple el patrón pedido y desacopla la UI del transporte |
-| D8 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`, `apiBaseUrl` en `environment`), sin valores sensibles por defecto | Cumple la regla de no incluir secretos |
-| D9 | Pruebas unitarias: JUnit 5 + Mockito (servicio y mapeo de DTO); specs de Angular con `HttpTestingController` (servicio, átomos y página) | Alcance "Unitarias", ejecutable sin base de datos real |
+| D1 | Backend **.NET 8 Web API** en capas `Api / Application / Domain / Infrastructure` | Separa el contrato HTTP de la lógica de consulta y del acceso a PostgreSQL. Permite probar cada capa de forma unitaria. |
+| D2 | **Solo lectura**, con *query handlers* (CQRS ligero) | La capacidad es "Consulta". No se exponen endpoints de escritura. |
+| D3 | Acceso a datos con **Npgsql + Dapper** detrás de `IPagoRepository` | Las consultas quedan explícitas y **parametrizadas**, con menos dependencias que EF Core. La interfaz permite usar un *fake* en memoria en las pruebas. |
+| D4 | Migraciones **SQL versionadas** (`V001__esquema.sql`, `V002__seed_ficticio.sql`) | Son revisables de forma estática. No dependen de una herramienta de migración en runtime. |
+| D5 | Contrato REST: `GET /api/v1/pagos?desde&hasta&estado&page&size` y `GET /api/v1/pagos/{id}` | La paginación obligatoria (`size` ≤ 100) y un rango de fechas de 90 días como máximo acotan la carga. |
+| D6 | Montos con `decimal` / `numeric(18,2)` y moneda ISO 4217 | Evita errores de redondeo de punto flotante. |
+| D7 | Frontend **Angular standalone** organizado por **Atomic Design** | Cumple el patrón pedido. Un `PagosApiService` usa `HttpClient`, con `apiBaseUrl` definido en `environment`. |
+| D8 | Configuración por variables de entorno (`PAGOS_DB_CONNECTION`, `API_BASE_URL`) | Ningún secreto queda en el repositorio. |
 
 ## Estructura de módulos
+
 ```
-backend/  pom.xml
-  src/main/java/.../pagos/
-    api/        PagoResource, PagoDto, PaginaDto, ProblemMapper
-    service/    ConsultaPagosService
-    domain/     Pago, EstadoPago
-    repository/ PagoRepository (puerto), PagoPanacheRepository
-  src/main/resources/ application.properties, db/migration/V1__,V2__
-  src/test/java/.../ ConsultaPagosServiceTest, PagoMapperTest
-frontend/ package.json, angular.json
-  src/app/pagos/
-    atoms/      estado-badge, monto, cuenta-enmascarada
-    molecules/  filtro-fechas, fila-pago
-    organisms/  tabla-pagos, detalle-pago
-    templates/  consulta-layout
-    pages/      consulta-pagos.page
-    data/       pagos-api.service, pago.model
-  *.spec.ts junto a cada unidad probada
+backend/
+  Pagos.sln
+  src/Pagos.Api/            Program.cs, Endpoints/PagosEndpoints.cs
+  src/Pagos.Application/    Queries/ConsultarPagos*.cs, Dtos/, Validators/
+  src/Pagos.Domain/         Pago.cs, EstadoPago.cs
+  src/Pagos.Infrastructure/ PagoRepository.cs (Dapper), SqlConnectionFactory.cs
+  tests/Pagos.UnitTests/    xUnit: handlers, validadores, mapeo
+db/migrations/              V001__esquema.sql, V002__seed_ficticio.sql
+frontend/src/app/
+  atoms/      estado-badge, monto
+  molecules/  filtro-fechas, fila-pago
+  organisms/  tabla-pagos, panel-filtros
+  templates/  consulta-layout
+  pages/      consulta-pagos
+  core/       pagos-api.service.ts, pago.model.ts
+  *.spec.ts   pruebas unitarias de componentes y servicio (HttpTestingController)
 README.md
 ```
 
-## Hipótesis
-- H1: Angular 17+ (standalone), Quarkus 3.x y Java 17+. Las versiones exactas no están confirmadas.
-- H2: La capacidad es solo de consulta. No se inician, editan ni anulan pagos.
-- H3: La autenticación de Banca por Internet ocurre aguas arriba (gateway o BFF), que entrega una identidad asociada a `cuentaId`. Mientras no exista, el filtro por `cuentaId` es un parámetro marcado como provisional.
-- H4: La integración está sin definir, así que no hay llamadas externas. La fuente es solo PostgreSQL.
-- H5: Los estados de pago son `PENDIENTE`, `PROCESADO`, `RECHAZADO` y `ANULADO`. Son ilustrativos y no están confirmados con el negocio.
-- H6: Las cuentas se muestran enmascaradas (últimos 4 dígitos) y todos los datos son ficticios.
+## Modelo de datos (PostgreSQL)
+
+Tabla `pagos` con estas columnas:
+- `id uuid PK`
+- `cuenta_id`
+- `referencia`
+- `beneficiario`
+- `monto numeric(18,2)`
+- `moneda char(3)`
+- `estado`, con `CHECK` sobre los valores válidos
+- `fecha_pago timestamptz`
+- `canal`
+
+Índices:
+- `(cuenta_id, fecha_pago DESC)`
+- `(estado)`
+
+El seed contiene únicamente datos ficticios.
 
 ## Riesgos
+
 | Riesgo | Mitigación |
 |---|---|
-| Sin Maven o npm locales no se puede afirmar compilación | Marcar como no verificado en T06 |
-| SQL de PostgreSQL solo con revisión estática | Usar SQL estándar y documentar en el README cómo aplicar Flyway |
-| Acceso a pagos de otra cuenta (IDOR) por la autenticación indefinida (H3) | Validar la pertenencia en el servicio en cuanto exista identidad; dejar un TODO explícito |
-| Volumen de datos alto | Paginación obligatoria (`size` ≤ 100) e índices de D5 |
-| Diferencias de zona horaria al mostrar fechas | Guardar en UTC y formatear en el cliente |
+| Falta la toolchain (`dotnet`, `npm`) en el entorno | Lo que no se pueda compilar ni probar se marca como **no verificado** en el handoff. |
+| El SQL de PostgreSQL solo admite revisión estática | Se usa sintaxis estándar y se evitan extensiones. |
+| Exposición de datos de otro cliente | El `cuenta_id` debería salir del token, no del query string. Ver hipótesis H3. |
+| Zona horaria en los filtros de fecha | Se almacena en UTC (`timestamptz`) y se convierte solo en la UI. |
+| Integración sin definir | Queda aislada tras `IPagoRepository`. No hay llamadas a sistemas reales. |
 
-## Trazabilidad con aceptación
-- T02 / T04-db → D2–D6 y la estructura de módulos.
-- T04-tests → D9.
-- T05 → README con build, variables de entorno, migraciones e integración sin definir.
-- T06 → resumen candidate que lista los riesgos no verificados.
+## Hipótesis
+
+- **H1:** Versiones .NET 8 LTS y Angular 17 o superior.
+- **H2:** La autenticación la resuelve el canal de Banca por Internet (gateway o BFF existente). Aquí se simula con un `ICurrentCustomer` *stub*.
+- **H3:** Un cliente solo consulta los pagos de sus propias cuentas.
+- **H4:** Los estados de pago son `PENDIENTE`, `PROCESADO`, `RECHAZADO` y `ANULADO`.
+- **H5:** Los números de cuenta se muestran enmascarados en la UI (últimos 4 dígitos).
+- **H6:** SGC no está configurado (modo fallback), por lo que no se aplican lineamientos corporativos adicionales.
+
+## Aceptación complementaria
+
+Estos criterios son compatibles con los de la plantilla y no los sustituyen:
+
+- Existe al menos una prueba unitaria para el handler de consulta, el validador de rango de fechas, `PagosApiService` y `tabla-pagos`.
+- Todo el SQL de acceso usa parámetros; no hay concatenación de entradas.
+- El README documenta las variables de entorno, los comandos `dotnet test` y `npm test`, y el orden de aplicación de las migraciones.
