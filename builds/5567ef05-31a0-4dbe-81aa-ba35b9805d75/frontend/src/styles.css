@@ -1,0 +1,71 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5b6676;
+  --primary: #0b5fa5;
+  --border: #d5dbe4;
+  --ok: #1d6b3a;
+  --ok-bg: #dff3e6;
+  --warn: #8a5300;
+  --warn-bg: #fdecc8;
+  --off: #4b5563;
+  --off-bg: #e5e7eb;
+  --danger: #a61b1b;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --radius: 0.75rem;
+  --shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b212b;
+    --text: #e6eaf0;
+    --muted: #a3adbb;
+    --primary: #6cb4f0;
+    --border: #2f3744;
+    --ok: #8fdca9;
+    --ok-bg: #1d3a28;
+    --warn: #f3c36b;
+    --warn-bg: #3d2f12;
+    --off: #c4cad3;
+    --off-bg: #2a303a;
+    --danger: #ff9b9b;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+.plantilla { max-inline-size: 72rem; margin-inline: auto; padding: var(--space-6) clamp(1rem, 4vw, 2rem); }
+.plantilla h1 { margin-block: 0 var(--space-6); font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.2; text-wrap: balance; }
+
+.cuentas-lista { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); padding: 0; margin: 0; list-style: none; }
+
+.cuenta-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--space-4); display: grid; gap: var(--space-2); }
+.cuenta-card__cabecera { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.cuenta-card__tipo { font-weight: 600; margin: 0; }
+.cuenta-card__numero, .cuenta-card__fecha { margin: 0; color: var(--muted); font-size: 0.875rem; }
+
+.monto { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.badge { display: inline-block; padding: 0.125rem var(--space-3); border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.badge--ok { color: var(--ok); background: var(--ok-bg); }
+.badge--warn { color: var(--warn); background: var(--warn-bg); }
+.badge--off { color: var(--off); background: var(--off-bg); }
+
+.mensaje { color: var(--muted); }
+.mensaje--error { color: var(--danger); }

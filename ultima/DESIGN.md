@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Spring Boot
+- ¿Qué stack? Angular + Java + Quarkus
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Consulta" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Quarkus (capa Full Stack) para "Consulta" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,59 +29,53 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento
+# DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-| # | Decisión | Justificación |
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `backend/` (Spring Boot 3, Java 17, Maven) y `frontend/` (Angular 17+, componentes standalone). | Cada capa compila y se prueba por separado, y se identifica fácilmente en el handoff. |
-| D2 | Backend por capas con puerto: `controller → service → repository`. Solo lectura, con `@Transactional(readOnly=true)`. | La capacidad es de consulta. Separar las capas permite probar el servicio sin BD. |
-| D3 | API REST v1: `GET /api/v1/cuentas` (paginado) y `GET /api/v1/cuentas/{id}`. Errores con `ProblemDetail` (RFC 7807). | Es un contrato mínimo y versionado, con errores uniformes para el front. |
-| D4 | DTO de salida con número enmascarado (`****1234`), `saldo` como `BigDecimal` y `moneda` en ISO 4217. Nunca se expone la entidad JPA. | Evita fugas de datos sensibles y errores de redondeo. |
-| D5 | Persistencia con Flyway: `V1__crear_cuenta.sql` y `V2__datos_ficticios.sql`. Spring Data JPA con consultas parametrizadas. | Esquema versionado y sin riesgo de inyección SQL. |
-| D6 | Configuración por entorno: `DB_URL`, `DB_USER`, `DB_PASSWORD` y `apiBaseUrl` en `environment.ts`, sin valores reales. | Cumple "sin secretos". |
-| D7 | Front en Atomic Design: atoms (`monto`, `badge-estado`), molecules (`tarjeta-cuenta`), organisms (`lista-cuentas`, `detalle-cuenta`), templates (`layout-consulta`), pages (`cuentas-page`). Acceso HTTP aislado en `CuentasApiService`. | Es el patrón solicitado. La lógica de datos queda fuera de la presentación. |
-| D8 | Pruebas unitarias con JUnit 5 + Mockito (servicio) y `@WebMvcTest` (controller) en el back, y Jasmine (`*.spec.ts`) para atoms, servicio y page en el front. | Cubre el tipo de prueba pedido sin depender de una BD real. |
+| AD1 | Monorepo con `frontend/` (Angular) y `backend/` (Quarkus, Maven), cada uno con su build | Full Stack con ciclos de build y pruebas independientes |
+| AD2 | Atomic Design en `frontend/src/app/ui/` (atoms → molecules → organisms → templates); las *pages* viven en la feature `cuentas` | Patrón pedido; separa la UI reutilizable de la lógica de la feature |
+| AD3 | Componentes *standalone*; un `CuentasService` (HttpClient) es el único punto de acceso a la API | Facilita *mocks* en pruebas unitarias; los componentes de presentación no tienen dependencias |
+| AD4 | Backend en capas: `resource` (JAX-RS) → `service` → `CuentaRepository` (interfaz) → adaptador Panache | La persistencia queda detrás de una interfaz y el servicio se prueba sin BD |
+| AD5 | API de solo lectura: `GET /api/v1/cuentas` y `GET /api/v1/cuentas/{id}`; DTO separado de la entidad | La capacidad es "Consulta"; se evita exponer el modelo interno |
+| AD6 | El número de cuenta sale enmascarado (`****1234`); saldos en `BigDecimal` / `NUMERIC(18,2)` | Minimiza la exposición de PII y evita errores de redondeo |
+| AD7 | Migraciones Flyway: `V1__esquema.sql`, `V2__datos_ficticios.sql`; índice en `cliente_id`; consultas con parámetros con nombre | Esquema versionado y sin concatenación de SQL |
+| AD8 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_JDBC_URL`, `..._USERNAME`, `..._PASSWORD`), sin valores por defecto sensibles | Sin secretos en el repositorio |
 
 ## Estructura de módulos
 ```
-backend/  pom.xml
-  src/main/java/.../cuentas/{api,service,repository,domain,dto,config}
-  src/main/resources/{application.yml, db/migration/V1__,V2__}
-  src/test/java/.../cuentas/{CuentaServiceTest,CuentaControllerTest}
-frontend/ package.json, angular.json
-  src/app/cuentas/{atoms,molecules,organisms,templates,pages,services,models}
-  src/environments/environment.ts
+frontend/  package.json, angular.json
+  src/app/ui/{atoms,molecules,organisms,templates}/
+  src/app/features/cuentas/{pages,services,models}/
+  *.spec.ts  (Jasmine/Karma)
+backend/   pom.xml
+  src/main/java/.../cuentas/{api,service,domain,persistence}/
+  src/main/resources/{application.properties,db/migration/}
+  src/test/java/...  (JUnit 5 + Mockito, sin @QuarkusTest)
 README.md
 ```
 
-## Modelo de datos (PostgreSQL)
-Tabla `cuenta`:
-- `id` UUID PK
-- `cliente_id` VARCHAR NOT NULL
-- `numero` VARCHAR UNIQUE
-- `tipo` (AHORRO/CORRIENTE)
-- `moneda` CHAR(3)
-- `saldo` NUMERIC(18,2)
-- `estado`
-- `fecha_apertura`
-
-Índice en `(cliente_id)`. Los datos de ejemplo son ficticios.
+## Hipótesis
+- H1: Se usa Angular 17 o superior y Quarkus 3.x con Java 17 o superior. Las versiones son supuestas, no confirmadas.
+- H2: La autenticación está fuera de alcance. El cliente se simula con la cabecera `X-Cliente-Id` y queda marcado como pendiente de reemplazo por OIDC.
+- H3: La integración está "sin definir", así que no hay llamadas a *core* bancario. Los datos salen solo de PostgreSQL con registros ficticios.
+- H4: Las pruebas "Unitarias" no incluyen integración ni e2e. El backend usa *mocks* del repositorio y el frontend usa *mocks* de `HttpClient`.
+- H5: SGC está en *fallback*, por lo que no se aplican estándares corporativos (nombres, librería UI, logging). Se usan convenciones idiomáticas del stack.
+- H6: El modelo de datos es mínimo: `cuenta(id, cliente_id, numero, tipo, moneda, saldo_disponible, estado, fecha_apertura)`.
 
 ## Riesgos
-- **R1:** puede que no haya Maven, npm o Angular CLI en el entorno. En ese caso la build queda como **no verificada** y solo se revisa la sintaxis.
-- **R2:** PostgreSQL no se ejecuta en el sandbox. El esquema solo recibe revisión estática.
-- **R3 (IDOR):** sin autenticación real, un cliente podría consultar cuentas ajenas. Se mitiga filtrando siempre por `clienteId`, pero el riesgo persiste hasta integrar la identidad real.
-- **R4:** CORS y versiones de Angular o Spring pueden diferir del estándar corporativo, que se desconoce porque no hay SGC.
+| Riesgo | Mitigación |
+|---|---|
+| IDOR: se consulta una cuenta de otro cliente | El servicio filtra siempre por `cliente_id`; si no corresponde responde 404. Prueba unitaria específica |
+| No hay toolchain (npm/Maven) en el entorno | Se reporta como "no verificado"; no se afirma que compile |
+| El SQL de PostgreSQL no se ejecuta (solo revisión estática) | Se usa SQL estándar sin extensiones; queda declarado en el resumen |
+| Desajuste de versiones entre Angular y Quarkus | Versiones fijadas en los manifiestos y documentadas en el README |
+| CORS entre front y back en desarrollo | `quarkus.http.cors` por variable de entorno o *proxy* de Angular documentado |
+| Fuga de PII en logs | No se registran el número completo ni el saldo |
 
-## Hipótesis
-- **H1:** el `clienteId` llega en la cabecera `X-Cliente-Id` como stub. La autenticación y la integración real quedan sin definir y fuera de alcance.
-- **H2:** "Consulta de cuentas" significa listado y detalle. Movimientos y transferencias quedan fuera.
-- **H3:** las versiones objetivo son Java 17, Spring Boot 3.x y Angular 17+, porque no hay lineamiento SGC.
-- **H4:** las respuestas son en español y los montos se formatean con `CurrencyPipe` según la moneda de la cuenta.
-- **H5:** la solución es un candidate y no se afirma compilación ni preparación para producción.
-
-## Aceptación (complemento, sin alterar la base)
-- Los endpoints D3 devuelven el número enmascarado (D4).
-- Existen archivos de prueba en `backend/src/test` y `frontend/**/*.spec.ts`.
-- El README documenta la build, las variables de entorno, las migraciones y lo no verificado.
+## Criterios complementarios (observables)
+- Hay al menos un `*.spec.ts` por nivel atómico usado y para `CuentasService`.
+- Hay pruebas de `CuentaService` (Java) para lista vacía, cuenta inexistente y cuenta de otro cliente.
+- Las migraciones existen y tienen datos ficticios. No hay credenciales en los archivos.
+- El README explica el build y la ejecución de cada módulo, las variables de entorno y deja la integración como "sin definir".

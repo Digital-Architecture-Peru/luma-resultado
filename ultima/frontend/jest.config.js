@@ -1,9 +1,8 @@
-// testRegex (y no testMatch con <rootDir>): en Windows el rootDir puede contener
-// barras invertidas o espacios que un glob interpreta como escapes y no encuentra pruebas.
+// testRegex (y no testMatch con <rootDir>): la ruta absoluta del workspace puede contener
+// espacios o barras invertidas (Windows) que rompen los globs de micromatch y dejan 0 coincidencias.
 module.exports = {
   preset: 'jest-preset-angular',
   setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
-  testEnvironment: 'jsdom',
-  roots: ['<rootDir>/src'],
-  testRegex: '\\.spec\\.ts$'
+  testRegex: '[\\\\/]src[\\\\/].*\\.spec\\.ts$',
+  testPathIgnorePatterns: ['[\\\\/]node_modules[\\\\/]', '[\\\\/]dist[\\\\/]'],
 };
