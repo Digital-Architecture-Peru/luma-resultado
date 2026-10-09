@@ -1,35 +1,44 @@
-import type { CardTransaction } from '../../services/api';
-import type { RemoteStatus } from '../../hooks/useCardTransaction';
-import { StatusMessage } from '../atoms/StatusMessage';
-import { TransactionRow } from '../molecules/TransactionRow';
+import type { Transaction } from '../../domain/types';
+import { StatusBadge } from '../atoms/StatusBadge';
 
-interface Props {
-  transactions: CardTransaction[];
-  status: RemoteStatus;
+interface TransactionListProps {
+  transactions: Transaction[];
+  loading: boolean;
 }
 
-export function TransactionList({ transactions, status }: Props) {
-  if (status === 'loading' && transactions.length === 0) {
-    return <StatusMessage kind="info">Cargando movimientos…</StatusMessage>;
+export function TransactionList({ transactions, loading }: TransactionListProps) {
+  if (loading) {
+    return <p className="muted">Cargando movimientos…</p>;
   }
   if (transactions.length === 0) {
-    return <StatusMessage kind="info">Aún no hay movimientos.</StatusMessage>;
+    return <p className="muted">Aún no hay movimientos para esta tarjeta.</p>;
   }
+
   return (
-    <table>
+    <table className="card table">
       <caption>Últimos movimientos</caption>
       <thead>
         <tr>
           <th scope="col">Fecha</th>
-          <th scope="col">Tipo</th>
-          <th scope="col">Descripción</th>
-          <th scope="col" className="num">Monto</th>
+          <th scope="col" className="num">
+            Importe
+          </th>
           <th scope="col">Estado</th>
+          <th scope="col">Detalle</th>
         </tr>
       </thead>
       <tbody>
         {transactions.map((tx) => (
-          <TransactionRow key={tx.id} tx={tx} />
+          <tr key={tx.id}>
+            <td>{new Date(tx.createdAt).toLocaleString('es')}</td>
+            <td className="num">
+              {tx.amount.toFixed(2)} {tx.currency}
+            </td>
+            <td>
+              <StatusBadge status={tx.status} />
+            </td>
+            <td>{tx.rejectionReason ?? '—'}</td>
+          </tr>
         ))}
       </tbody>
     </table>
