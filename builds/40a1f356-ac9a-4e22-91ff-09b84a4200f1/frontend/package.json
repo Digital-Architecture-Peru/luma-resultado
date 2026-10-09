@@ -1,0 +1,31 @@
+{
+  "name": "consulta-cuentas-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "ng serve",
+    "build": "tsc -p tsconfig.app.json --noEmit && ng build",
+    "test": "jest --ci"
+  },
+  "dependencies": {
+    "@angular/animations": "17.3.8",
+    "@angular/common": "17.3.8",
+    "@angular/compiler": "17.3.8",
+    "@angular/core": "17.3.8",
+    "@angular/platform-browser": "17.3.8",
+    "@angular/platform-browser-dynamic": "17.3.8",
+    "rxjs": "7.8.1",
+    "tslib": "2.6.2",
+    "zone.js": "0.14.4"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "17.3.7",
+    "@angular/cli": "17.3.7",
+    "@angular/compiler-cli": "17.3.8",
+    "@types/jest": "29.5.12",
+    "jest": "29.7.0",
+    "jest-environment-jsdom": "29.7.0",
+    "jest-preset-angular": "14.0.3",
+    "typescript": "5.4.5"
+  }
+}
