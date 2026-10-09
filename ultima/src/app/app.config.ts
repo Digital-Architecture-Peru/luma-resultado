@@ -1,11 +1,8 @@
 import { ApplicationConfig } from '@angular/core';
-import { NotificationRepository } from './domain/notification.repository';
-import { InMemoryNotificationRepository } from './adapters/in-memory-notification.repository';
+import { NotificationGateway } from './domain/notification.gateway';
+import { MockNotificationGateway } from './adapters/mock-notification.gateway';
 
-// Único punto de composición: aquí se enlaza el puerto con su adaptador.
-// La integración real (API de notificaciones) está sin definir; se sustituye este adaptador.
+/** Único punto de composición: aquí se cambia el adaptador mock por uno HTTP cuando se defina la integración. */
 export const appConfig: ApplicationConfig = {
-  providers: [
-    { provide: NotificationRepository, useClass: InMemoryNotificationRepository },
-  ],
+  providers: [{ provide: NotificationGateway, useClass: MockNotificationGateway }]
 };

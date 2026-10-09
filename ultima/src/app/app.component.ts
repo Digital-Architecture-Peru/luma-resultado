@@ -1,13 +1,16 @@
-import { Component } from '@angular/core';
-import { NotificationsPageComponent } from './pages/notifications-page.component';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { NotificationCenterComponent } from './ui/organisms/notification-center.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [NotificationsPageComponent],
+  imports: [NotificationCenterComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="topbar"><h1>Banca por Internet</h1></header>
-    <main class="container"><app-notifications-page /></main>
-  `,
+    <main class="page">
+      <h1>Banca por Internet</h1>
+      <app-notification-center />
+    </main>
+  `
 })
 export class AppComponent {}
