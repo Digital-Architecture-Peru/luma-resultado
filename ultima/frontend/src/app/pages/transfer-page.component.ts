@@ -1,47 +1,98 @@
-import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { TransactionStore } from '../core/transaction.store';
-import { MovementListComponent } from '../organisms/movement-list.component';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, ViewChild, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl } from '@angular/forms';
+import { AccountsService } from '../core/accounts.service';
+import { Account, Movement, SubmittedTransfer } from '../core/models';
+import { TransfersService } from '../core/transfers.service';
+import { AccountSelectorComponent } from '../molecules/account-selector.component';
+import { MovementsTableComponent } from '../organisms/movements-table.component';
 import { TransferFormComponent } from '../organisms/transfer-form.component';
 import { TransactionLayoutComponent } from '../templates/transaction-layout.component';
 
 @Component({
   selector: 'app-transfer-page',
   standalone: true,
-  imports: [DecimalPipe, TransactionLayoutComponent, TransferFormComponent, MovementListComponent],
-  template: `<app-transaction-layout
-    title="Transferencia entre mis cuentas"
-    subtitle="Mueva fondos entre sus cuentas de la misma moneda.">
-    <div main>
-      <app-transfer-form [accounts]="store.accounts()" [busy]="store.busy()" (submitted)="store.submit($event)" />
-      @if (store.message(); as m) {
-        <p role="status" class="msg" [class.msg-ok]="m.tone === 'ok'" [class.msg-error]="m.tone === 'error'">{{ m.text }}</p>
+  imports: [TransactionLayoutComponent, TransferFormComponent, MovementsTableComponent, AccountSelectorComponent],
+  template: `
+    <app-transaction-layout title="Transferencias entre mis cuentas">
+      @if (message()) {
+        <p class="status ok" role="status">{{ message() }}</p>
       }
-    </div>
-    <div aside>
-      <h2>Mis cuentas</h2>
-      @if (store.accounts().length === 0) {
-        <p class="muted">No hay cuentas para mostrar.</p>
+      @if (error()) {
+        <p class="status err" role="alert">{{ error() }}</p>
       }
-      <ul class="accounts">
-        @for (a of store.accounts(); track a.id) {
-          <li>
-            <button type="button" class="account" [attr.aria-pressed]="a.id === store.selectedAccountId()" (click)="store.selectAccount(a.id)">
-              <span>{{ a.number }}</span>
-              <strong>{{ a.currency }} {{ a.balance | number: '1.2-2' }}</strong>
-            </button>
-          </li>
-        }
-      </ul>
-      <h2>Movimientos</h2>
-      <app-movement-list [movements]="store.movements()" />
-    </div>
-  </app-transaction-layout>`,
+      <app-transfer-form [accounts]="accounts()" [busy]="busy()" (submitted)="onSubmit($event)" />
+
+      <div aside>
+        <app-account-selector fieldId="view" label="Ver movimientos de" [control]="viewAccount" [accounts]="accounts()" />
+        <app-movements-table [movements]="movements()" />
+      </div>
+    </app-transaction-layout>
+  `,
 })
 export class TransferPageComponent implements OnInit {
-  protected readonly store = inject(TransactionStore);
+  @ViewChild(TransferFormComponent) private form?: TransferFormComponent;
+
+  readonly accounts = signal<Account[]>([]);
+  readonly movements = signal<Movement[]>([]);
+  readonly message = signal<string | null>(null);
+  readonly error = signal<string | null>(null);
+  readonly busy = signal(false);
+  readonly viewAccount = new FormControl<number | null>(null);
+
+  constructor(
+    private readonly accountsService: AccountsService,
+    private readonly transfersService: TransfersService,
+  ) {
+    this.viewAccount.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => this.loadMovements(id));
+  }
 
   ngOnInit(): void {
-    this.store.loadAccounts();
+    this.refresh();
+  }
+
+  onSubmit({ request, idempotencyKey }: SubmittedTransfer): void {
+    this.busy.set(true);
+    this.message.set(null);
+    this.error.set(null);
+    this.transfersService.create(request, idempotencyKey).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.message.set('Transferencia realizada correctamente.');
+        this.form?.reset();
+        this.refresh();
+      },
+      error: (e: HttpErrorResponse) => {
+        this.busy.set(false);
+        this.error.set(this.describe(e));
+      },
+    });
+  }
+
+  private refresh(): void {
+    this.accountsService.list().subscribe({
+      next: (list) => {
+        this.accounts.set(list);
+        this.viewAccount.setValue(this.viewAccount.value ?? list[0]?.id ?? null);
+      },
+      error: () => this.error.set('No se pudieron cargar las cuentas.'),
+    });
+  }
+
+  private loadMovements(accountId: number | null): void {
+    if (accountId === null) {
+      this.movements.set([]);
+      return;
+    }
+    this.accountsService.movements(accountId).subscribe({
+      next: (m) => this.movements.set(m),
+      error: () => this.error.set('No se pudieron cargar los movimientos.'),
+    });
+  }
+
+  private describe(e: HttpErrorResponse): string {
+    const detail = (e.error as { detail?: string } | null)?.detail;
+    return detail ?? 'No se pudo completar la transferencia. Intenta nuevamente.';
   }
 }

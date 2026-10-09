@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Spring Boot
+- ¿Qué stack? Angular + Java + Quarkus
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Quarkus (capa Full Stack) para "Transacción" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,72 +29,72 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN: refinamiento
-
-## Alcance interpretado (H1)
-La capacidad es una **transferencia entre cuentas propias** del cliente en Banca por Internet. Incluye tres funciones: listar cuentas, registrar la transferencia y consultar movimientos. Ambas cuentas deben tener la misma moneda; no hay conversión cambiaria.
+# DESIGN · Refinamiento
 
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | `frontend/` con Angular y `backend/` con Spring Boot y Maven | Cada capa se compila por separado; un solo README |
-| D2 | Capas api → application → domain ← infrastructure, con el puerto `AccountRepository` | El dominio se prueba sin BD; la persistencia queda detrás de una interfaz |
-| D3 | Montos `BigDecimal` / `NUMERIC(19,2)` | Evita errores de coma flotante |
-| D4 | Transferencia en una sola `@Transactional`, con bloqueo pesimista ordenado por id | Débito y crédito atómicos; evita interbloqueos y doble gasto |
-| D5 | Cabecera `Idempotency-Key` con índice único | Los reintentos no duplican cargos |
-| D6 | Libro de movimientos: un débito y un crédito por transferencia | Trazabilidad y saldo conciliable |
-| D7 | Flyway: `V1__schema.sql`, `V2__seed_ficticio.sql` | Migraciones versionadas |
-| D8 | Spring Data JPA con parámetros enlazados | Ningún SQL concatenado |
-| D9 | Angular standalone con Atomic Design; estado en un servicio con signals | UI reutilizable; NgRx sería una dependencia injustificada |
-| D10 | Configuración por variables de entorno `DB_URL`, `DB_USER`, `DB_PASSWORD` | Sin secretos en el repositorio |
+| AD1 | Dos carpetas, `frontend/` (Angular) y `backend/` (Quarkus), cada una con su manifiesto (`package.json` y `pom.xml`) | Cada una compila, se prueba y se valida con su propia toolchain |
+| AD2 | Backend por capas: `api` (JAX-RS) → `domain` (servicio y reglas) → `persistence` (interfaz de repositorio + implementación PostgreSQL) | Persistencia detrás de interfaces, como pide el diseño base; las pruebas unitarias usan fakes sin BD |
+| AD3 | Montos con `BigDecimal` / `NUMERIC(19,2)`; en el JSON viajan como string decimal | Evita errores de punto flotante en dinero |
+| AD4 | Cabecera `Idempotency-Key` con restricción `UNIQUE` | Evita el doble débito cuando el cliente reintenta |
+| AD5 | Débito y crédito en una sola `@Transactional`; las cuentas se bloquean con `SELECT … FOR UPDATE`, ordenadas por id | Garantiza atomicidad y reduce el riesgo de deadlock |
+| AD6 | Flyway: `V1__schema.sql` y `V2__seed_ficticio.sql`; consultas parametrizadas (Panache/PreparedStatement) | Migraciones versionadas y sin inyección SQL |
+| AD7 | Componentes standalone de Angular organizados con Atomic Design; formularios con Reactive Forms | Cumple el patrón pedido; la validación se puede probar de forma unitaria |
+| AD8 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`, `API_BASE_URL`) | Sin secretos en el repositorio |
+
+## Contrato API (candidate)
+- `GET /api/v1/accounts` devuelve las cuentas propias (número enmascarado, moneda, saldo).
+- `POST /api/v1/transfers` recibe `{sourceAccountId, targetAccountId, amount, currency, description}`. Responde `201 {transferId, status, createdAt}`.
+  - `400`: validación.
+  - `404`: cuenta inexistente.
+  - `409`: clave de idempotencia reutilizada con otro payload.
+  - `422`: saldo insuficiente, misma cuenta o moneda distinta.
+- `GET /api/v1/accounts/{id}/movements` devuelve movimientos paginados.
+
+## Modelo de datos
+- `account(id, number_masked, owner_id, currency, balance, version)`
+- `transfer(id, idempotency_key UNIQUE, source_id, target_id, amount, currency, status, created_at)`
+- `movement(id, account_id, transfer_id, type DEBIT|CREDIT, amount, created_at)`
+- Índices: `movement(account_id, created_at DESC)` y `account(owner_id)`.
+- `CHECK (amount > 0)` y `CHECK (balance >= 0)`.
 
 ## Estructura de módulos
 ```
-backend/src/main/java/com/example/cuentas/
-  api/            TransferController, AccountController, dto/, GlobalExceptionHandler
-  application/    TransferService
-  domain/         Account, Transfer, Movement, excepciones de negocio
-  infrastructure/ adaptadores JPA del puerto
-backend/src/main/resources/db/migration/
-backend/src/test/java/...   JUnit 5 + Mockito
+backend/src/main/java/.../cuentas/
+  api/ (AccountResource, TransferResource, dto/, ErrorMapper)
+  domain/ (TransferService, Account, Transfer, DomainException)
+  persistence/ (AccountRepository, TransferRepository, pg/)
+backend/src/main/resources/ (application.properties, db/migration/)
+backend/src/test/java/... (TransferServiceTest, fakes/)
 frontend/src/app/
-  atoms/      amount-input, button, badge
-  molecules/  account-select, form-field
-  organisms/  transfer-form, movement-list
-  templates/  transaction-layout
-  pages/      transfer-page
-  core/       account.service, transfer.service, models
+  atoms/ (amount-input, app-button, field-error)
+  molecules/ (account-selector, amount-field)
+  organisms/ (transfer-form, movements-table)
+  templates/ (transaction-layout)
+  pages/ (transfer-page)
+  core/ (accounts.service, transfers.service, models)
 ```
 
-## Contrato API v1
-- `GET /api/v1/accounts`: devuelve las cuentas del cliente ficticio.
-- `POST /api/v1/transfers`: recibe `{sourceAccountId, targetAccountId, amount, currency, description}` con la cabecera `Idempotency-Key`. Responde 201 (creada), 409 (clave repetida con otro cuerpo) o 422 (regla de negocio).
-- `GET /api/v1/accounts/{id}/movements`: devuelve los movimientos paginados.
-- Los errores usan `ProblemDetail` (RFC 7807).
+## Pruebas unitarias previstas
+- **Backend (JUnit 5 + Mockito):** monto ≤ 0, misma cuenta, saldo insuficiente, moneda distinta, idempotencia y caso exitoso.
+- **Frontend (Jasmine/Karma):**
+  - validaciones de `transfer-form`;
+  - `amount-input`;
+  - servicios probados con `HttpTestingController`.
 
-## Modelo de datos
-- `account(id, number UNIQUE, holder, currency, balance NUMERIC(19,2) CHECK >= 0)`
-- `transfer(id, idempotency_key UNIQUE, source_id FK, target_id FK, amount CHECK > 0, status, created_at)`
-- `movement(id, account_id FK, transfer_id FK, type CHECK IN ('D','C'), amount, created_at)`
-- Índice `movement(account_id, created_at DESC)`.
+## Hipótesis
+- **H1.** "Transacción" significa transferencia entre cuentas propias del mismo titular. No incluye terceros ni otros bancos.
+- **H2.** Cada transferencia usa una sola moneda, sin conversión FX.
+- **H3.** La autenticación está fuera de alcance: se usa un `owner_id` ficticio fijo, configurable por entorno.
+- **H4.** Versiones: Angular 17+ (standalone), Java 17+ y Quarkus 3.x.
+- **H5.** La integración está sin definir: no se conecta a core bancario y el adaptador queda como stub documentado.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| No hay autenticación real | Cliente simulado (H2), documentado; la integración con un IdP queda fuera de alcance |
-| Las pruebas unitarias no cubren SQL ni concurrencia | Revisión estática del esquema; proponer Testcontainers en otra iteración |
-| El esquema PostgreSQL no se ejecuta | Se declara "no verificado" en el handoff |
-| Maven o Node pueden no estar instalados | Resumen *candidate* sin afirmar compilación |
-| Interpretación de "Transacción" | H1 es explícita; debe validarla negocio |
-
-## Hipótesis
-- **H2:** el cliente se identifica con un `X-Customer-Id` ficticio.
-- **H3:** no hay límites diarios, OTP ni comisiones.
-- **H4:** las versiones son Java 17+, Spring Boot 3.x y Angular 17+.
-- **H5:** la integración externa no está definida, así que no se hacen llamadas externas.
-- **H6:** SGC está en fallback, así que no se aplican estándares corporativos.
-
-## Pruebas unitarias mínimas
-- **`TransferService`:** casos de éxito, saldo insuficiente, misma cuenta, monedas distintas y clave de idempotencia repetida.
-- **Controller (MockMvc `standaloneSetup`):** códigos HTTP 201, 409 y 422.
-- **Angular:** validador de `amount-input`, emisión de evento de `transfer-form` y `transfer.service` con `HttpTestingController`.
+| Sin toolchain local, la compilación no queda verificada | Marcarlo como no verificado en el handoff |
+| PostgreSQL solo admite revisión estática | SQL estándar y migraciones simples |
+| Las pruebas unitarias no prueban la concurrencia (AD5) | Documentar que faltan pruebas de integración (Testcontainers) |
+| CORS y proxy entre el front y el back | `proxy.conf.json` y CORS restringido por variable de entorno |
+| Interpretación de "Transacción" (H1) | Validarla con el negocio antes de pasar de candidate |
