@@ -1,5 +1,0 @@
-import type { InputHTMLAttributes } from 'react';
-
-export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input type="text" className="input" {...props} />;
-}

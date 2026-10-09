@@ -1,11 +1,15 @@
+# Solo desarrollo local. La contrasena se toma del entorno: export DB_PASSWORD=...
 services:
-  db:
-    image: postgres:16-alpine
+  postgres:
+    image: postgres:16
     environment:
       POSTGRES_DB: payments
-      POSTGRES_USER: payments
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?define DB_PASSWORD en el entorno}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
-      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
