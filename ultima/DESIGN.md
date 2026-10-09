@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Quarkus
+- ¿Qué stack? React + TypeScript + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + .NET (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -34,54 +34,59 @@ Estado: fallback (SGC no configurado)
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (Vite + React + TS) y `backend/` (Quarkus + Maven) | Builds independientes y un solo README |
-| D2 | Backend por capas: `api` → `service` → `domain` ← `repository` / `integration` (puertos) | El dominio queda aislado; el servicio se prueba con mocks |
-| D3 | Integración externa detrás de `CardCoreGateway` con adaptador `FakeCardCoreGateway` | La integración no está definida; no hay llamadas reales |
-| D4 | Persistencia JDBC/Panache con consultas parametrizadas y Flyway (`V1__schema.sql`, `V2__seed.sql`) | Migraciones versionadas sin SQL concatenado |
-| D5 | `POST` con cabecera `Idempotency-Key` (UNIQUE en BD) | Evita cobros duplicados por reintentos |
-| D6 | Montos `BigDecimal` / `NUMERIC(15,2)` y moneda ISO 4217 | Sin errores de punto flotante |
-| D7 | Solo PAN enmascarado (`**** 1234`); nunca el PAN completo | Reduce el alcance de PCI |
-| D8 | UI Atomic Design; estado local + hook `useCardTransaction` | Patrón pedido, sin dependencias extra |
-| D9 | Unitarias: JUnit 5 + Mockito (sin `@QuarkusTest`) y Vitest + Testing Library | No requieren Docker ni una BD viva |
-
-## Contrato API (v1)
-- `GET /api/v1/cards/{cardId}/transactions?limit=20` → 200 con lista.
-- `POST /api/v1/cards/{cardId}/transactions` con body `{type, amount, currency, description}` → 201, 409 (Idempotency-Key ya usada) o 422 (saldo o estado inválido).
-- Los errores usan formato tipo RFC 7807: `{type, title, status, detail}`.
-
-## Modelo de datos (PostgreSQL)
-- `card(id UUID PK, masked_pan, holder_alias, status, credit_limit, available_balance, version)`
-- `card_transaction(id UUID PK, card_id FK, type, amount CHECK>0, currency CHAR(3), status, idempotency_key UNIQUE, created_at)`
-- Índice `(card_id, created_at DESC)`.
-- Bloqueo optimista por `version` al afectar el saldo.
+| D1 | Monorepo con `frontend/` (React + TS + Vite) y `backend/` (.NET 8, ASP.NET Core Web API) | Estructura idiomática por stack; cada parte compila y se prueba por separado |
+| D2 | Front con Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón pedido; facilita reutilizar y probar cada componente aislado |
+| D3 | Back en capas: Api / Application / Domain / Infrastructure | El dominio no depende de PostgreSQL ni de la integración aún sin definir |
+| D4 | Puerto `ICardTransactionGateway` con adaptador `FakeCoreGateway` | La integración no está definida; se usan datos ficticios sin llamar a sistemas reales |
+| D5 | Acceso a datos con Npgsql + Dapper y SQL parametrizado | SQL explícito y revisable; cumple el acceso parametrizado de T04-db |
+| D6 | Migraciones SQL versionadas en `db/migrations/V00X__*.sql` | Permiten revisión estática; no dependen de un ORM |
+| D7 | Importes en `NUMERIC(18,2)` y `decimal`, código ISO de moneda | Evita errores de redondeo de punto flotante |
+| D8 | Cabecera `Idempotency-Key` con índice único | Evita transacciones duplicadas por reintentos |
+| D9 | Solo se guarda el PAN enmascarado (últimos 4 dígitos) y un token ficticio | Minimiza el alcance PCI; nunca se guarda el PAN completo ni el CVV |
+| D10 | Estados `PENDING → APPROVED \| REJECTED` validados en el dominio | Las transiciones explícitas se pueden probar con pruebas unitarias |
 
 ## Estructura de módulos
 ```
-frontend/src/components/{atoms,molecules,organisms,templates}/  pages/  services/api.ts  hooks/  __tests__/
-backend/src/main/java/.../cards/{api,service,domain,repository,integration}/
-backend/src/main/resources/{application.properties,db/migration/}
-backend/src/test/java/.../cards/
+frontend/src/
+  components/{atoms,molecules,organisms,templates}/
+  pages/CardTransactionPage.tsx
+  services/cardTransactionsApi.ts   (fetch; URL base en VITE_API_URL)
+  domain/types.ts
+  __tests__/                        (Vitest + Testing Library)
+backend/
+  src/Cards.Api/            (controllers, DTOs, validación, ProblemDetails)
+  src/Cards.Application/    (casos de uso, puertos)
+  src/Cards.Domain/         (CardTransaction, Money, reglas)
+  src/Cards.Infrastructure/ (repositorio Dapper, FakeCoreGateway)
+  tests/Cards.UnitTests/    (xUnit; repositorio y gateway falsos)
+db/migrations/ V001__schema.sql, V002__indexes.sql, V003__seed_ficticio.sql
+README.md
 ```
 
+**Modelo de datos (mínimo):**
+- `cards`: id, masked_pan, token, holder_alias, status.
+- `card_transactions`: id, card_id (FK), amount, currency, status, idempotency_key (UNIQUE), created_at (timestamptz).
+
+**Índices:** `(card_id, created_at DESC)` e `idempotency_key`.
+
 ## Hipótesis
-- H1: "Transacción" significa **registrar un pago o compra con tarjeta y consultar sus movimientos**. Debe confirmarse con el negocio.
-- H2: El host de Banca por Internet gestiona la autenticación. Se recibe un `X-Customer-Id` simulado.
-- H3: Versiones: Java 17, Quarkus 3.x, Node 20, React 18.
-- H4: SGC está en fallback, así que no hay estándares corporativos aplicados (naming, logging, seguridad).
-- H5: La configuración va por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) sin valores reales en el repositorio.
+- **H1:** "Transacción sobre Tarjetas" se interpreta como **pago de tarjeta de crédito desde una cuenta propia**, con registro y consulta de movimientos. Si la operación es otra (compra, avance, bloqueo), se mantienen el dominio y las capas y se ajustan el caso de uso y las reglas.
+- **H2:** La autenticación la resuelve Banca por Internet fuera de este alcance. La API recibe un identificador de cliente ficticio en una cabecera, sin validación real.
+- **H3:** No hay contexto SGC (fallback). No se aplican lineamientos corporativos de nomenclatura, seguridad ni diseño visual.
+- **H4:** Se usa .NET 8 LTS y Node 20 LTS. Si la toolchain local no está instalada, la compilación y las pruebas quedan **no verificadas**.
+- **H5:** Límites de importe y reglas de negocio de ejemplo (monto > 0, tope ficticio) configurables por variables de entorno.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Sin toolchain local, la compilación queda sin verificar | Marcarlo como no verificado en el handoff |
-| El SQL de PostgreSQL solo se revisa de forma estática | Usar sintaxis estándar y migraciones pequeñas |
-| Concurrencia al actualizar el saldo | Columna `version` + reintento acotado + 409 |
-| Contrato de integración desconocido | Puerto estable y adaptador fake reemplazable |
-| Las unitarias no cubren el flujo HTTP ni la BD | Documentar que faltan pruebas de integración |
+| Alcance de la transacción ambiguo (H1) | Caso de uso aislado y reemplazable; se reporta en el handoff |
+| No se ejecuta PostgreSQL | Solo revisión estática del SQL; queda declarado como no verificado |
+| Integración real desconocida | Puerto D4; sin contrato real no se afirma compatibilidad |
+| Exposición de datos de tarjeta | D9; los logs nunca incluyen token ni importes con identificación del cliente |
+| Doble cargo por reintento | D8 y transición de estado atómica en una transacción de base de datos |
+| Pruebas solo unitarias | Sin pruebas de integración ni E2E; queda declarado en el README |
 
-## Trazabilidad con la aceptación
-- Fuentes de D1–D8 en los dos módulos.
-- Pruebas en `__tests__/` y `src/test/`.
-- README con build, ejecución, integración y persistencia.
-- La sintaxis se valida con la herramienta local disponible.
-- El resultado se entrega como candidate.
+## Notas para el tester
+- Probar las reglas de `Money` y las transiciones de estado.
+- Probar el rechazo de importes inválidos y la idempotencia con un repositorio falso.
+- Probar el render y la validación del formulario (organism) y el estado de éxito o error (page).
