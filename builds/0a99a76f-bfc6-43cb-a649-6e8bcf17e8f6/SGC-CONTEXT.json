@@ -1,0 +1,18 @@
+{
+  "answers": {
+    "where": "Banca por Internet",
+    "pattern": "Component-based (Atomic Design)",
+    "tests": "Unitarias",
+    "type": "Transacción",
+    "domain": "Cuentas",
+    "layer": "Full Stack",
+    "stack": "React + TypeScript + .NET",
+    "backendStack": ".NET",
+    "persistence": "PostgreSQL"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
