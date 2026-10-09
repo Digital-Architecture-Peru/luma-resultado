@@ -1,0 +1,128 @@
+/* src/styles.css */
+:root {
+  color-scheme: light dark;
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5a6575;
+  --primary: #0b5cad;
+  --primary-contrast: #ffffff;
+  --danger: #b3261e;
+  --border: #d3d9e2;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --radius-md: 0.5rem;
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 12%);
+  --font-sans:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  --dur-fast: 150ms;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b212b;
+    --text: #e6eaf0;
+    --muted: #a3adbb;
+    --primary: #6cb0f5;
+    --primary-contrast: #0a1624;
+    --danger: #ff9a92;
+    --border: #36404e;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+h1,
+h2 {
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.layout {
+  display: grid;
+  gap: var(--space-4);
+  max-inline-size: 36rem;
+  margin-inline: auto;
+  padding: var(--space-6) clamp(1rem, 4vw, 2rem);
+}
+.card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+.campo__etiqueta {
+  display: block;
+  margin-block-end: var(--space-2);
+  font-weight: 600;
+}
+.campo__control {
+  inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding-inline: var(--space-3);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+.campo__control:focus-visible,
+.btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+.campo__control[aria-invalid=true] {
+  border-color: var(--danger);
+}
+.campo__error {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+.btn {
+  min-block-size: 2.75rem;
+  padding-inline: var(--space-6);
+  color: var(--primary-contrast);
+  background: var(--primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--dur-fast);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+dt {
+  color: var(--muted);
+}
+dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* angular:styles/global:styles */

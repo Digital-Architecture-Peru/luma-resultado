@@ -1,10 +1,10 @@
-import { Component } from '@angular/core';
-import { TransferPageComponent } from './pages/transfer-page.component';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { TransferenciaPageComponent } from './features/transferencias/pages/transferencia.page';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [TransferPageComponent],
-  template: `<app-transfer-page />`,
+  imports: [TransferenciaPageComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<app-transferencia-page />`,
 })
 export class AppComponent {}
