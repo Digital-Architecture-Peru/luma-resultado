@@ -1,140 +1,96 @@
 :root {
-  color-scheme: light dark;
   --bg: #f5f7fa;
   --surface: #ffffff;
   --text: #1c2430;
-  --muted: #5a6677;
+  --muted: #5b6676;
   --primary: #0b5cad;
+  --danger: #b42318;
+  --success: #067647;
+  --warn: #8a4b00;
   --border: #d5dbe3;
-  --success: #17692f;
-  --danger: #a12622;
-  --radius: 0.5rem;
+  --radius: 8px;
   --space: 1rem;
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #12171f;
-    --surface: #1b222d;
+    --bg: #141a22;
+    --surface: #1d2530;
     --text: #e6eaf0;
-    --muted: #9aa6b6;
+    --muted: #a3adbb;
     --primary: #6cb0f5;
-    --border: #2c3644;
-    --success: #6fd08a;
-    --danger: #ff8a85;
+    --danger: #ff8a80;
+    --success: #5fd39a;
+    --warn: #f5b968;
+    --border: #334050;
   }
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
 .layout {
-  max-inline-size: 72rem;
+  max-inline-size: 48rem;
   margin-inline: auto;
   padding: var(--space) clamp(1rem, 4vw, 2rem);
 }
 
-.layout__grid {
-  display: grid;
-  gap: var(--space);
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-}
+.layout__note { color: var(--muted); margin: 0; }
 
-.filter {
-  display: grid;
-  gap: 0.25rem;
-  max-inline-size: 16rem;
-  margin-block-end: var(--space);
-}
+.account-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 
-select {
-  min-block-size: 2.5rem;
-  padding-inline: 0.5rem;
-}
-
-.account-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.account-row {
+.account-row button {
   inline-size: 100%;
-  min-block-size: 2.75rem;
-  display: flex;
-  flex-wrap: wrap;
+  min-block-size: 44px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: var(--space);
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
   padding: 0.75rem var(--space);
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font: inherit;
+  text-align: start;
   cursor: pointer;
 }
 
-.account-row:hover,
-.account-row--selected {
-  border-color: var(--primary);
-}
+.account-row button:hover { border-color: var(--primary); }
+.account-row button:focus-visible,
+.account-detail button:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 
-.account-row:focus-visible,
-select:focus-visible {
-  outline: 3px solid var(--primary);
-  outline-offset: 2px;
-}
+.amount { font-variant-numeric: tabular-nums; font-weight: 600; text-align: end; }
 
-.money {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
+.badge { padding: 0.125rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; font-size: 0.85rem; }
+.badge--ok { color: var(--success); }
+.badge--warn { color: var(--warn); }
 
-.badge {
-  padding: 0.1rem 0.6rem;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  font-size: 0.85rem;
-}
+.error { color: var(--danger); font-weight: 600; }
+.empty, .spinner { color: var(--muted); }
 
-.badge--active {
-  color: var(--success);
-}
-
-.badge--blocked,
-.badge--closed {
-  color: var(--danger);
-}
-
-.detail {
+.account-detail {
+  margin-block-start: var(--space);
+  padding: var(--space);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: var(--space);
 }
 
-.detail dt {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
+.account-detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem var(--space); }
+.account-detail dt { color: var(--muted); }
+.account-detail dd { margin: 0; }
+.account-detail button { min-block-size: 44px; padding-inline: var(--space); }
 
-.detail dd {
-  margin: 0 0 0.75rem;
-}
-
-.empty {
-  color: var(--muted);
+@media (max-width: 480px) {
+  .account-row button { grid-template-columns: 1fr auto; }
 }

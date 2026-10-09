@@ -1,27 +1,21 @@
-import { TYPE_LABELS, type Account } from "../../domain/account";
-import { MoneyText } from "../atoms/MoneyText";
-import { StatusBadge } from "../atoms/StatusBadge";
+import type { Cuenta } from '../../types/cuenta';
+import { Amount } from '../atoms/Amount';
+import { Badge } from '../atoms/Badge';
 
 interface AccountRowProps {
-  account: Account;
-  selected: boolean;
+  cuenta: Cuenta;
   onSelect: (id: string) => void;
 }
 
-export function AccountRow({ account, selected, onSelect }: AccountRowProps) {
+export function AccountRow({ cuenta, onSelect }: AccountRowProps) {
+  const activa = cuenta.estado === 'ACTIVA';
   return (
-    <li>
-      <button
-        type="button"
-        className={`account-row${selected ? " account-row--selected" : ""}`}
-        aria-pressed={selected}
-        onClick={() => onSelect(account.id)}
-      >
-        <span className="account-row__title">
-          {TYPE_LABELS[account.type]} {account.maskedNumber}
-        </span>
-        <StatusBadge status={account.status} />
-        <MoneyText amount={account.balance} currency={account.currency} />
+    <li className="account-row">
+      <button type="button" onClick={() => onSelect(cuenta.id)}>
+        <span className="account-row__tipo">{cuenta.tipo === 'AHORROS' ? 'Ahorros' : 'Corriente'}</span>
+        <span className="account-row__numero">{cuenta.numeroEnmascarado}</span>
+        <Amount value={cuenta.saldo} currency={cuenta.moneda} />
+        <Badge tone={activa ? 'ok' : 'warn'} label={activa ? 'Activa' : 'Bloqueada'} />
       </button>
     </li>
   );

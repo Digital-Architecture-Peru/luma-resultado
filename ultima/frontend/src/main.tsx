@@ -1,15 +1,13 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { AccountsPage } from "./pages/AccountsPage";
-import "./styles.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { CuentasPage } from './pages/CuentasPage';
+import './styles.css';
 
-const root = document.getElementById("root");
-if (!root) {
-  throw new Error("Elemento #root no encontrado");
-}
+const raiz = document.getElementById('root');
+if (!raiz) throw new Error('No se encontró el elemento #root');
 
-createRoot(root).render(
+createRoot(raiz).render(
   <StrictMode>
-    <AccountsPage />
+    <CuentasPage />
   </StrictMode>,
 );

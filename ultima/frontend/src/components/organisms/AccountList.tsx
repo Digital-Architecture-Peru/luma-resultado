@@ -1,25 +1,23 @@
-import type { Account } from "../../domain/account";
-import { AccountRow } from "../molecules/AccountRow";
+import type { Cuenta } from '../../types/cuenta';
+import { AccountRow } from '../molecules/AccountRow';
+import { ErrorMessage } from '../molecules/ErrorMessage';
+import { Spinner } from '../atoms/Spinner';
 
 interface AccountListProps {
-  accounts: Account[];
-  selectedId: string | null;
+  cuentas: Cuenta[];
+  loading: boolean;
+  error: string | null;
   onSelect: (id: string) => void;
 }
 
-export function AccountList({ accounts, selectedId, onSelect }: AccountListProps) {
-  if (accounts.length === 0) {
-    return <p className="empty">No hay cuentas para mostrar.</p>;
-  }
+export function AccountList({ cuentas, loading, error, onSelect }: AccountListProps) {
+  if (loading) return <Spinner />;
+  if (error) return <ErrorMessage message={error} />;
+  if (cuentas.length === 0) return <p className="empty">No tiene cuentas registradas.</p>;
   return (
-    <ul className="account-list" aria-label="Listado de cuentas">
-      {accounts.map((account) => (
-        <AccountRow
-          key={account.id}
-          account={account}
-          selected={account.id === selectedId}
-          onSelect={onSelect}
-        />
+    <ul className="account-list" aria-label="Mis cuentas">
+      {cuentas.map((c) => (
+        <AccountRow key={c.id} cuenta={c} onSelect={onSelect} />
       ))}
     </ul>
   );
