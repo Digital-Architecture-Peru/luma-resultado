@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T20:21:43.481Z",
+  "actualizado": "2026-10-09T20:31:50.568Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -2468,6 +2468,73 @@
           "etapa": "Cierre",
           "segundo": 395,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 8085a44: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/8085a440ba9d2a71afa34ce8a5b3df828e5debcc\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Transacción|Tarjetas|Full Stack|Angular|Java + Spring Boot|PostgreSQL": {
+      "clave": "Transacción|Tarjetas|Full Stack|Angular|Java + Spring Boot|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Transacción",
+        "domain": "Tarjetas",
+        "layer": "Full Stack",
+        "stack": "Angular",
+        "backendStack": "Java + Spring Boot",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "5881c5b6e1e3e4e6ef2151c40302d62cb1a1b149",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/97",
+      "distTree": "9bc5aeebeb7d4017e94bfda83503d35633bdd444",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-09T20:31:33Z",
+      "duracion_s": 570,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 992da302-2ddc-4956-9002-c0d8ac32e2d9 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 35,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 35,
+          "detalle": "generando Angular + Java + Spring Boot (capa Full Stack) en segundo plano, tarea d3539007-1651-4570-8c36-1fc4403bc751. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 261,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 419,
+          "detalle": "falló test: [backend] [backend] maven: mvn -B -ntp falló [INFO] Scanning for projects... [INFO] [INFO] --------------------< com.bank:cards-transactions >--------------------- [INFO] Building cards-transactions 0.1.0 [INFO] from pom.xml [IN"
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 540,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 540,
+          "detalle": "build correcto; pruebas unitarias correctas (7); [backend] maven build correcto; [backend] maven pruebas correctas (15); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 570,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 5881c5b: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/5881c5b6e1e3e4e6ef2151c40302d62cb1a1b149\nPull Request: https://github.com/Digita"
         }
       ]
     }
