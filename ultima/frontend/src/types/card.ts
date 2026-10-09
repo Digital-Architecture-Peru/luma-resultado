@@ -1,14 +1,16 @@
-export type CardType = "CREDIT" | "DEBIT";
-export type CardStatus = "ACTIVE" | "BLOCKED" | "EXPIRED";
+export type CardStatus = "ACTIVE" | "BLOCKED" | "CANCELLED";
 
-export interface Card {
+export interface CardSummary {
   id: string;
-  maskedNumber: string;
+  productName: string;
   brand: string;
-  type: CardType;
+  maskedPan: string;
   status: CardStatus;
-  creditLimit: number;
-  availableBalance: number;
   currency: string;
+  availableBalance: number;
+}
+
+export interface CardDetail extends CardSummary {
+  creditLimit: number;
   expiry: string;
 }

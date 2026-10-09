@@ -1,18 +1,19 @@
+using System.Text.RegularExpressions;
+using Cards.Domain;
+
 namespace Cards.Application;
 
-public sealed class CardNotFoundException : Exception
+public interface ICardQueryService
 {
-    public CardNotFoundException(Guid cardId)
-        : base("La tarjeta solicitada no existe.")
-    {
-        CardId = cardId;
-    }
+    Task<IReadOnlyList<CardSummary>> GetCustomerCardsAsync(string customerId, CancellationToken cancellationToken = default);
 
-    public Guid CardId { get; }
+    Task<CardDetail?> GetCardDetailAsync(Guid cardId, CancellationToken cancellationToken = default);
 }
 
-public sealed class CardQueryService
+public sealed partial class CardQueryService : ICardQueryService
 {
+    private const int MaxCustomerIdLength = 36;
+
     private readonly ICardRepository _repository;
 
     public CardQueryService(ICardRepository repository)
@@ -20,33 +21,43 @@ public sealed class CardQueryService
         _repository = repository;
     }
 
-    public async Task<IReadOnlyList<CardDto>> GetCardsAsync(Guid customerId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<CardSummary>> GetCustomerCardsAsync(
+        string customerId, CancellationToken cancellationToken = default)
     {
-        var cards = await _repository.ListByCustomerAsync(customerId, ct);
-        return cards.Select(ToDto).ToList();
+        ValidateCustomerId(customerId);
+        var cards = await _repository.ListByCustomerAsync(customerId, cancellationToken);
+        return cards.Select(ToSummary).ToList();
     }
 
-    public async Task<CardDto> GetCardAsync(Guid customerId, Guid cardId, CancellationToken ct = default)
+    public async Task<CardDetail?> GetCardDetailAsync(Guid cardId, CancellationToken cancellationToken = default)
     {
-        var card = await _repository.FindByIdAsync(cardId, ct);
+        var card = await _repository.FindByIdAsync(cardId, cancellationToken);
+        return card is null ? null : ToDetail(card);
+    }
 
-        // Una tarjeta ajena responde igual que una inexistente para no revelar su existencia.
-        if (card is null || card.CustomerId != customerId)
+    private static void ValidateCustomerId(string? customerId)
+    {
+        if (string.IsNullOrWhiteSpace(customerId)
+            || customerId.Length > MaxCustomerIdLength
+            || !CustomerIdPattern().IsMatch(customerId))
         {
-            throw new CardNotFoundException(cardId);
+            throw new ArgumentException(
+                "customerId es obligatorio, alfanumérico (con guiones) y de máximo 36 caracteres.",
+                nameof(customerId));
         }
-
-        return ToDto(card);
     }
 
-    private static CardDto ToDto(Card card) => new(
-        card.Id,
-        CardMasking.Mask(card.PanLast4),
-        card.Brand,
-        card.CardType,
-        card.Status,
-        card.CreditLimit,
-        card.AvailableBalance,
-        card.Currency,
-        CardMasking.FormatExpiry(card.ExpiryMonth, card.ExpiryYear));
+    private static string StatusCode(CardStatus status) => status.ToString().ToUpperInvariant();
+
+    private static CardSummary ToSummary(Card card) => new(
+        card.Id, card.ProductName, card.Brand, card.MaskedPan,
+        StatusCode(card.Status), card.Currency, card.AvailableBalance);
+
+    private static CardDetail ToDetail(Card card) => new(
+        card.Id, card.ProductName, card.Brand, card.MaskedPan,
+        StatusCode(card.Status), card.Currency, card.AvailableBalance,
+        card.CreditLimit, card.Expiry);
+
+    [GeneratedRegex("^[A-Za-z0-9-]+$")]
+    private static partial Regex CustomerIdPattern();
 }

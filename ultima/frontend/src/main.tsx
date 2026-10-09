@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { CardsPage } from "./components/pages/CardsPage";
+import { CardsPage } from "./pages/CardsPage";
 import "./styles.css";
 
 const container = document.getElementById("root");
