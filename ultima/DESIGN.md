@@ -29,73 +29,69 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento
+# DESIGN — Refinamiento
 
 ## Decisiones de arquitectura
-| # | Decisión | Justificación |
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (React+TS, Vite) y `backend/` (.NET, ASP.NET Core Web API) | Un solo workspace con build independiente por capa; cada toolchain se verifica por separado |
-| D2 | Solo endpoints `GET` de lectura | La capacidad es **Consulta**; sin mutaciones se reduce la superficie de riesgo en Pagos |
-| D3 | Backend en capas: Api → Application → Domain ← Infrastructure | El dominio no depende de PostgreSQL; la persistencia queda detrás de `IPaymentQueryRepository` |
-| D4 | Npgsql + Dapper con SQL parametrizado (`@param`) | SQL explícito y revisable, sin concatenación; más ligero que EF Core para lectura |
-| D5 | Migraciones SQL versionadas (`V001__create_payments.sql`, `V002__seed_fake.sql`) | Son legibles y se revisan de forma estática, ya que no se ejecutan sobre PostgreSQL real |
-| D6 | Repositorio `InMemory` por defecto (`PAYMENTS_STORE=memory\|postgres`) | Permite ejecutar y probar sin base de datos ni secretos |
-| D7 | Importes como `decimal` en .NET y como string decimal en el JSON | Evita la pérdida de precisión de `number` en JS |
-| D8 | Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón pedido; permite probar los componentes de forma aislada |
-| D9 | Pruebas: xUnit (backend) y Vitest + React Testing Library (frontend) | Herramientas estándar para pruebas unitarias en cada stack |
+| D1 | Repositorio con `web/` (React + TS + Vite) y `api/` (.NET 8, ASP.NET Core) | Builds independientes, verificables con npm y dotnet |
+| D2 | API en capas Domain → Application → Infrastructure → Api | La persistencia queda detrás de `IPagoRepository` y la lógica se prueba sin BD |
+| D3 | Solo endpoints GET | La capacidad es Consulta; reduce la superficie de riesgo |
+| D4 | Npgsql + Dapper con SQL parametrizado; migraciones SQL versionadas | Control explícito de consultas e índices; menos dependencias que EF Core |
+| D5 | Paginación `page/pageSize` (máx. 50) y filtros por fecha y estado | Acota el volumen y el costo de cada consulta |
+| D6 | Front con Atomic Design; datos vía hook `usePagos` y cliente `fetch` tipado | Evita una librería de estado adicional |
+| D7 | `NUMERIC(18,2)`/`decimal`, fechas UTC ISO-8601, moneda ISO-4217 | Evita errores de redondeo y de zona horaria |
+| D8 | Cuenta destino enmascarada (`****1234`) desde la API | Minimiza la exposición de datos |
+| D9 | Configuración por env (`ConnectionStrings__Pagos`, `VITE_API_URL`); se usa `InMemoryPagoRepository` si no hay cadena de conexión | Permite ejecutar sin BD y sin secretos |
 
 ## Estructura de módulos
 ```
-backend/
-  src/Payments.Api/            Program.cs, Endpoints/PaymentsEndpoints.cs
-  src/Payments.Application/    GetPaymentsQuery, PaymentDto, PagedResult
-  src/Payments.Domain/         Payment, PaymentStatus, IPaymentQueryRepository
-  src/Payments.Infrastructure/ PostgresPaymentQueryRepository, InMemoryPaymentQueryRepository
-  tests/Payments.Tests/        xUnit
-  db/migrations/               V001__create_payments.sql, V002__seed_fake.sql
-  Payments.sln
-frontend/
-  src/components/{atoms,molecules,organisms,templates}/
-  src/pages/PaymentsPage.tsx
-  src/api/paymentsClient.ts    (lee VITE_API_BASE_URL)
-  src/**/*.test.tsx
-  package.json, vite.config.ts, tsconfig.json
+api/Pagos.sln
+  src/Pagos.Domain/          Pago, EstadoPago
+  src/Pagos.Application/     IPagoRepository, ConsultaPagosService, DTOs, validación de filtros
+  src/Pagos.Infrastructure/  PgPagoRepository, InMemoryPagoRepository
+  src/Pagos.Api/             Program.cs, /api/v1/pagos, ProblemDetails
+  tests/Pagos.Application.Tests/  xUnit
+db/migrations/V001__esquema_pagos.sql, V002__seed_ficticio.sql
+web/ package.json, tsconfig.json, vite.config.ts
+  src/components/atoms/      Monto, Fecha, BadgeEstado
+  src/components/molecules/  FiltroFechas, FilaPago
+  src/components/organisms/  TablaPagos, DetallePago
+  src/components/templates/  ConsultaLayout
+  src/pages/                 ConsultaPagosPage
+  src/services/pagosApi.ts, src/hooks/usePagos.ts, src/types/pago.ts
+  *.test.tsx                 Vitest + Testing Library
 README.md
 ```
 
-## Contrato API (candidate)
-- `GET /api/payments?from=&to=&status=&page=1&pageSize=20`: devuelve `{ items, page, pageSize, total }`. `pageSize` admite como máximo 100.
-- `GET /api/payments/{id}`: devuelve 200 o 404.
-- Los errores siguen el formato `ProblemDetails` (RFC 7807).
-- El número de cuenta se devuelve enmascarado (`****1234`).
+## Contrato
+- `GET /api/v1/pagos?desde&hasta&estado&page&pageSize` devuelve `{ items, page, pageSize, total }`.
+- `GET /api/v1/pagos/{id}` devuelve el detalle, o 404 si no existe o pertenece a otro cliente.
+- Devuelve 400 (ProblemDetails) si `desde > hasta`, si el rango supera 90 días o si `pageSize` está fuera de 1–50.
 
 ## Modelo de datos
-- Tabla `payments`:
-  - `id uuid PK`, `customer_id uuid`, `beneficiary varchar(120)`, `account_masked varchar(20)`.
-  - `amount numeric(18,2)`, `currency char(3)`, `status varchar(20) CHECK`, `paid_at timestamptz`, `reference varchar(40)`.
-- Índice `ix_payments_customer_paid_at (customer_id, paid_at DESC)` y índice sobre `status`.
+`pagos(id UUID PK, cliente_id UUID NOT NULL, referencia VARCHAR(30), beneficiario VARCHAR(120), cuenta_destino_mask VARCHAR(20), monto NUMERIC(18,2) CHECK (monto > 0), moneda CHAR(3), estado VARCHAR(15) CHECK (estado IN (...)), fecha_pago TIMESTAMPTZ NOT NULL)`
+- Índice `ix_pagos_cliente_fecha (cliente_id, fecha_pago DESC)`.
+- Seed con unos 10 registros ficticios y UUID literales (sin extensiones).
 
-## Hipótesis
-- **H1**: la autenticación la provee la Banca por Internet anfitriona. Aquí se simula con el header `X-Customer-Id`, que no es seguro y debe reemplazarse.
-- **H2**: "Consulta" significa listar pagos con filtros más ver el detalle. No incluye exportación ni comprobantes.
-- **H3**: el target es .NET 8 LTS y Node 20.
-- **H4**: la moneda es un código ISO ficticio. No se asume ningún país.
-- **H5**: la integración con el core de pagos está sin definir; solo existe la interfaz.
-- **H6**: la paginación es por offset, suficiente para volúmenes de demo.
+## Pruebas unitarias
+- **Application:** validación de filtros, límite de paginación, enmascarado y filtrado obligatorio por cliente.
+- **Web:** formato de `Monto`, `TablaPagos` con lista vacía y con datos, y `usePagos` con `fetch` simulado.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Sin toolchain .NET/npm, el código no se puede verificar | Marcarlo como no verificado en el handoff (T06) |
-| El SQL de PostgreSQL no se ejecuta, solo se revisa | Usar SQL estándar sin extensiones y documentar en el README cómo ejecutarlo |
-| Fuga de datos de otros clientes | Toda consulta filtra por `customer_id`; incluir una prueba unitaria que lo verifique |
-| Exposición de PII | Solo datos ficticios, cuentas enmascaradas y sin logs de payload |
-| Bloqueos de CORS en desarrollo | Origen configurable mediante la variable de entorno `ALLOWED_ORIGINS` |
+| dotnet o npm no instalados | Se marca como no verificado en el handoff |
+| SQL de PostgreSQL sin ejecución real | Revisión estática; sintaxis estándar sin extensiones |
+| Autenticación no definida, con riesgo de acceso a pagos de otro cliente | `cliente_id` obligatorio en todo `WHERE` |
+| Integración sin definir | Solo se documenta el contrato; no hay llamadas reales |
+| Versiones de paquetes no verificadas | Versiones fijadas y declaradas en el README |
+| CORS entre web y api | Origen permitido configurable por env |
 
-## Trazabilidad con la aceptación
-- **T02**: D1–D8.
-- **T03**: validadores locales por capa.
-- **T04-tests**: D9.
-- **T04-db**: D4 y D5.
-- **T05**: README con build, variables de entorno, integración pendiente (H5) y persistencia PostgreSQL.
-- **T06**: resumen candidate que incluye H1–H6 y lo no verificado.
+## Hipótesis
+- **H1:** .NET 8 LTS y Node 20+.
+- **H2:** La autenticación de Banca por Internet queda fuera de alcance; el cliente llega por el header stub `X-Cliente-Id`.
+- **H3:** Solo se consultan pagos del propio cliente, con rango máximo de 90 días.
+- **H4:** Estados posibles: PENDIENTE, PROCESADO, RECHAZADO y REVERSADO.
+- **H5:** No hay conversión de moneda; el locale de formato es configurable (por defecto `es`).
+- **H6:** Solo hay pruebas unitarias; no hay pruebas de integración ni e2e contra PostgreSQL.
