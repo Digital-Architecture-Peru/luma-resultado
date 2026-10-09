@@ -1,23 +1,30 @@
-# Banca por Internet · Transferencias entre cuentas
+# Banca por Internet — Transacción de pagos
 
-Aplicación frontend de transferencias entre cuentas propias, construida con Angular 18 standalone components y signals. La interfaz usa Atomic Design y `TransferStore` como fachada de estado. El proyecto usa datos ficticios; **no es un sistema bancario real** y no debe recibir datos personales ni credenciales.
+Frontend Angular 17 standalone para simular pagos entre cuentas ficticias. La interfaz se organiza con Atomic Design; las reglas de validación son funciones puras y la UI interactúa con los casos de uso mediante `PaymentsFacade` y el puerto abstracto `PaymentGateway`.
 
 ## Requisitos
 
-- Node.js 18.19+ o 20+.
-- npm (incluido con Node.js).
+- Node.js compatible con Angular CLI 17 (Node.js 18.13+ o 20.9+).
+- npm.
 
 ## Instalar, compilar y ejecutar
 
-Desde la raíz del repositorio:
+Desde la raíz del proyecto:
 
 ```sh
 npm install
-npm run build
 npm start
 ```
 
-`npm run build` ejecuta Angular CLI con compilación AOT/type-check; la configuración predeterminada es producción. `npm start` inicia el servidor de desarrollo Angular en `http://localhost:4200/`.
+El servidor de desarrollo de Angular CLI estará disponible normalmente en `http://localhost:4200/` y recargará cambios automáticamente.
+
+Para validar tipos y crear el bundle de producción:
+
+```sh
+npm run build
+```
+
+Este script ejecuta primero `tsc --noEmit -p tsconfig.app.json` y luego `ng build`; la salida de Angular se genera en `dist/banca-pagos`.
 
 ## Pruebas
 
@@ -25,34 +32,28 @@ npm start
 npm test
 ```
 
-El script ejecuta Jest en modo no interactivo (`jest --ci`). Los tests cubren la validación de transferencias, el adaptador en memoria, el estado/fachada y el formulario. Para ejecutar un archivo concreto se puede usar, por ejemplo, `npx jest src/app/core/models/transfer.validator.spec.ts --runInBand`.
+Jest se ejecuta en modo CI, en una sola pasada y sin modo watch. Las pruebas cubren validaciones de pagos, el adaptador ficticio, la fachada y el formulario.
 
-## Organización
+## Estructura y flujo
 
-- `src/app/atoms`: controles UI básicos.
-- `src/app/molecules`: tarjeta de cuenta y elemento de movimiento.
-- `src/app/organisms`: lista de cuentas, formulario y lista de movimientos.
-- `src/app/core/models`: modelos de cuenta, movimiento y solicitud; validación de negocio.
-- `src/app/core/ports/accounts.gateway.ts`: contrato de acceso a cuentas y transferencias.
-- `src/app/core/adapters/in-memory-accounts.gateway.ts`: adaptador actual con cuentas semilla ficticias.
-- `src/app/core/state/transfer.store.ts`: carga y actualización del estado mediante signals.
-- `src/app/app.config.ts`: composición de dependencias; vincula el puerto al adaptador en memoria.
+- `src/app/atoms/`: botón y badge reutilizables.
+- `src/app/molecules/`: control de campo con etiqueta y error.
+- `src/app/organisms/`: formulario y listado de historial.
+- `src/app/core/payment.model.ts`: modelos de cuentas, borrador, pago y feedback.
+- `src/app/core/payment.validator.ts`: validaciones puras de cuenta, beneficiario, monto, saldo y concepto.
+- `src/app/core/payment.gateway.ts`: puerto de integración.
+- `src/app/core/in-memory-payment.gateway.ts`: implementación simulada.
+- `src/app/core/payments.facade.ts`: estado reactivo y coordinación de carga/envío.
+- `src/app/app.config.ts`: composición de dependencias; actualmente enlaza el puerto a `InMemoryPaymentGateway`.
 
-## Integración
+Al enviar un pago, el gateway valida de nuevo las reglas, descuenta el saldo en memoria y agrega el pago al historial. La fachada actualiza las señales de cuentas e historial y presenta feedback accesible.
 
-Actualmente no hay backend, llamadas de red ni integración externa. La UI/estado depende de la abstracción `AccountsGateway`; el provider de `app.config.ts` selecciona `InMemoryAccountsGateway`. Para integrar un backend:
+## Integración con backend
 
-1. Implementar `AccountsGateway` en un adaptador separado, usando `HttpClient` y DTOs explícitos. Registrar `provideHttpClient()` y sustituir el provider en `app.config.ts`.
-2. Acordar y documentar el contrato de API: carga de cuentas y movimientos, solicitud de transferencia, respuesta y errores. El servidor debe volver a validar autorización, cuentas, saldo, límites y duplicidad de la operación; las validaciones del navegador son solo experiencia de usuario y no constituyen seguridad.
-3. Obtener la URL base desde configuración de despliegue apropiada para Angular (la configuración incluida en el bundle es pública, no un secreto). No incluir tokens, contraseñas ni credenciales en el repositorio o en el código cliente. La autenticación/autorización y gestión de sesión deben resolverse con el backend y los mecanismos corporativos correspondientes.
-4. Mantener los tests unitarios del adaptador ficticio y agregar pruebas del adaptador HTTP y del contrato ante éxitos, errores y fallos de red.
+No hay llamadas HTTP ni servicio backend configurado. Para integrar uno, conserva `PaymentGateway` como puerto y agrega un adaptador que lo implemente usando `HttpClient` (por ejemplo, operaciones para listar cuentas, consultar pagos y enviar un pago). Registra `provideHttpClient()` y sustituye en `src/app/app.config.ts` el proveedor por el nuevo adaptador. Define y acuerda con el backend los contratos, estados de error, autenticación, idempotencia y formato de fechas antes de habilitar pagos reales. Maneja errores de red de forma explícita y no registres datos sensibles.
 
-## Persistencia y reglas de negocio
+La URL del servicio debe provenir de configuración de despliegue/entorno adecuada al proceso de build; no incluyas credenciales o secretos en el bundle del navegador, pues las variables frontend son públicas. La autenticación y autorización deben validarse en el servidor.
 
-El adaptador usa tres cuentas ficticias denominadas en PEN y mantiene saldos y movimientos **solo en memoria**. La recarga reinicia los datos; no hay almacenamiento local, base de datos ni persistencia entre sesiones. No se deben considerar las operaciones como reales.
+## Persistencia y seguridad
 
-La validación de interfaz exige origen y destino seleccionados y distintos; monto positivo, hasta dos decimales, no mayor de S/ 50 000 ni del saldo de origen; y concepto de hasta 60 caracteres. El adaptador vuelve a comprobar las cuentas y el saldo antes de aplicar la transferencia. Si se añade persistencia real, debe residir detrás de un backend: transacción atómica para débito/crédito, control de concurrencia/idempotencia y auditoría, con políticas de acceso y retención definidas. Nunca confiar en el estado o saldo enviados por el cliente.
-
-## Estado de verificación
-
-Los comandos anteriores describen cómo compilar y probar. No se ejecutaron build ni pruebas durante la preparación de esta documentación.
+Actualmente no existe persistencia: las dos cuentas de ejemplo se inicializan en `InMemoryPaymentGateway`, el historial comienza vacío y cualquier saldo o pago se pierde al recargar la página. Los datos son ficticios; esta aplicación no procesa dinero real. En producción, el backend debe ser la fuente de verdad y persistir pagos y saldos de forma transaccional, volver a validar saldo y permisos en el servidor, y proteger las operaciones contra reintentos duplicados. No se almacena información de pagos en el navegador.

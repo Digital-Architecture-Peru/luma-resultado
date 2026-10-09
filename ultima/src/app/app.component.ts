@@ -1,43 +1,47 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, viewChild } from '@angular/core';
-import { TransferRequest } from './core/models/account.model';
-import { TransferStore } from './core/state/transfer.store';
-import { AccountListComponent } from './organisms/account-list.component';
-import { MovementListComponent } from './organisms/movement-list.component';
-import { TransferFormComponent } from './organisms/transfer-form.component';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { PaymentsFacade } from './core/payments.facade';
+import { PaymentDraft } from './core/payment.model';
+import { PaymentFormComponent } from './organisms/payment-form.component';
+import { PaymentHistoryComponent } from './organisms/payment-history.component';
 
-/** Página: compone los organismos de la transferencia entre cuentas. */
+/** Página: compone los organismos y muestra el resultado en role=status / alert. */
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [AccountListComponent, MovementListComponent, TransferFormComponent],
+  imports: [PaymentFormComponent, PaymentHistoryComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="container">
-      <h1>Transferencias entre mis cuentas</h1>
-
-      <p class="status" role="status" aria-live="polite" [class.status-error]="store.status() === 'error'">
-        @switch (store.status()) {
-          @case ('loading') { Procesando… }
-          @default { {{ store.message() }} }
+      <h1>Pagos - Banca por Internet</h1>
+      <div role="status" aria-live="polite" class="feedback-region">
+        @if (facade.feedback(); as fb) {
+          @if (fb.kind === 'success') {
+            <p class="feedback feedback-ok">{{ fb.message }}</p>
+          }
         }
-      </p>
-
-      <app-account-list [accounts]="store.accounts()" />
-      <app-transfer-form [accounts]="store.accounts()" [busy]="store.status() === 'loading'"
-        (submitted)="onSubmit($event)" />
-      <app-movement-list [movements]="store.movements()" [accounts]="store.accounts()" />
+      </div>
+      <div role="alert">
+        @if (facade.feedback(); as fb) {
+          @if (fb.kind === 'error') {
+            <p class="feedback feedback-error">{{ fb.message }}</p>
+          }
+        }
+      </div>
+      <div class="grid">
+        <app-payment-form [accounts]="facade.accounts()" [busy]="facade.busy()" (submitted)="pay($event)" />
+        <app-payment-history [payments]="facade.history()" />
+      </div>
     </main>
   `,
 })
 export class AppComponent implements OnInit {
-  protected readonly store = inject(TransferStore);
-  private readonly form = viewChild(TransferFormComponent);
+  protected readonly facade = inject(PaymentsFacade);
 
   ngOnInit(): void {
-    this.store.load();
+    void this.facade.load();
   }
 
-  protected onSubmit(request: TransferRequest): void {
-    this.store.submit(request, () => this.form()?.reset());
+  protected pay(draft: PaymentDraft): void {
+    void this.facade.pay(draft);
   }
 }
