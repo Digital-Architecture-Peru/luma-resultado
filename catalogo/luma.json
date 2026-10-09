@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T17:28:26.046Z",
+  "actualizado": "2026-10-09T17:34:22.023Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -1380,6 +1380,72 @@
           "etapa": "Cierre",
           "segundo": 272,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit ab7b4ae: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/ab7b4ae261036d9333aa69efca1751b0d2fe9013\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Notificación|Pagos|Frontend|Angular||": {
+      "clave": "Notificación|Pagos|Frontend|Angular||",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Notificación",
+        "domain": "Pagos",
+        "layer": "Frontend",
+        "stack": "Angular",
+        "persistence": "No requiere"
+      },
+      "commit": "0b520a3911129a9edd0807b84ec968edfddda121",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/75",
+      "distTree": "ccc48588888b2942c0265caddcf099a682aa006c",
+      "distRuta": "ultima/dist",
+      "fecha": "2026-10-09T17:33:52Z",
+      "duracion_s": 313,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo c69b5306-af37-4f6c-9548-ec4bbf4fcc72 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 0,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 0,
+          "detalle": "generando Angular (capa Frontend) en segundo plano, tarea e37e0504-d5a8-4af5-b472-cdea2726044d. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 98,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 100,
+          "detalle": "falló install: npm install falló npm error code ERESOLVE npm error ERESOLVE unable to resolve dependency tree npm error npm error While resolving: notificaciones-pagos-banca-internet@0.1.0 npm error Found: @angular/common@18.2.14 npm error "
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 274,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 274,
+          "detalle": "build correcto; pruebas unitarias correctas (11); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 313,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 0b520a3: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/0b520a3911129a9edd0807b84ec968edfddda121\nPull Request: https://github.com/Digita"
         }
       ]
     }
