@@ -1,30 +1,21 @@
-# Consulta de pagos
+# Pago de tarjetas · Banca por Internet
 
-Aplicación frontend de consulta de pagos ficticios, construida con Angular 18 standalone y TypeScript. La página permite buscar por beneficiario, concepto o referencia, filtrar por estado y limpiar los filtros. Los resultados se ordenan por fecha descendente. No se crean ni modifican pagos.
+Frontend de demostración para realizar pagos a tarjetas desde una cuenta. Construido con Angular 19 standalone y signals; componentes organizados con Atomic Design. Los datos y las transacciones son ficticios.
 
 ## Requisitos
 
-- Node.js compatible con Angular 18 (Node.js 18.19.1 o posterior de la línea 18, o Node.js 20.11.1 o posterior).
-- npm.
+- Node.js compatible con la versión de Angular CLI 19 y npm.
+- Instalar dependencias desde la raíz del proyecto con `npm install`.
 
-## Instalar, ejecutar y compilar
-
-Desde la raíz del proyecto:
+## Compilar y ejecutar
 
 ```sh
 npm install
+npm run build
 npm start
 ```
 
-El servidor de desarrollo de Angular suele estar disponible en `http://localhost:4200/`; la salida de `ng serve` confirma la URL. Detén el servidor con Ctrl+C.
-
-Para generar el build de producción y comprobar tipos:
-
-```sh
-npm run build
-```
-
-El script ejecuta primero `tsc -p tsconfig.app.json --noEmit` y después `ng build`. Angular escribe el resultado en `dist/banca-consulta-pagos/`.
+`npm run build` ejecuta `ng build` en la configuración de producción predeterminada. `npm start` inicia el servidor Angular de desarrollo; abre la URL local que informa la CLI (normalmente `http://localhost:4200`). Para compilar explícitamente en modo desarrollo: `npx ng build --configuration development`.
 
 ## Pruebas
 
@@ -32,16 +23,22 @@ El script ejecuta primero `tsc -p tsconfig.app.json --noEmit` y después `ng bui
 npm test
 ```
 
-Jest se ejecuta en modo CI, en una sola pasada y sin modo interactivo. Las pruebas cubren la función de filtrado (estado, búsqueda sin distinguir mayúsculas ni acentos, referencia, orden y no mutación de la entrada) y la página (carga correcta, búsqueda, estado vacío, limpieza de filtros y error del repositorio).
+El comando ejecuta Vitest en modo no interactivo (`vitest run`). Las pruebas unitarias cubren reglas de pago, el adaptador en memoria y el flujo de pago; no hay pruebas de renderizado de componentes. No se requieren servicios externos.
 
-## Diseño y flujo de datos
+## Estructura y flujo
 
-La composición de dependencias está centralizada en `src/app/app.config.ts`: el puerto `PagosRepository` se vincula actualmente con `PagosMockRepository`. La página `PagosConsultaPageComponent` consulta el repositorio, mantiene los filtros y la carga con signals y delega la búsqueda a la función pura `filtrarPagos`. La presentación se organiza en `atoms/`, `molecules/`, `organisms/` y `templates/`.
+- `src/app/atoms`: pipe de moneda y distintivo de estado.
+- `src/app/molecules`: selección de tarjeta y opciones de monto.
+- `src/app/organisms`: formulario, revisión y comprobante.
+- `src/app/domain`: modelos, validaciones, puerto de integración (`PaymentGateway`), adaptador en memoria y estado/casos de uso (`PaymentFlow`).
+- `src/app/app.config.ts`: punto de composición que enlaza el puerto con `InMemoryPaymentGateway`.
 
-El modelo `Pago` define los datos de consulta: identificador, fecha ISO (`yyyy-mm-dd`), beneficiario, concepto, importe, moneda, estado y referencia. El adaptador actual devuelve registros ficticios en memoria (`PAGOS_FICTICIOS`); no realiza llamadas de red ni persiste cambios. Al recargar la aplicación, los datos provienen nuevamente de esa lista estática.
+El flujo permite escoger tarjeta, cuenta y monto (mínimo, total o personalizado), revisar y confirmar. Las reglas rechazan tarjetas bloqueadas, montos no positivos o superiores a la deuda y pagos que excedan el saldo disponible.
 
-## Integración con una API y persistencia
+## Integración
 
-La integración real no está definida en este proyecto: no se conocen URL, autenticación, contrato del servicio ni requisitos de almacenamiento. Para conectarla, implementar un adaptador que extienda `PagosRepository`, inyectar el cliente HTTP de Angular y convertir/validar la respuesta remota como `readonly Pago[]`; después sustituir en `app.config.ts` el proveedor `useClass: PagosMockRepository` por el adaptador HTTP. El adaptador debe manejar errores de transporte y respuestas inválidas; la página ya presenta un estado de error y ofrece reintento.
+No hay API ni integración bancaria configurada. `PaymentGateway` define las operaciones para listar tarjetas y cuentas y procesar un pago. Para integrar un backend, implementar ese puerto con un adaptador HTTP, registrar el adaptador en `src/app/app.config.ts` y acordar antes el contrato de API, autenticación, autorización, idempotencia, manejo de errores y formato monetario. No enviar credenciales al frontend ni tratar las validaciones del navegador como control de seguridad: el backend debe volver a validar y autorizar cada operación. El adaptador actual sirve solo para demostración.
 
-Si se requiere persistencia, debe especificarse e implementarse en el servicio/backend correspondiente. Esta interfaz es de solo consulta y la aplicación no contiene base de datos, almacenamiento local ni credenciales. No se deben incluir secretos en el frontend; cualquier configuración pública de URL debe gestionarse según el entorno y la política del despliegue.
+## Persistencia y alcance de los datos
+
+No existe persistencia duradera ni almacenamiento en navegador. `InMemoryPaymentGateway` inicia con tarjetas y cuentas ficticias; pagos actualizan balances solo en memoria durante la vida de la instancia y se pierden al recargar o reiniciar la aplicación. No usar datos reales ni considerar el comprobante generado como evidencia de una transacción bancaria.
