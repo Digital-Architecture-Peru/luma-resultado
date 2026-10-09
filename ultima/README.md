@@ -1,49 +1,77 @@
-# Transacción de Pagos – Banca por Internet (candidate)
+# Pagos — ejemplo full stack
 
-Full Stack: **Angular 20** (Atomic Design) + **Java 17+ / Quarkus 3.15** + **PostgreSQL**. Datos ficticios; sin secretos.
+Aplicación demostrativa con Angular 17, .NET 8 Web API y PostgreSQL opcional. Los datos son ficticios; no procesa pagos reales. `X-Customer-Id` es una cabecera de ejemplo, no autenticación.
 
-## Estructura
-- `backend/` – Quarkus, arquitectura hexagonal ligera (`api` → `application` → `domain` ← `infrastructure`). Migraciones Flyway en `src/main/resources/db/migration` (`V1__esquema.sql`, `V2__datos_ficticios.sql`).
-- `frontend/` – Angular standalone: `atoms`, `molecules`, `organisms`, `templates`, `pages`, `services`.
+## Requisitos
 
-## Variables de entorno (backend)
-| Variable | Por defecto | Uso |
-|---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/pagos` | JDBC de PostgreSQL |
-| `DB_USER` | `pagos` | Usuario |
-| `DB_PASSWORD` | vacío | Contraseña (definirla en el entorno, nunca en el repo) |
-| `DB_POOL_MAX` | `10` | Tamaño máximo del pool |
-| `PORT` | `8080` | Puerto HTTP |
-| `LOG_LEVEL`, `LOG_JSON` | `INFO`, `false` | Logging |
+Node.js/npm (Angular CLI 17), .NET SDK 8 y, opcionalmente, Docker Compose. Chrome/Chromium headless se requiere para las pruebas Karma del frontend.
 
-El frontend usa `/api/v1` (proxy de desarrollo a `http://localhost:8080` en `frontend/proxy.conf.json`).
+## Ejecución
 
-## Compilar, probar, ejecutar
+### PostgreSQL (opcional)
+
+Desde la raíz del proyecto:
+
 ```bash
-# Backend (JDK 17 o superior + Maven). El código se compila con --release 17.
-cd backend
-mvn test                # pruebas unitarias (sin base de datos)
-mvn package
-DB_PASSWORD=... mvn quarkus:dev   # requiere PostgreSQL local
+DB_PASSWORD=clave-local docker compose up -d
+```
 
-# Frontend (Node 20+)
+Compose inicia solamente PostgreSQL en el puerto 5432. Al inicializar un volumen vacío, la imagen ejecuta en orden `db/migrations/V001__init.sql` y `V002__seed.sql`. No repite los scripts con un volumen existente. Para borrar la base local y recrearla (se pierden los datos): `docker compose down -v` y vuelve a ejecutar `docker compose up -d` con `DB_PASSWORD` definido.
+
+### API
+
+```bash
+cd backend
+dotnet restore
+dotnet run --project src/Payments.Api --urls http://localhost:5080
+```
+
+Si no se define `PAYMENTS_DB_CONNECTION`, se usa almacenamiento en memoria y los registros se pierden al reiniciar. Para persistir en PostgreSQL, configura esa variable con una cadena Npgsql que apunte a `localhost:5432`, base `payments`, usuario `payments_app` y la contraseña definida para Compose. No incluyas la contraseña en archivos versionados.
+
+Configuraciones adicionales: `Payments__MaxAmount` (predeterminado 10000) y `Cors__Origins` (predeterminado `http://localhost:4200`, admite orígenes separados por coma). Estado: <http://localhost:5080/health>.
+
+### Angular
+
+En otra terminal:
+
+```bash
 cd frontend
 npm install
-npm test                # ng test --watch=false (Vitest)
-npm run build
 npm start
 ```
 
-## API (`/api/v1`)
-- `POST /pagos` con cabecera `Idempotency-Key` → 201 (nuevo), 200 (reintento idéntico), 409 (misma clave con datos distintos), 422 (reglas), 400 (validación de formato).
-- `GET /pagos/{id}` → 200 / 404. `GET /pagos?cuentaOrigen=` → últimos 50.
-- Errores en `application/problem+json`. Salud: `/q/health`.
+Abre <http://localhost:4200>. `src/environments/environment.ts` define la API local y el cliente ficticio `C-1001`.
 
-## Integración (sin definir)
-La pasarela está tras el puerto `PasarelaPagoPort`; `PasarelaPagoStub` rechaza montos > 50 000 y destinos terminados en `0000`. Sustituirlo por el adaptador real cuando se defina.
+## Compilar y probar
 
-## Persistencia
-Tabla `pago` (`NUMERIC(19,2)`, `UNIQUE(idempotency_key)`, índice `(cuenta_origen, creado_en DESC)`); acceso JPA con parámetros enlazados.
+```bash
+cd backend
+dotnet build Payments.sln
+dotnet test Payments.sln
+```
 
-## Limitaciones
-Sin autenticación/autorización (la aporta Banca por Internet), sin límites diarios ni OTP, una sola moneda por pago. No apto para producción.
+```bash
+cd frontend
+npm install
+npm run build
+npm test
+```
+
+Las pruebas .NET son unitarias y no requieren base de datos. `npm test` ejecuta Karma sin watch y requiere Chrome/Chromium headless.
+
+## API e integración
+
+- `POST /api/v1/payments`: cabeceras `X-Customer-Id` e `Idempotency-Key`; cuerpo con `sourceAccountId`, `beneficiaryAccount`, `amount`, `currency` y `concept`. Respuestas de creación `201`, validación `400` y clave duplicada `409`.
+- `GET /api/v1/payments/{id}`: consulta asociada al cliente de la cabecera `X-Customer-Id`.
+- `GET /api/v1/payments?accountId={id}`: lista pagos de la cuenta de origen; máximo 100.
+- `GET /health`: estado básico.
+
+El frontend concentra las solicitudes en `PaymentApiService`. CORS permite por defecto el origen local Angular. `IPaymentProcessor` es el punto de integración; hoy se inyecta `FakePaymentProcessor`, sin llamadas externas, que rechaza como caso demostrativo cuentas destino terminadas en `0000`. Para una integración real hay que sustituirlo y definir autenticación, errores y estados del proveedor.
+
+## Persistencia y límites
+
+`IPaymentRepository` separa persistencia del dominio. Con `PAYMENTS_DB_CONNECTION` se usa PostgreSQL mediante Npgsql/Dapper; sin esa variable se usa memoria. Las consultas son parametrizadas. El índice único sobre `idempotency_key` aplica globalmente, no por cliente.
+
+Las migraciones SQL están en `db/migrations`; la API no las ejecuta. Compose las carga solamente al inicializar una base vacía. `V002__seed.sql` contiene pagos ficticios para `C-1001`. Para bases existentes, aplica las migraciones con un procedimiento operacional controlado.
+
+No apto para producción tal cual: el cliente indicado en `X-Customer-Id` no se autentica ni autoriza; no existe procesador real ni gestión de saldos. Protege la conexión y añade autenticación, autorización y controles operativos antes de exponer el servicio.
