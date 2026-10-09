@@ -1,15 +1,15 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { AccountsPage } from "./pages/AccountsPage";
 import "./styles.css";
 
-const container = document.getElementById("root");
-if (!container) {
-  throw new Error("No se encontro el elemento #root");
+const root = document.getElementById("root");
+if (!root) {
+  throw new Error("Elemento #root no encontrado");
 }
 
-ReactDOM.createRoot(container).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+createRoot(root).render(
+  <StrictMode>
+    <AccountsPage />
+  </StrictMode>,
 );

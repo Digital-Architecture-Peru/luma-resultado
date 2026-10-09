@@ -1,6 +1,5 @@
-import type { Account } from "../../types/account";
-import { AccountSummary } from "../molecules/AccountSummary";
-import { StatusMessage } from "../molecules/StatusMessage";
+import type { Account } from "../../domain/account";
+import { AccountRow } from "../molecules/AccountRow";
 
 interface AccountListProps {
   accounts: Account[];
@@ -10,18 +9,17 @@ interface AccountListProps {
 
 export function AccountList({ accounts, selectedId, onSelect }: AccountListProps) {
   if (accounts.length === 0) {
-    return <StatusMessage kind="empty" message="No tienes cuentas registradas" />;
+    return <p className="empty">No hay cuentas para mostrar.</p>;
   }
   return (
-    <ul className="account-list" aria-label="Mis cuentas">
+    <ul className="account-list" aria-label="Listado de cuentas">
       {accounts.map((account) => (
-        <li key={account.id}>
-          <AccountSummary
-            account={account}
-            selected={account.id === selectedId}
-            onSelect={onSelect}
-          />
-        </li>
+        <AccountRow
+          key={account.id}
+          account={account}
+          selected={account.id === selectedId}
+          onSelect={onSelect}
+        />
       ))}
     </ul>
   );
