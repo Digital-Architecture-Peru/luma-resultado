@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + .NET
+- ¿Qué stack? Angular + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + .NET (capa Full Stack) para "Transacción" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -31,65 +31,70 @@ Estado: fallback (SGC no configurado)
 
 # DESIGN: refinamiento
 
-## Decisiones de arquitectura
+## Alcance interpretado (H1)
+La capacidad es una **transferencia entre cuentas propias** del cliente en Banca por Internet. Incluye tres funciones: listar cuentas, registrar la transferencia y consultar movimientos. Ambas cuentas deben tener la misma moneda; no hay conversión cambiaria.
 
+## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Backend .NET 8 en capas: Domain, Application, Infrastructure y Api (Minimal API) | Separa reglas de negocio de la persistencia. El dominio se prueba con unitarias sin base de datos. |
-| D2 | Acceso a PostgreSQL con Npgsql y SQL parametrizado detrás de `IAccountRepository` y `IUnitOfWork` | Cumple el acceso parametrizado de forma explícita y auditable. Permite usar fakes en memoria en las pruebas. |
-| D3 | Migraciones SQL versionadas (`V001__schema.sql`, `V002__seed_ficticio.sql`) | Son revisables de forma estática. No dependen de una herramienta de migración no instalada. |
-| D4 | Montos con `decimal` en .NET, `NUMERIC(18,2)` en la base y `string` en el JSON | Evita errores de punto flotante en valores monetarios. |
-| D5 | La transferencia usa una transacción de base de datos con `SELECT … FOR UPDATE` y bloquea las cuentas en orden ascendente de id | Garantiza saldo consistente y evita deadlocks. |
-| D6 | Encabezado `Idempotency-Key` con restricción `UNIQUE` | Impide débitos duplicados si el cliente reintenta. |
-| D7 | Errores con `ProblemDetails` (RFC 7807) | Da al front un contrato de error uniforme. |
-| D8 | Front con React, TypeScript y Vite, organizado en Atomic Design. La lógica HTTP vive en `api/`, fuera de los componentes. | Responde al patrón pedido y deja componentes puros y testeables. |
-| D9 | Pruebas unitarias con xUnit en .NET, y con Vitest y Testing Library en el front | Son las herramientas idiomáticas de cada stack. |
+| D1 | `frontend/` con Angular y `backend/` con Spring Boot y Maven | Cada capa se compila por separado; un solo README |
+| D2 | Capas api → application → domain ← infrastructure, con el puerto `AccountRepository` | El dominio se prueba sin BD; la persistencia queda detrás de una interfaz |
+| D3 | Montos `BigDecimal` / `NUMERIC(19,2)` | Evita errores de coma flotante |
+| D4 | Transferencia en una sola `@Transactional`, con bloqueo pesimista ordenado por id | Débito y crédito atómicos; evita interbloqueos y doble gasto |
+| D5 | Cabecera `Idempotency-Key` con índice único | Los reintentos no duplican cargos |
+| D6 | Libro de movimientos: un débito y un crédito por transferencia | Trazabilidad y saldo conciliable |
+| D7 | Flyway: `V1__schema.sql`, `V2__seed_ficticio.sql` | Migraciones versionadas |
+| D8 | Spring Data JPA con parámetros enlazados | Ningún SQL concatenado |
+| D9 | Angular standalone con Atomic Design; estado en un servicio con signals | UI reutilizable; NgRx sería una dependencia injustificada |
+| D10 | Configuración por variables de entorno `DB_URL`, `DB_USER`, `DB_PASSWORD` | Sin secretos en el repositorio |
 
 ## Estructura de módulos
 ```
-backend/
-  Cuentas.sln
-  src/Cuentas.Domain/          Account, Money, Transfer, DomainError
-  src/Cuentas.Application/     TransferService, TransferCommand(+validación), puertos
-  src/Cuentas.Infrastructure/  NpgsqlAccountRepository, UnitOfWork
-  src/Cuentas.Api/             Program.cs, endpoints, appsettings (sin secretos)
-  tests/Cuentas.UnitTests/     Domain + Application con fakes
-db/migrations/                 V001__schema.sql, V002__seed_ficticio.sql
-frontend/
-  src/components/{atoms,molecules,organisms,templates}/
-  src/pages/TransferPage.tsx
-  src/api/accountsClient.ts    src/domain/types.ts
-  src/**/*.test.tsx
-README.md
+backend/src/main/java/com/example/cuentas/
+  api/            TransferController, AccountController, dto/, GlobalExceptionHandler
+  application/    TransferService
+  domain/         Account, Transfer, Movement, excepciones de negocio
+  infrastructure/ adaptadores JPA del puerto
+backend/src/main/resources/db/migration/
+backend/src/test/java/...   JUnit 5 + Mockito
+frontend/src/app/
+  atoms/      amount-input, button, badge
+  molecules/  account-select, form-field
+  organisms/  transfer-form, movement-list
+  templates/  transaction-layout
+  pages/      transfer-page
+  core/       account.service, transfer.service, models
 ```
 
-## Contrato de API (candidate)
-- `GET /api/accounts`: lista de cuentas del cliente ficticio.
-- `GET /api/accounts/{id}/transactions?limit=`: movimientos de la cuenta.
-- `POST /api/transfers` con body `{sourceAccountId, targetAccountId, amount, description}`. Responde 201, o 400/404/409/422 con ProblemDetails.
+## Contrato API v1
+- `GET /api/v1/accounts`: devuelve las cuentas del cliente ficticio.
+- `POST /api/v1/transfers`: recibe `{sourceAccountId, targetAccountId, amount, currency, description}` con la cabecera `Idempotency-Key`. Responde 201 (creada), 409 (clave repetida con otro cuerpo) o 422 (regla de negocio).
+- `GET /api/v1/accounts/{id}/movements`: devuelve los movimientos paginados.
+- Los errores usan `ProblemDetail` (RFC 7807).
 
 ## Modelo de datos
-- `accounts(id, number UNIQUE, holder, currency CHAR(3), balance NUMERIC(18,2) CHECK ≥0, created_at)`
-- `transactions(id, account_id FK, transfer_id, type CHECK IN('DEBIT','CREDIT'), amount NUMERIC(18,2) CHECK >0, created_at)`
-- `transfers(id, idempotency_key UNIQUE, source_id, target_id, amount, status, created_at)`
-- Índice `transactions(account_id, created_at DESC)`.
-
-## Hipótesis
-- H1: "Transacción" se interpreta como transferencia entre cuentas propias en la misma moneda. No incluye pagos a terceros ni conversión de divisas.
-- H2: la autenticación está fuera de alcance. Se usa un cliente ficticio fijo y queda un punto de extensión documentado.
-- H3: la integración está sin definir. No hay llamadas a core bancario y todo se resuelve contra PostgreSQL.
-- H4: la cadena de conexión llega por variable de entorno (`CUENTAS_DB`). El repositorio no contiene credenciales.
-- H5: como no hay contexto SGC (fallback), no se aplican lineamientos corporativos específicos.
+- `account(id, number UNIQUE, holder, currency, balance NUMERIC(19,2) CHECK >= 0)`
+- `transfer(id, idempotency_key UNIQUE, source_id FK, target_id FK, amount CHECK > 0, status, created_at)`
+- `movement(id, account_id FK, transfer_id FK, type CHECK IN ('D','C'), amount, created_at)`
+- Índice `movement(account_id, created_at DESC)`.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Sin toolchain (.NET o npm) disponible | Se marca como no verificado en el handoff y no se afirma compilación. |
-| El SQL de PostgreSQL solo recibe revisión estática | Se usa SQL estándar y simple, y el riesgo queda declarado en el README. |
-| Concurrencia en saldos | Se aplican D5 y D6, y una unitaria cubre la regla de saldo insuficiente. |
-| Ausencia de autenticación | Se aplica H2. No es apto para producción. |
-| Ambigüedad del alcance (H1) | El servicio queda aislado tras un puerto y se puede ampliar a terceros. |
+| No hay autenticación real | Cliente simulado (H2), documentado; la integración con un IdP queda fuera de alcance |
+| Las pruebas unitarias no cubren SQL ni concurrencia | Revisión estática del esquema; proponer Testcontainers en otra iteración |
+| El esquema PostgreSQL no se ejecuta | Se declara "no verificado" en el handoff |
+| Maven o Node pueden no estar instalados | Resumen *candidate* sin afirmar compilación |
+| Interpretación de "Transacción" | H1 es explícita; debe validarla negocio |
 
-## Trazabilidad con la aceptación
-- Las unitarias cubren: el monto debe ser mayor que 0, origen distinto de destino, saldo insuficiente, débito y crédito balanceados, idempotencia (con fake) y render de componentes y validación del formulario.
-- El README y los archivos de prueba quedan presentes. El handoff se entrega como candidate.
+## Hipótesis
+- **H2:** el cliente se identifica con un `X-Customer-Id` ficticio.
+- **H3:** no hay límites diarios, OTP ni comisiones.
+- **H4:** las versiones son Java 17+, Spring Boot 3.x y Angular 17+.
+- **H5:** la integración externa no está definida, así que no se hacen llamadas externas.
+- **H6:** SGC está en fallback, así que no se aplican estándares corporativos.
+
+## Pruebas unitarias mínimas
+- **`TransferService`:** casos de éxito, saldo insuficiente, misma cuenta, monedas distintas y clave de idempotencia repetida.
+- **Controller (MockMvc `standaloneSetup`):** códigos HTTP 201, 409 y 422.
+- **Angular:** validador de `amount-input`, emisión de evento de `transfer-form` y `transfer.service` con `HttpTestingController`.

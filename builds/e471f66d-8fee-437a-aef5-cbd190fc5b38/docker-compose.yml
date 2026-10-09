@@ -1,0 +1,15 @@
+# Solo para desarrollo local. La contraseña se toma del entorno (ver .env.example).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: cuentas
+      POSTGRES_USER: cuentas
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
