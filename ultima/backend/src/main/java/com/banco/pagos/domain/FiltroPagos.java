@@ -1,7 +1,7 @@
 package com.banco.pagos.domain;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
-/** Filtros opcionales; {@code hasta} es exclusivo. */
-public record FiltroPagos(String clienteId, EstadoPago estado, OffsetDateTime desde, OffsetDateTime hasta) {
+/** Criterios de busqueda ya validados. desde, hasta y estado son opcionales (null). */
+public record FiltroPagos(String cuentaId, Instant desde, Instant hasta, EstadoPago estado) {
 }

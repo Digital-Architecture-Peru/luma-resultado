@@ -1,6 +1,4 @@
-/** Configuración del entorno. Sin secretos. */
+/** Base de la API; en desarrollo `proxy.conf.json` redirige /api al backend. */
 export const environment = {
   apiBaseUrl: '/api/v1',
-  /** SIMULADO: reemplazar por la identidad autenticada de Banca por Internet. */
-  clienteIdSimulado: 'CLI-0001',
 };

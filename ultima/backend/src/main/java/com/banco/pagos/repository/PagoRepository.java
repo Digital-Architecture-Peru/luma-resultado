@@ -2,14 +2,15 @@ package com.banco.pagos.repository;
 
 import com.banco.pagos.domain.FiltroPagos;
 import com.banco.pagos.domain.Pago;
-import com.banco.pagos.domain.Pagina;
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
-/** Puerto de acceso a datos; la implementación vigente usa PostgreSQL. */
+/** Puerto de lectura de pagos; el servicio depende de esta abstraccion, no de Panache. */
 public interface PagoRepository {
 
-    Pagina<Pago> listar(FiltroPagos filtro, int page, int size);
+    List<Pago> buscar(FiltroPagos filtro, int page, int size);
 
-    Optional<Pago> buscarPorId(String clienteId, UUID id);
+    long contar(FiltroPagos filtro);
+
+    Optional<Pago> porId(Long id);
 }

@@ -2,36 +2,35 @@
   --bg: #f5f7fa;
   --surface: #ffffff;
   --text: #1c2430;
-  --muted: #566274;
+  --muted: #5b6676;
   --primary: #0b5cad;
   --primary-contrast: #ffffff;
+  --danger: #b3261e;
+  --success: #1b6e3c;
+  --warning: #8a5a00;
   --border: #d5dbe3;
-  --success: #17653a;
-  --warning: #7a4b00;
-  --danger: #a12622;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --radius-md: 8px;
-  --shadow-sm: 0 1px 3px rgb(0 0 0 / 12%);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --radius-md: 0.5rem;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #12171f;
-    --surface: #1b222c;
-    --text: #e6eaf0;
-    --muted: #a3adbb;
-    --primary: #6cb0f5;
-    --primary-contrast: #0b1522;
-    --border: #35404f;
-    --success: #6fd49a;
-    --warning: #f0c070;
-    --danger: #f59a95;
+    --bg: #11161d;
+    --surface: #1a212b;
+    --text: #e6ebf2;
+    --muted: #9aa6b6;
+    --primary: #6cb0ff;
+    --primary-contrast: #07213d;
+    --danger: #ff8a80;
+    --success: #7fd69c;
+    --warning: #f2c46d;
+    --border: #2e3846;
   }
 }
 
@@ -39,29 +38,22 @@
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
 button, input, select {
   font: inherit;
-  min-height: 40px;
-  border-radius: var(--radius-md);
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
   border: 1px solid var(--border);
-  padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--text);
 }
 
-button.primario {
-  background: var(--primary);
-  color: var(--primary-contrast);
-  border-color: var(--primary);
-  cursor: pointer;
-}
-
+button { cursor: pointer; background: var(--primary); color: var(--primary-contrast); border-color: transparent; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
-
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
