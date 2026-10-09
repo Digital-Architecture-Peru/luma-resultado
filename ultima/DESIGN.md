@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Quarkus
+- ¿Qué stack? Angular + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Quarkus (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + .NET (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -34,66 +34,59 @@ Estado: fallback (SGC no configurado)
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (Angular) y `backend/` (Quarkus + Maven) | Build y pruebas independientes por capa con un único README |
-| D2 | Backend por capas (`api` → `application` → `domain` ← `infrastructure`) con puertos | La lógica se prueba con JUnit 5 y fakes, sin BD ni `@QuarkusTest` |
-| D3 | Acceso a datos por puerto `TransaccionRepository`. Adaptador JDBC (Agroal) con `PreparedStatement` | Consultas parametrizadas y explícitas. El fake en memoria cubre las pruebas unitarias |
-| D4 | Migraciones Flyway: `V1__esquema.sql` y `V2__datos_ficticios.sql` | Esquema versionado y reproducible |
-| D5 | Montos como `BigDecimal` / `NUMERIC(15,2)`, con moneda ISO-4217 | Evita errores de redondeo en dinero |
-| D6 | Cabecera `Idempotency-Key` + `UNIQUE` en BD | Evita el doble cargo por reintento o doble clic |
-| D7 | Solo se guardan `ultimos4` y un token ficticio. Nunca el PAN | Minimiza la exposición a datos sensibles (PCI) |
-| D8 | Integración "sin definir" detrás del puerto `ProcesadorTarjetasGateway`, con adaptador stub | Permite cambiar de proveedor sin tocar el dominio |
-| D9 | Angular con componentes standalone y Atomic Design en `shared/ui` | Cumple el patrón pedido y permite reutilizar componentes |
-| D10 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`, `apiBaseUrl`) | Sin secretos en el repositorio |
+| D1 | Caso de uso: **pago de tarjeta de crédito** y consulta de movimientos (hipótesis H1) | Es la transacción más común sobre Tarjetas en Banca por Internet y se acota bien |
+| D2 | Backend .NET 8 Web API en capas Api / Application / Domain / Infrastructure | Separa reglas de negocio del transporte y de la persistencia; facilita las pruebas unitarias |
+| D3 | Persistencia con Npgsql + Dapper y SQL **parametrizado**, detrás de `ICardTransactionRepository` | Las consultas son explícitas y revisables de forma estática; evita SQL injection |
+| D4 | Migraciones versionadas en `db/migrations/V001__init.sql` y `V002__seed.sql` | Cumple T04-db sin depender de un runner de EF |
+| D5 | Montos `decimal` / `NUMERIC(18,2)` con `CHECK (amount > 0)` y moneda ISO `CHAR(3)` | Evita errores de redondeo en operaciones monetarias |
+| D6 | Cabecera `Idempotency-Key` con índice UNIQUE | Evita el doble cargo si el cliente reintenta |
+| D7 | Solo se guarda el PAN enmascarado (`**** 1234`) | Minimiza el alcance PCI; los datos son ficticios |
+| D8 | Integración (sin definir) como `ICardProcessorGateway` con `FakeCardProcessorGateway` | No se hacen llamadas a sistemas reales y el contrato queda listo para reemplazo |
+| D9 | Angular standalone con carpetas Atomic Design, Reactive Forms y `CardsApiService` | Cumple el patrón pedido y reutiliza componentes de UI |
+| D10 | Configuración por variables de entorno (`ConnectionStrings__Cards`, `ApiBaseUrl`) | No hay secretos en el repositorio |
+
+## Contrato API (v1)
+- `GET  /api/v1/cards` → tarjetas con saldo disponible.
+- `GET  /api/v1/cards/{id}/transactions?page=` → movimientos.
+- `POST /api/v1/cards/{id}/payments` con `{amount, currency, sourceAccountAlias}` y la cabecera `Idempotency-Key`. Respuestas: 201, 400 (validación), 404 o 409 (clave duplicada con otro cuerpo).
+
+## Modelo de datos (PostgreSQL)
+- `cards(id uuid PK, masked_pan, alias, credit_limit, available_balance, currency)`
+- `card_transactions(id uuid PK, card_id FK, type, amount, currency, status, idempotency_key UNIQUE, created_at)`
+- Índice `(card_id, created_at DESC)`.
 
 ## Estructura de módulos
 ```
 backend/
-  pom.xml
-  src/main/java/com/demo/tarjetas/transaccion/
-    api/            TransaccionResource, DTOs, ExceptionMapper
-    application/    RegistrarTransaccionService
-    domain/         Transaccion, EstadoTransaccion, reglas de validación
-    infrastructure/ JdbcTransaccionRepository, StubProcesadorGateway
-  src/main/resources/application.properties
-  src/main/resources/db/migration/V1__esquema.sql, V2__datos_ficticios.sql
-  src/test/java/...  RegistrarTransaccionServiceTest, TransaccionTest
-frontend/
-  package.json, angular.json
-  src/app/shared/ui/atoms/       boton, campo-monto, etiqueta-tarjeta-enmascarada
-  src/app/shared/ui/molecules/   selector-tarjeta, campo-con-error
-  src/app/shared/ui/organisms/   formulario-transaccion, resumen-transaccion
-  src/app/shared/ui/templates/   layout-transaccion
-  src/app/features/transaccion-tarjeta/  pages/, services/, models/
-  *.spec.ts (pruebas unitarias junto a cada componente y servicio)
+  Cards.sln
+  src/Cards.Api/            Controllers, Program.cs, appsettings.json (sin secretos)
+  src/Cards.Application/    PayCardHandler, DTOs, validaciones
+  src/Cards.Domain/         Card, CardTransaction, Money, reglas
+  src/Cards.Infrastructure/ NpgsqlCardTransactionRepository, FakeCardProcessorGateway
+  tests/Cards.UnitTests/    xUnit: dominio, handler, repo en memoria
+db/migrations/              V001__init.sql, V002__seed.sql
+frontend/src/app/
+  atoms/      amount-input, button, masked-pan
+  molecules/  card-summary, form-field
+  organisms/  payment-form, transactions-table
+  templates/  cards-layout
+  pages/      card-payment.page
+  core/       cards-api.service, models
+  *.spec.ts   (Jasmine/Karma)
 README.md
 ```
 
-## Modelo de datos (PostgreSQL)
-- `tarjeta`: `id`, `cliente_id`, `ultimos4 CHAR(4)`, `tipo`, `estado`.
-- `transaccion`:
-  - `id UUID`, `tarjeta_id` con FK a `tarjeta`.
-  - `monto NUMERIC(15,2) CHECK (monto > 0)`, `moneda CHAR(3)`.
-  - `estado` con valores `PENDIENTE`, `APROBADA` o `RECHAZADA`.
-  - `idempotency_key UNIQUE`, `creado_en TIMESTAMPTZ`.
-- Índice `(tarjeta_id, creado_en DESC)` para el historial.
-
-## API (contrato candidate)
-- `POST /api/tarjetas/{id}/transacciones`: responde 201, o 200 si es una repetición idempotente. Responde 422 ante reglas de negocio y 404 si la tarjeta no existe.
-- `GET /api/tarjetas/{id}/transacciones?limite=20`: devuelve el historial reciente.
-
 ## Hipótesis
-- **H1:** "Transacción" se interpreta como pago o cargo sobre una tarjeta del cliente. El tipo exacto no está confirmado.
-- **H2:** La autenticación la resuelve Banca por Internet (gateway o SSO). El backend recibe `clienteId` ya validado, simulado en la demo.
-- **H3:** Versiones de referencia: Angular 17+, Quarkus 3.x y Java 17+, no confirmadas.
-- **H4:** Las pruebas unitarias del frontend usan el runner por defecto de Angular CLI.
-- **H5:** El stub de integración aprueba montos menores o iguales a un límite ficticio y rechaza el resto.
+- H1: la "Transacción" es el pago de una tarjeta propia; la autenticación y el canal ya existen y quedan fuera de alcance.
+- H2: se usan .NET 8 y Angular 17+. Si no hay toolchain (`dotnet`, `npm`), el build y las pruebas quedan **no verificados**.
+- H3: el SQL de PostgreSQL solo recibe revisión estática; no se ejecuta.
+- H4: el contrato del procesador externo es ficticio hasta que SGC o el negocio lo definan.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Sin toolchain local, la compilación y las pruebas quedan sin verificar | El handoff lo declara como no verificado |
-| El SQL de PostgreSQL solo admite revisión estática | Usar SQL estándar sin extensiones y revisar la sintaxis manualmente |
-| Alcance de "Transacción" ambiguo (H1) | Encapsular el tipo en el dominio para poder ampliarlo |
-| Autenticación y autorización no definidas (H2) | Documentarlo en el README como prerrequisito de integración |
-| El runner Karma requiere navegador | Documentar cómo ejecutarlo en modo headless |
-| Exposición de datos de tarjeta | Aplicar D7 y enmascarar en la UI y en los logs |
+| SGC en modo fallback: puede faltar contexto corporativo | Las hipótesis quedan explícitas y deben revisarse con SGC |
+| Doble débito o concurrencia | Idempotencia y actualización condicional del saldo (`WHERE available_balance >= @amount`) |
+| Exposición de datos sensibles | PAN enmascarado, logs sin montos ni identificadores completos |
+| Integración real indefinida | Interfaz y fake documentados en el README |
+| Sin pruebas de integración ni E2E (solo unitarias) | Se declara como brecha en el handoff |

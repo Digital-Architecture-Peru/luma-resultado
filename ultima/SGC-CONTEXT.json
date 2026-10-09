@@ -6,8 +6,8 @@
     "type": "Transacción",
     "domain": "Tarjetas",
     "layer": "Full Stack",
-    "stack": "Angular + Java + Quarkus",
-    "backendStack": "Java + Quarkus",
+    "stack": "Angular + .NET",
+    "backendStack": ".NET",
     "persistence": "PostgreSQL"
   },
   "sgc": {
