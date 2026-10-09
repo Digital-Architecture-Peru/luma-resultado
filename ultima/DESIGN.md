@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Spring Boot
+- ¿Qué stack? Angular + Java + Quarkus
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Quarkus (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -32,82 +32,58 @@ Estado: fallback (SGC no configurado)
 # DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-| # | Decisión | Justificación |
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (Angular) y `backend/` (Spring Boot, Maven) | Un build independiente por capa y un README raíz |
-| D2 | Backend en capas `api → application → domain ← infrastructure` | El dominio no depende de Spring. La persistencia y la integración quedan detrás de puertos |
-| D3 | Puerto `NotificationDispatcher` con un adaptador no-op/log | La integración está sin definir. El contrato queda listo sin llamar a sistemas reales |
-| D4 | Persistencia con `NamedParameterJdbcTemplate` y Flyway (`V1__schema.sql`, `V2__seed.sql`) | Consultas siempre parametrizadas y migraciones versionadas. El esquema es revisable sin ejecutar |
-| D5 | Frontend con componentes standalone organizados por Atomic Design | Cumple el patrón pedido y permite probar cada componente de forma aislada |
-| D6 | Tarjeta identificada por `card_ref` (token) y `last4`; nunca el PAN | Minimiza datos sensibles (enfoque PCI) |
-| D7 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) sin valores reales | Sin secretos en el repositorio |
-
-## Contrato API (v1)
-- `GET /api/v1/cards/{cardRef}/notifications?status=&page=&size=` devuelve una lista paginada.
-- `GET /api/v1/notifications/unread-count` devuelve `{ count }`.
-- `PATCH /api/v1/notifications/{id}/read` responde 204, o 404 si el id no existe.
-- Errores en formato `ProblemDetail` (RFC 7807).
-
-## Modelo de datos (PostgreSQL)
-Tabla `card_notification`:
-- `id UUID PK`
-- `customer_ref VARCHAR(40)`
-- `card_ref VARCHAR(40)`
-- `last4 CHAR(4)`
-- `type VARCHAR(30)` con CHECK: `TRANSACTION`, `PAYMENT_DUE`, `LIMIT_REACHED`, `CARD_BLOCKED`
-- `title`, `message`
-- `status` con CHECK: `UNREAD`, `READ`
-- `created_at TIMESTAMPTZ`
-- `read_at TIMESTAMPTZ NULL`
-
-Índices:
-- `(customer_ref, status, created_at DESC)`
-- `(card_ref, created_at DESC)`
-
-La semilla usa clientes y tarjetas ficticios.
+| AD1 | Repositorio con dos módulos independientes: `frontend/` (Angular) y `backend/` (Quarkus con Maven) | El alcance es Full Stack. Cada capa se compila y prueba por separado. |
+| AD2 | Backend en capas: `resource` (REST), luego `service` y luego el puerto `NotificacionRepository`, con una implementación JDBC/Panache que usa parámetros enlazados | Mantiene la persistencia detrás de interfaces. El servicio se prueba de forma unitaria con un mock del puerto, sin base de datos. |
+| AD3 | Contrato REST versionado: `GET /api/v1/tarjetas/{tarjetaId}/notificaciones?leida=&page=&size=` y `PATCH /api/v1/notificaciones/{id}/leida` | Es la superficie mínima para listar notificaciones y marcarlas como leídas. La paginación evita respuestas sin límite. |
+| AD4 | Migraciones Flyway: `V1__esquema.sql` y `V2__datos_ficticios.sql`. Índices en `(tarjeta_id, creada_en DESC)` y un índice parcial `WHERE leida = false` | El esquema queda versionado y reproducible. Los índices cubren las consultas del listado y de las no leídas. |
+| AD5 | Front con componentes standalone organizados según Atomic Design: `atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/`. Acceso HTTP centralizado en `core/services` | Aplica el patrón solicitado. Los componentes presentacionales no tienen dependencias y se prueban de forma aislada. |
+| AD6 | Solo se guardan los últimos 4 dígitos de la tarjeta (`ultimos4`). Nunca se guarda el PAN | Reduce el alcance de cumplimiento de datos de tarjeta. |
+| AD7 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_DATASOURCE_USERNAME`, `QUARKUS_DATASOURCE_PASSWORD`, `API_BASE_URL`), sin valores reales por defecto | No hay secretos en el repositorio. |
+| AD8 | Pruebas unitarias: JUnit 5 + Mockito en el backend, Jasmine/Karma (`*.spec.ts`) en el front | Se limita a lo pedido (Unitarias). No se incluyen pruebas de integración contra PostgreSQL. |
 
 ## Estructura de módulos
 ```
-backend/src/main/java/.../notifications/
-  domain/          Notification, NotificationType, NotificationStatus
-  application/     NotificationService, port/NotificationRepository, port/NotificationDispatcher
-  infrastructure/  persistence/JdbcNotificationRepository, dispatch/LoggingDispatcher
-  api/             NotificationController, dto/*, ApiExceptionHandler
-backend/src/main/resources/db/migration/   V1__schema.sql, V2__seed.sql
-backend/src/test/java/...                  NotificationServiceTest, NotificationMapperTest
-
-frontend/src/app/notifications/
-  atoms/      badge, icon, button
-  molecules/  notification-item
-  organisms/  notification-list, notification-bell
-  templates/  notifications-layout
-  pages/      card-notifications-page
-  data/       notification-api.service.ts, notification.model.ts
-  *.spec.ts   junto a cada componente y servicio
+backend/
+  pom.xml
+  src/main/java/com/example/tarjetas/notificaciones/
+    api/        NotificacionResource.java, dto/
+    domain/     Notificacion.java, TipoNotificacion.java
+    service/    NotificacionService.java
+    port/       NotificacionRepository.java
+    infra/      JdbcNotificacionRepository.java
+  src/main/resources/application.properties
+  src/main/resources/db/migration/V1__esquema.sql, V2__datos_ficticios.sql
+  src/test/java/.../service/NotificacionServiceTest.java
+frontend/
+  package.json, angular.json
+  src/app/core/services/notificacion.service.ts (+ .spec.ts)
+  src/app/ui/atoms/        badge-tipo, icono-estado
+  src/app/ui/molecules/    item-notificacion
+  src/app/ui/organisms/    lista-notificaciones
+  src/app/ui/templates/    layout-notificaciones
+  src/app/pages/           notificaciones-tarjeta.page
+README.md
 ```
 
 ## Riesgos
-| Riesgo | Mitigación |
-|---|---|
-| Sin toolchain local (JDK/Maven/Node) no hay compilación | Marcar como "no verificado" en el handoff (T06) |
-| SQL de PostgreSQL no ejecutable en SQLite | Solo revisión estática y evitar sintaxis exótica |
-| Exposición de datos de tarjeta | Usar únicamente `last4` y token; no registrar `message` en logs |
-| Integración real desconocida | Puerto más adaptador no-op; contrato documentado en el README |
-| Autenticación de Banca por Internet no definida | `customer_ref` simulado por cabecera de ejemplo, documentado como hipótesis |
+- **R1:** puede que no haya JDK, Maven o Node en el entorno. En ese caso la compilación queda como no verificada y solo se revisa la sintaxis.
+- **R2:** el SQL de PostgreSQL solo recibe revisión estática. Algunas sintaxis específicas (índice parcial, `TIMESTAMPTZ`) no se ejecutan.
+- **R3:** la autenticación y la integración no están definidas. Los endpoints quedan sin control de acceso real, por lo que no son aptos para producción.
+- **R4:** las versiones de Angular y Quarkus fijadas en los manifiestos pueden no coincidir con las del entorno corporativo.
+- **R5:** sin SGC configurado (fallback) no se validan las convenciones corporativas.
 
-## Hipótesis explícitas
-- **H1.** Los tipos de notificación (D6 y modelo) son supuestos; el guion no los define.
-- **H2.** La autenticación y la sesión las provee la plataforma existente. Aquí no se implementan.
-- **H3.** Versiones objetivo: Java 17+, Spring Boot 3.x, Angular 17+ standalone. Pruebas con JUnit 5/Mockito y Jasmine/Karma por defecto.
-- **H4.** Las notificaciones son de lectura en la web, sin push en tiempo real. WebSocket/SSE queda fuera de alcance.
-- **H5.** "Unitarias" excluye las pruebas de integración contra PostgreSQL real.
+## Hipótesis
+- **H1:** "Notificación" significa alertas in-app que se consultan en Banca por Internet. No incluye push, SMS ni email.
+- **H2:** los tipos de notificación son `CONSUMO`, `VENCIMIENTO`, `BLOQUEO` y `PAGO_RECIBIDO`.
+- **H3:** las notificaciones las genera un proceso externo no definido. Esta solución solo las persiste y las expone.
+- **H4:** el stack es Angular 17+, Java 17 y Quarkus 3.x.
+- **H5:** el `tarjetaId` llega validado por una capa de seguridad externa (ver R3).
+- **H6:** la tabla `notificacion` tiene las columnas `id`, `tarjeta_id`, `ultimos4`, `tipo`, `mensaje`, `leida` y `creada_en`.
 
 ## Trazabilidad con la aceptación
-| Tarea | Entregables |
-|---|---|
-| T02 | `backend/`, `frontend/` |
-| T03 | Validación de sintaxis local de `.java`, `.ts`, `.json`, `.sql` |
-| T04-tests | `*Test.java`, `*.spec.ts` |
-| T04-db | Migraciones Flyway con índices y semilla ficticia |
-| T05 | README con build, ejecución, variables de entorno, puerto de integración y persistencia |
-| T06 | Resumen *candidate* que lista lo no compilado ni ejecutado |
+- **Sintaxis:** se verifican los archivos `.java`, `.ts`, `.json` y `.sql` con el validador local.
+- **Pruebas:** `NotificacionServiceTest.java` y los `*.spec.ts` del servicio y de los átomos.
+- **README:** incluye build, ejecución, variables de entorno, la integración "sin definir" y las migraciones PostgreSQL.
+- **Handoff:** resumen *candidate* que lista R1–R3 como no verificados y no afirma compilación ni producción.

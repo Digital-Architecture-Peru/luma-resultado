@@ -1,50 +1,44 @@
-# Notificaciones de Tarjetas · Banca por Internet
+# Notificaciones de Tarjetas · Banca por Internet (candidate)
 
-Capacidad *Notificación* sobre el dominio *Tarjetas*. Monorepo:
+Full Stack: **Angular 19** (`frontend/`) + **Java 17 / Quarkus 3.15** (`backend/`) + **PostgreSQL**.
+Alcance (hipótesis H1): alertas in-app listables y marcables como leídas. Quién las genera
+es una **integración sin definir**; esta solución solo las persiste y las expone. Datos ficticios.
 
-- `backend/`: Java 17 + Spring Boot 3.3 (Maven), PostgreSQL con Flyway.
-- `frontend/`: Angular 20 (standalone, zoneless) organizado con Atomic Design.
+## Backend
+```
+cd backend
+mvn package        # compila y ejecuta las pruebas unitarias (JUnit 5 + Mockito)
+mvn quarkus:dev    # ejecución local (requiere PostgreSQL o Dev Services con Docker)
+```
+Variables de entorno (sin valores por defecto, no se versionan secretos):
+`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_DATASOURCE_USERNAME`, `QUARKUS_DATASOURCE_PASSWORD`,
+opcional `CORS_ORIGINS` (por defecto `http://localhost:4200`), `DB_POOL_MAX`, `LOG_LEVEL`.
 
-## Arquitectura
-- Backend en capas `api → application → domain ← infrastructure`. El dominio no depende de Spring.
-- Puerto `NotificationRepository` (adaptador `JdbcNotificationRepository`, consultas parametrizadas con `NamedParameterJdbcTemplate`).
-- Puerto `NotificationDispatcher` (adaptador `LoggingDispatcher`): **la integración de entrega está sin definir**; el adaptador solo escribe un log sin el mensaje. Para integrar un canal real, implementar el puerto.
-- Frontend: `atoms/` (badge, button, type-icon), `molecules/` (notification-item), `organisms/` (notification-list, notification-bell), `templates/` (layout), `pages/` y `data/` (modelo y servicio HTTP).
+API (`/api/v1`):
+- `GET /tarjetas/{tarjetaId}/notificaciones?leida=&page=0&size=20` → `{items,page,size,total}` (size 1–100)
+- `PATCH /notificaciones/{id}/leida` → notificación actualizada (404 si no existe)
+- `GET /q/health` (liveness/readiness)
 
-## API v1
-| Método | Ruta | Respuesta |
-|---|---|---|
-| GET | `/api/v1/cards/{cardRef}/notifications?status=&page=&size=` | Página `{items, page, size, total}` (size 1–50) |
-| GET | `/api/v1/notifications/unread-count` | `{count}` |
-| PATCH | `/api/v1/notifications/{id}/read` | 204 o 404 |
-
-Todas requieren la cabecera `X-Customer-Ref` (hipótesis: la autenticación real la aporta la plataforma de Banca por Internet). Errores en `ProblemDetail` (RFC 7807).
+Errores en `application/problem+json`.
 
 ## Persistencia (PostgreSQL)
-Tabla `card_notification` con CHECK en tipo y estado e índices `(customer_ref, status, created_at DESC)` y `(card_ref, created_at DESC)`. Solo se guarda el token de tarjeta y `last4`, nunca el PAN. Migraciones: `V1__schema.sql` y `V2__seed.sql` (datos ficticios; tarjeta de demo `CARD-TOK-0001`, cliente `CUST-0001`).
+Migraciones Flyway en `backend/src/main/resources/db/migration`:
+`V1__esquema.sql` (tabla `notificacion`, solo `ultimos4`, nunca el PAN; índices
+`(tarjeta_id, creada_en DESC)` y parcial `WHERE leida = FALSE`) y `V2__datos_ficticios.sql`.
+Acceso JDBC con consultas parametrizadas detrás del puerto `NotificacionRepository`.
 
-Variables de entorno (ver `backend/env.example`): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `PORT`, `LOG_LEVEL`. No hay credenciales en el repositorio.
-
-## Compilar y ejecutar
-```bash
-# Backend (requiere JDK 17+, Maven y PostgreSQL)
-cd backend
-export DB_URL=jdbc:postgresql://localhost:5432/notifications DB_USER=... DB_PASSWORD=...
-mvn test
-mvn spring-boot:run
-
-# Frontend (requiere Node 20+)
+## Frontend (Atomic Design)
+```
 cd frontend
 npm install
-npm test        # ng test --watch=false (Vitest, una sola pasada)
-npm run build
-npm start       # proxy /api → http://localhost:8080
+npm run build   # ng build (type-check incluido)
+npm test        # vitest run
+npm start       # ng serve con proxy /api -> http://localhost:8080
 ```
+`ui/atoms` (badge-tipo, icono-estado) → `ui/molecules` (item-notificacion) → `ui/organisms`
+(lista-notificaciones) → `ui/templates` → `pages`. HTTP centralizado en `core/services`.
+URL base del API: token `API_BASE_URL` (por defecto `/api/v1`).
 
-## Pruebas
-Unitarias: `NotificationServiceTest`, `NotificationResponseTest` (JUnit 5 + Mockito) y specs de Angular para servicio HTTP, item y lista. No se prueba contra PostgreSQL real.
-
-## Hipótesis y límites
-- Tipos de notificación supuestos: `TRANSACTION`, `PAYMENT_DUE`, `LIMIT_REACHED`, `CARD_BLOCKED`.
-- Sin push en tiempo real (WebSocket/SSE fuera de alcance).
-- La tarjeta mostrada en el frontend es fija (`CARD-TOK-0001`) hasta integrarse con el selector de tarjetas de la plataforma.
+## Límites
+Sin autenticación/autorización (el `tarjetaId` se asume validado por una capa externa): no apto
+para producción. Las migraciones PostgreSQL solo tuvieron revisión estática.
