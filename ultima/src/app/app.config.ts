@@ -1,12 +1,12 @@
-import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
-import { PaymentRepository } from './domain/payment.repository';
-import { MockPaymentRepository } from './infrastructure/mock-payment.repository';
+import { ApplicationConfig } from '@angular/core';
+import { PagosRepository } from './domain/pagos.repository';
+import { PagosMockRepository } from './adapters/pagos-mock.repository';
 
-// Único punto de composición: para integrar un servicio real basta con
-// sustituir useClass por un adaptador HTTP que implemente PaymentRepository.
+/**
+ * Único punto de composición: la integración real aún no está definida,
+ * por eso se enlaza el puerto PagosRepository con un adaptador de datos ficticios.
+ * Para integrar un API real, sustituir useClass por un adaptador HTTP.
+ */
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideZonelessChangeDetection(),
-    { provide: PaymentRepository, useClass: MockPaymentRepository },
-  ],
+  providers: [{ provide: PagosRepository, useClass: PagosMockRepository }],
 };
