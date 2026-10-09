@@ -1,8 +1,8 @@
 import { ApplicationConfig } from '@angular/core';
-import { PaymentGateway } from './core/payment.gateway';
-import { InMemoryPaymentGateway } from './core/in-memory-payment.gateway';
+import { NotificationGateway } from './domain/notification.gateway';
+import { MockNotificationGateway } from './adapters/mock-notification.gateway';
 
-/** Único punto de composición: aquí se cambia el adaptador (p. ej. HTTP) sin tocar la UI. */
+/** Único punto de composición: aquí se elige el adaptador del puerto. */
 export const appConfig: ApplicationConfig = {
-  providers: [{ provide: PaymentGateway, useClass: InMemoryPaymentGateway }],
+  providers: [{ provide: NotificationGateway, useClass: MockNotificationGateway }],
 };
