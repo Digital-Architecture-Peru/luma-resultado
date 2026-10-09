@@ -1,42 +1,34 @@
-import { CHANNELS, CHANNEL_LABELS, NOTIFICATION_TYPES, TYPE_LABELS } from '../../types/notification';
-import type { Channel, NotificationType, Preference } from '../../types/notification';
-import Button from '../atoms/Button';
-import PreferenceToggle from '../molecules/PreferenceToggle';
+import type { NotificationType, Preference } from "../../api/types";
+import type { RemoteState } from "../../hooks/useCardNotifications";
+import { PreferenceRow } from "../molecules/PreferenceRow";
 
 interface PreferencesPanelProps {
-  preferences: Preference[];
+  preferences: RemoteState<Preference[]>;
   saving: boolean;
-  message: string | null;
-  error: string | null;
-  onToggle: (type: NotificationType, channel: Channel) => void;
-  onSave: () => void;
+  saveError: string | null;
+  onToggle: (type: NotificationType, enabled: boolean) => void;
 }
 
-export default function PreferencesPanel({ preferences, saving, message, error, onToggle, onSave }: PreferencesPanelProps) {
-  const isEnabled = (type: NotificationType, channel: Channel) =>
-    preferences.some((p) => p.type === type && p.channel === channel && p.enabled);
-
+/** Organismo: panel de preferencias de aviso de la tarjeta seleccionada. */
+export function PreferencesPanel({ preferences, saving, saveError, onToggle }: PreferencesPanelProps) {
   return (
-    <section aria-labelledby="preferences-heading">
-      <h2 id="preferences-heading">Preferencias</h2>
-      {NOTIFICATION_TYPES.map((type) => (
-        <fieldset key={type} className="prefs-group">
-          <legend>{TYPE_LABELS[type]}</legend>
-          {CHANNELS.map((channel) => (
-            <PreferenceToggle
-              key={channel}
-              label={`${TYPE_LABELS[type]} por ${CHANNEL_LABELS[channel]}`}
-              checked={isEnabled(type, channel)}
-              onChange={() => onToggle(type, channel)}
-            />
-          ))}
-        </fieldset>
-      ))}
-      <Button onClick={onSave} disabled={saving || preferences.length === 0}>
-        {saving ? 'Guardando…' : 'Guardar preferencias'}
-      </Button>
-      {message && <p role="status" className="feedback feedback--ok">{message}</p>}
-      {error && <p role="alert" className="feedback feedback--error">{error}</p>}
+    <section className="panel" aria-labelledby="preferences-title">
+      <h2 id="preferences-title" className="panel__title">
+        Preferencias de aviso
+      </h2>
+      {preferences.status === "loading" && <p role="status">Cargando preferencias…</p>}
+      {preferences.status === "error" && <p role="alert">{preferences.message}</p>}
+      {preferences.status === "success" &&
+        preferences.data.map((preference) => (
+          <PreferenceRow
+            key={preference.type}
+            type={preference.type}
+            enabled={preference.enabled}
+            disabled={saving}
+            onChange={onToggle}
+          />
+        ))}
+      {saveError !== null && <p role="alert">{saveError}</p>}
     </section>
   );
 }
