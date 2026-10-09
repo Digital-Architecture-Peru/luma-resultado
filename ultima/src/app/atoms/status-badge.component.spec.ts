@@ -1,19 +1,20 @@
-import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
 import { StatusBadgeComponent } from './status-badge.component';
 
 describe('StatusBadgeComponent', () => {
-  beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
+  it('given estado PENDIENTE when renderiza then muestra texto y clase del estado', () => {
+    const fixture = TestBed.createComponent(StatusBadgeComponent);
+    fixture.componentRef.setInput('estado', 'PENDIENTE');
+    fixture.detectChanges();
+    const el = (fixture.nativeElement as HTMLElement).querySelector('.badge') as HTMLElement;
+    expect(el.textContent?.trim()).toBe('Pendiente');
+    expect(el.classList.contains('badge--pendiente')).toBe(true);
   });
 
-  it('given estado REJECTED when renderiza then muestra texto y clase', async () => {
+  it('given estado RECHAZADO when renderiza then muestra Rechazado', () => {
     const fixture = TestBed.createComponent(StatusBadgeComponent);
-    fixture.componentRef.setInput('status', 'REJECTED');
-    await fixture.whenStable();
-    const span = (fixture.nativeElement as HTMLElement).querySelector('span');
-    expect(span?.textContent).toContain('Rechazado');
-    expect(span?.classList.contains('badge-rejected')).toBe(true);
+    fixture.componentRef.setInput('estado', 'RECHAZADO');
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Rechazado');
   });
 });
