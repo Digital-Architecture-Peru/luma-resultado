@@ -1,31 +1,44 @@
-export type NotificationKind = 'low-balance' | 'deposit' | 'withdrawal' | 'security';
+export type NotificationKind =
+  | 'payment-received'
+  | 'payment-failed'
+  | 'payment-scheduled'
+  | 'payment-due';
+
+export type Severity = 'info' | 'success' | 'warning' | 'error';
+
+export type LoadStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export type NotificationFilter = 'all' | 'unread';
 
-export interface AccountNotification {
+export interface PaymentNotification {
   readonly id: string;
-  readonly accountAlias: string;
   readonly kind: NotificationKind;
   readonly title: string;
   readonly message: string;
+  readonly amountCents: number;
+  readonly currency: string;
   readonly createdAt: string;
   readonly read: boolean;
 }
 
-export type LoadState = 'idle' | 'loading' | 'success' | 'error';
-
-export const KIND_LABELS: Record<NotificationKind, string> = {
-  'low-balance': 'Saldo bajo',
-  deposit: 'Depósito',
-  withdrawal: 'Retiro',
-  security: 'Seguridad',
+const SEVERITY_BY_KIND: Record<NotificationKind, Severity> = {
+  'payment-received': 'success',
+  'payment-failed': 'error',
+  'payment-scheduled': 'info',
+  'payment-due': 'warning'
 };
 
-export type BadgeTone = 'info' | 'success' | 'warning' | 'danger';
-
-export const KIND_TONES: Record<NotificationKind, BadgeTone> = {
-  'low-balance': 'warning',
-  deposit: 'success',
-  withdrawal: 'info',
-  security: 'danger',
+const LABEL_BY_KIND: Record<NotificationKind, string> = {
+  'payment-received': 'Recibido',
+  'payment-failed': 'Fallido',
+  'payment-scheduled': 'Programado',
+  'payment-due': 'Por vencer'
 };
+
+export function severityOf(kind: NotificationKind): Severity {
+  return SEVERITY_BY_KIND[kind];
+}
+
+export function labelOf(kind: NotificationKind): string {
+  return LABEL_BY_KIND[kind];
+}
