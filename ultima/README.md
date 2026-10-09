@@ -1,30 +1,34 @@
 # Consulta de cuentas
 
-Aplicación de consulta de cuentas con Angular 17, Java 17, Quarkus 3.15 y PostgreSQL. La interfaz consume una API REST; el backend persiste y consulta datos mediante Hibernate ORM Panache y Flyway.
-
-## Estructura
-
-- `frontend/`: aplicación Angular standalone, componentes organizados por Atomic Design, cliente HTTP y pruebas Jest.
-- `backend/`: API JAX-RS, servicios de dominio, puerto de repositorio y adaptador Panache.
-- `backend/src/main/resources/db/migration/`: migraciones SQL versionadas. `V1` crea el esquema; `V2` inserta datos ficticios de desarrollo.
-- `docs/variables-entorno.md`: variables de configuración del backend.
+Aplicación de consulta de solo lectura: Angular 17 (frontend), .NET 8 Minimal API (backend), Dapper y PostgreSQL. Incluye cuentas ficticias; no integra un core bancario real.
 
 ## Requisitos
 
-- Java 17 y Maven.
-- Node.js y npm compatibles con Angular CLI 17.
-- PostgreSQL accesible para ejecutar el backend.
+- Node.js/npm compatibles con Angular CLI 17.
+- .NET SDK 8 (los proyectos admiten roll-forward al runtime mayor instalado, pero compilar requiere SDK compatible).
+- PostgreSQL local y `psql` para aplicar las migraciones.
+
+## Base de datos y persistencia
+
+Crear una base vacía (ejemplo: `createdb accounts`) y aplicar en orden desde la raíz del repositorio:
+
+```sh
+psql "$ACCOUNTS_DB_CONNECTION" -v ON_ERROR_STOP=1 -f db/migrations/V001__create_accounts.sql
+psql "$ACCOUNTS_DB_CONNECTION" -v ON_ERROR_STOP=1 -f db/migrations/V002__seed_ficticio.sql
+```
+
+`ACCOUNTS_DB_CONNECTION` debe ser una cadena PostgreSQL aceptada por Npgsql, por ejemplo `Host=localhost;Port=5432;Database=accounts;Username=...;Password=...`. Configúrala en el entorno local; no guardes credenciales en el repositorio. Las migraciones crean la tabla e índices y cargan cuatro registros totalmente ficticios, incluyendo dos clientes. El repositorio `PgAccountRepository` accede a PostgreSQL mediante Dapper y `IAccountRepository`; el almacenamiento de cuentas no es en memoria. Las consultas siempre filtran por `customer_id`. No se proporciona migrador automático: ejecutar cada SQL una sola vez y conservar el orden.
 
 ## Compilar y probar
 
-Backend — desde la raíz del repositorio:
+Backend (desde la raíz):
 
 ```sh
 cd backend
-mvn package
+dotnet restore Accounts.sln
+dotnet build Accounts.sln
+dotnet test Accounts.sln
 ```
-
-`mvn package` compila y ejecuta las pruebas JUnit 5/Mockito. Las pruebas actuales de servicio y DTO no requieren una base de datos externa.
 
 Frontend:
 
@@ -32,63 +36,44 @@ Frontend:
 cd frontend
 npm install
 npm run build
-npm test
+npm test -- --runInBand
 ```
 
-`npm test` ejecuta Jest en modo CI, sin modo interactivo. `npm run build` genera la compilación de Angular.
+Las pruebas unitarias .NET y Jest del frontend no necesitan conectarse a PostgreSQL. Para comprobar el flujo integral, iniciar la API con la base inicializada y luego el frontend.
 
-## PostgreSQL, migraciones y persistencia
+## Ejecución local integrada
 
-Crea previamente una base de datos PostgreSQL y configura sus datos de conexión en el entorno del proceso backend. La aplicación usa estas variables (no se incluyen credenciales en el repositorio):
-
-```text
-QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/banca
-QUARKUS_DATASOURCE_USERNAME=<usuario configurado en PostgreSQL>
-QUARKUS_DATASOURCE_PASSWORD=<contraseña configurada en PostgreSQL>
-```
-
-Los valores entre `<...>` son marcadores: sustitúyelos en tu entorno; no los escribas en archivos versionados. Opcionalmente, configura `PORT` (por defecto `8080`), `CORS_ORIGINS` (por defecto `http://localhost:4200`) y `LOG_LEVEL` (por defecto `INFO`). Consulta `docs/variables-entorno.md`.
-
-Al iniciar, Flyway ejecuta las migraciones de `db/migration` (`quarkus.flyway.migrate-at-start=true`). Hibernate no genera ni altera el esquema (`quarkus.hibernate-orm.database.generation=none`). La tabla `cuenta` almacena identificador, cliente, número, tipo, moneda, saldo, estado y fecha de apertura; `V2` añade cuatro registros ficticios para los clientes de demostración `1` y `2`. No son datos reales. Las consultas filtran por cliente; el número de cuenta se enmascara en las respuestas.
-
-## Ejecutar localmente
-
-1. Asegúrate de que PostgreSQL está disponible y configura las variables anteriores en la sesión de terminal.
-2. Inicia el backend:
-
-   ```sh
-   cd backend
-   mvn quarkus:dev
-   ```
-
-   La API queda en `http://localhost:8080`; el endpoint de salud de Quarkus está en `/q/health`.
-3. En otra terminal, inicia Angular:
-
-   ```sh
-   cd frontend
-   npm install
-   npm start
-   ```
-
-   Abre `http://localhost:4200`. El servidor de desarrollo reenvía `/api` a `http://localhost:8080` según `frontend/proxy.conf.json`.
-
-## API e integración
-
-Endpoints de solo lectura:
-
-- `GET /api/v1/cuentas` — lista las cuentas del cliente.
-- `GET /api/v1/cuentas/{id}` — busca una cuenta del cliente indicado.
-
-Ambos requieren `X-Cliente-Id`, un entero positivo. Para probar la lista de datos de demostración:
+Terminal 1, API (desde `backend/src/Accounts.Api`):
 
 ```sh
-curl -H 'X-Cliente-Id: 1' http://localhost:8080/api/v1/cuentas
+export ACCOUNTS_DB_CONNECTION='Host=localhost;Port=5432;Database=accounts;Username=postgres;Password=CAMBIAR_LOCALMENTE'
+export ASPNETCORE_ENVIRONMENT=Development
+export ASPNETCORE_URLS=http://localhost:5080
+dotnet run
 ```
 
-Una cabecera ausente o inválida produce `400`; una cuenta inexistente o perteneciente a otro cliente produce `404`. Los errores se representan como `application/problem+json`. CORS permite por defecto el origen local de Angular y los métodos `GET`/`OPTIONS`.
+En PowerShell, establecer las mismas variables con `$env:NOMBRE='valor'`. La API requiere `ACCOUNTS_DB_CONNECTION` al arrancar. Salud: `http://localhost:5080/health`.
 
-La integración existente es únicamente Angular → API HTTP → servicio/repositorio → PostgreSQL. No hay conexión implementada con core bancario, OIDC, JWT ni otros sistemas. `X-Cliente-Id` es una identidad simulada de demostración, no un control de seguridad: no expongas esta aplicación como servicio bancario real sin autenticación/autorización apropiadas y revisión de seguridad. El cliente Angular actualmente envía el ID de demostración `1`.
+Terminal 2, frontend (desde `frontend`):
 
-## Verificación
+```sh
+npm start
+```
 
-Este documento describe los comandos definidos por los manifiestos y el código inspeccionado. No se ejecutaron compilaciones ni pruebas durante la elaboración de esta documentación; ejecútalas localmente para verificar tu entorno.
+Abrir la URL que indique Angular CLI (normalmente `http://localhost:4200`). El proxy de desarrollo reenvía `/api` a `http://localhost:5080`; la UI usa `/api/v1`.
+
+## API e identidad
+
+- `GET /api/v1/accounts?page=1&size=20`: listado paginado (tamaño máximo 50).
+- `GET /api/v1/accounts/{id}`: detalle; inexistente o ajena responde 404.
+- `GET /health`: estado del servicio.
+
+Las rutas de cuentas requieren un claim `customer_id` con GUID, que debe ser establecido por autenticación aguas arriba. Este proyecto no configura proveedor, middleware ni emisión de tokens. Solo en `Development`, el backend acepta `X-Customer-Id`; el frontend local envía por defecto `11111111-1111-4111-8111-111111111111`, que corresponde a los datos semilla. Ese encabezado es exclusivamente una facilidad de desarrollo y **no es autenticación**: no habilitarlo ni confiar en él en producción. En entornos distintos de Development, una solicitud sin claim recibe 401.
+
+La API enmascara el número de cuenta en sus DTOs. El frontend obtiene los datos por `AccountsApi`; al desplegar fuera del proxy local debe configurar la URL base de API mediante el token Angular `API_BASE_URL` y resolver CORS/origen según la infraestructura. La integración con core bancario y el mecanismo productivo de identidad quedan fuera del alcance actual.
+
+## Configuración y seguridad
+
+- Backend: `ACCOUNTS_DB_CONNECTION`, `ASPNETCORE_ENVIRONMENT`, `ASPNETCORE_URLS`.
+- Frontend: proxy de desarrollo en `frontend/proxy.conf.json`; base predeterminada `/api/v1` (`API_BASE_URL`).
+- Usar secretos del gestor de secretos/entorno local y nunca incluir contraseñas reales, datos de clientes ni tokens en código o commits.
