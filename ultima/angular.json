@@ -1,10 +1,9 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
-  "cli": { "analytics": false },
   "newProjectRoot": "projects",
   "projects": {
-    "banca-tarjetas": {
+    "banca-transferencia": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
@@ -13,7 +12,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/banca-tarjetas",
+            "outputPath": "dist/banca-transferencia",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -35,8 +34,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "banca-tarjetas:build:production" },
-            "development": { "buildTarget": "banca-tarjetas:build:development" }
+            "production": { "buildTarget": "banca-transferencia:build:production" },
+            "development": { "buildTarget": "banca-transferencia:build:development" }
           },
           "defaultConfiguration": "development"
         }

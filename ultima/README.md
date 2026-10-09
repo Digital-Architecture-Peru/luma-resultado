@@ -1,46 +1,58 @@
-# Transacciones de tarjetas
+# Banca por Internet · Transferencias entre cuentas
 
-Aplicación web Angular 18 para simular pagos de tarjeta y avances de efectivo sobre tarjetas ficticias. Usa componentes standalone, signals y una arquitectura por capas; no se conecta a un banco ni a un servicio remoto.
+Aplicación frontend de transferencias entre cuentas propias, construida con Angular 18 standalone components y signals. La interfaz usa Atomic Design y `TransferStore` como fachada de estado. El proyecto usa datos ficticios; **no es un sistema bancario real** y no debe recibir datos personales ni credenciales.
 
 ## Requisitos
 
-- Node.js compatible con Angular 18 (Node 18.19+ o 20.11+).
-- npm.
+- Node.js 18.19+ o 20+.
+- npm (incluido con Node.js).
 
-## Instalación y ejecución
+## Instalar, compilar y ejecutar
 
-Desde la raíz del proyecto:
+Desde la raíz del repositorio:
 
 ```sh
 npm install
+npm run build
 npm start
 ```
 
-Abra <http://localhost:4200>. `npm start` ejecuta `ng serve` en modo desarrollo y recarga al editar fuentes.
+`npm run build` ejecuta Angular CLI con compilación AOT/type-check; la configuración predeterminada es producción. `npm start` inicia el servidor de desarrollo Angular en `http://localhost:4200/`.
 
-## Compilación y pruebas
+## Pruebas
 
 ```sh
-npm run build
 npm test
 ```
 
-`npm run build` ejecuta la compilación Angular de producción y un chequeo de tipos de las pruebas (`tsc -p tsconfig.spec.json --noEmit`). `npm test` ejecuta Vitest en modo no interactivo (`vitest run`). Las pruebas existentes cubren reglas de dominio y la fachada de transacciones; no hay pruebas de componentes con TestBed.
+El script ejecuta Jest en modo no interactivo (`jest --ci`). Los tests cubren la validación de transferencias, el adaptador en memoria, el estado/fachada y el formulario. Para ejecutar un archivo concreto se puede usar, por ejemplo, `npx jest src/app/core/models/transfer.validator.spec.ts --runInBand`.
 
-## Arquitectura
+## Organización
 
-- `src/app/domain`: tipos, reglas de validación y cálculos en centavos; `CardGateway` define el puerto de integración.
-- `src/app/adapters`: `InMemoryCardGateway` y `SEED_CARDS`, datos totalmente ficticios.
-- `src/app/application`: `TransactionFacade`, coordinación y estado reactivo con signals.
-- `src/app/ui`: componentes de interfaz organizados en atoms, molecules, organisms y pages.
-- `src/app/app.config.ts`: composición de dependencias e inyección del gateway.
+- `src/app/atoms`: controles UI básicos.
+- `src/app/molecules`: tarjeta de cuenta y elemento de movimiento.
+- `src/app/organisms`: lista de cuentas, formulario y lista de movimientos.
+- `src/app/core/models`: modelos de cuenta, movimiento y solicitud; validación de negocio.
+- `src/app/core/ports/accounts.gateway.ts`: contrato de acceso a cuentas y transferencias.
+- `src/app/core/adapters/in-memory-accounts.gateway.ts`: adaptador actual con cuentas semilla ficticias.
+- `src/app/core/state/transfer.store.ts`: carga y actualización del estado mediante signals.
+- `src/app/app.config.ts`: composición de dependencias; vincula el puerto al adaptador en memoria.
 
-## Integración con backend
+## Integración
 
-Actualmente la integración es simulada y no definida: `InMemoryCardGateway` satisface el contrato `CardGateway`, añade una latencia simulada y mantiene datos solo en memoria. Para conectar un backend, implemente un adaptador HTTP que extienda `CardGateway`, traduzca respuestas y errores del contrato de API a los tipos de dominio, e inyéctelo en `src/app/app.config.ts` en sustitución del adaptador en memoria. La integración real debe definir autenticación, autorización, idempotencia de operaciones, manejo de errores y validación final en servidor; las validaciones del navegador no sustituyen controles del servidor. Configure URL y parámetros por ambiente/deployment y no incluya secretos en el bundle frontend.
+Actualmente no hay backend, llamadas de red ni integración externa. La UI/estado depende de la abstracción `AccountsGateway`; el provider de `app.config.ts` selecciona `InMemoryAccountsGateway`. Para integrar un backend:
 
-No existe endpoint, contrato HTTP, backend ni credenciales configurados en este proyecto.
+1. Implementar `AccountsGateway` en un adaptador separado, usando `HttpClient` y DTOs explícitos. Registrar `provideHttpClient()` y sustituir el provider en `app.config.ts`.
+2. Acordar y documentar el contrato de API: carga de cuentas y movimientos, solicitud de transferencia, respuesta y errores. El servidor debe volver a validar autorización, cuentas, saldo, límites y duplicidad de la operación; las validaciones del navegador son solo experiencia de usuario y no constituyen seguridad.
+3. Obtener la URL base desde configuración de despliegue apropiada para Angular (la configuración incluida en el bundle es pública, no un secreto). No incluir tokens, contraseñas ni credenciales en el repositorio o en el código cliente. La autenticación/autorización y gestión de sesión deben resolverse con el backend y los mecanismos corporativos correspondientes.
+4. Mantener los tests unitarios del adaptador ficticio y agregar pruebas del adaptador HTTP y del contrato ante éxitos, errores y fallos de red.
 
-## Persistencia y datos
+## Persistencia y reglas de negocio
 
-No hay persistencia local o remota. El gateway mantiene las tarjetas en memoria, inicializadas desde `SEED_CARDS`; el historial de recibos y el estado de la fachada también viven en memoria. Al recargar o cerrar la aplicación se reinician con los datos ficticios. No se usa localStorage, IndexedDB ni base de datos.
+El adaptador usa tres cuentas ficticias denominadas en PEN y mantiene saldos y movimientos **solo en memoria**. La recarga reinicia los datos; no hay almacenamiento local, base de datos ni persistencia entre sesiones. No se deben considerar las operaciones como reales.
+
+La validación de interfaz exige origen y destino seleccionados y distintos; monto positivo, hasta dos decimales, no mayor de S/ 50 000 ni del saldo de origen; y concepto de hasta 60 caracteres. El adaptador vuelve a comprobar las cuentas y el saldo antes de aplicar la transferencia. Si se añade persistencia real, debe residir detrás de un backend: transacción atómica para débito/crédito, control de concurrencia/idempotencia y auditoría, con políticas de acceso y retención definidas. Nunca confiar en el estado o saldo enviados por el cliente.
+
+## Estado de verificación
+
+Los comandos anteriores describen cómo compilar y probar. No se ejecutaron build ni pruebas durante la preparación de esta documentación.

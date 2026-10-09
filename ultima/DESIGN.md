@@ -3,7 +3,7 @@
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Transacción
-- ¿Sobre qué dominio? Tarjetas
+- ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Frontend
 - Patrones disponibles Component-based (Atomic Design)
 - ¿Qué stack? Angular
@@ -14,7 +14,7 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular (capa Frontend) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular (capa Frontend) para "Transacción" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia No requiere detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
