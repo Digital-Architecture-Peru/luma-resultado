@@ -4,10 +4,10 @@
     "pattern": "Component-based (Atomic Design)",
     "tests": "Unitarias",
     "type": "Consulta",
-    "domain": "Cuentas",
+    "domain": "Pagos",
     "layer": "Full Stack",
-    "stack": "Angular + .NET",
-    "backendStack": ".NET",
+    "stack": "React + TypeScript + Java + Spring Boot",
+    "backendStack": "Java + Spring Boot",
     "persistence": "PostgreSQL"
   },
   "sgc": {
