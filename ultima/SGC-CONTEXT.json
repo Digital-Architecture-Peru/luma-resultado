@@ -3,11 +3,12 @@
     "where": "Banca por Internet",
     "pattern": "Component-based (Atomic Design)",
     "tests": "Unitarias",
-    "type": "Notificación",
-    "domain": "Pagos",
-    "layer": "Frontend",
-    "stack": "Angular",
-    "persistence": "No requiere"
+    "type": "Consulta",
+    "domain": "Tarjetas",
+    "layer": "Full Stack",
+    "stack": "React + TypeScript + Java + Quarkus",
+    "backendStack": "Java + Quarkus",
+    "persistence": "PostgreSQL"
   },
   "sgc": {
     "status": "fallback",

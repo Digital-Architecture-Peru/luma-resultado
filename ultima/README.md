@@ -1,44 +1,93 @@
-# Notificaciones de pagos · Banca por Internet
+# Consulta de Tarjetas · Banca por Internet
 
-Frontend Angular 18 (standalone, signals) para consultar notificaciones de pagos. La implementación actual usa datos ficticios en memoria; no se conecta a servicios bancarios ni guarda cambios entre recargas.
+Aplicación Full Stack de solo lectura para consultar tarjetas y su detalle. El frontend está construido con React + TypeScript + Vite; el backend usa Java 17, Quarkus 3.15 y PostgreSQL.
 
 ## Requisitos
 
-- Node.js compatible con Angular 18 (Node.js 18.19+ o 20.11+ recomendado).
-- npm.
+- Java 17 y Maven 3.9 o compatible.
+- Node.js 18+ y npm.
+- PostgreSQL 13+ para ejecutar el backend y las migraciones.
 
-## Instalar, compilar y ejecutar
+## Estructura
 
-Desde la raíz del proyecto:
+- `frontend/`: interfaz React, componentes organizados con Atomic Design y cliente HTTP.
+- `backend/`: API REST Quarkus, separada en API, aplicación, dominio e infraestructura Panache.
+- `backend/src/main/resources/db/migration/`: migraciones Flyway versionadas: `V1` crea el esquema y `V2` inserta datos ficticios.
+
+## Base de datos
+
+Crea una base de datos PostgreSQL llamada `tarjetas` y un usuario con permisos para crear tablas e índices y ejecutar migraciones. Por ejemplo, en una instalación local, crea ambos mediante las herramientas administrativas de PostgreSQL. Configura las variables de conexión antes de arrancar:
 
 ```sh
+export QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/tarjetas
+export QUARKUS_DATASOURCE_USERNAME=tu_usuario
+export QUARKUS_DATASOURCE_PASSWORD=tu_clave
+```
+
+La URL local por defecto está configurada para `localhost:5432/tarjetas`; usuario y contraseña deben suministrarse mediante el entorno. Hibernate no genera el esquema. Flyway ejecuta automáticamente las migraciones al iniciar la aplicación. No vuelvas a insertar manualmente el seed: Flyway administra su historial. Las migraciones incorporan registros sintéticos, incluidos tres para el cliente de desarrollo `11111111-1111-1111-1111-111111111111`.
+
+## Backend: compilar, probar y ejecutar
+
+```sh
+cd backend
+mvn test
+mvn package
+mvn quarkus:dev
+```
+
+`mvn test` ejecuta las pruebas de servicio y recurso definidas en `src/test`; están diseñadas para correr sin PostgreSQL. `mvn package` compila y empaqueta la aplicación. El modo dev inicia Quarkus, conecta a PostgreSQL y aplica Flyway. La API queda en `http://localhost:8080`.
+
+Variables opcionales:
+
+- `CORS_ORIGINS`: origen permitido por CORS; por defecto `http://localhost:5173`.
+- `LOG_LEVEL`: nivel de logging; por defecto `INFO`.
+
+## Frontend: instalar, probar y ejecutar
+
+En otra terminal, desde la raíz del repositorio:
+
+```sh
+cd frontend
 npm install
+npm test
 npm run build
-npm start
+npm run dev
 ```
 
-`npm run build` ejecuta el build de Angular en modo producción, incluyendo la compilación y comprobación de tipos configuradas por Angular CLI. `npm start` ejecuta `ng serve`; abre la URL que informa el CLI (normalmente `http://localhost:4200/`). Para detener el servidor, usa Ctrl+C.
+`npm test` ejecuta Vitest en modo no interactivo y `npm run build` realiza el chequeo TypeScript (`tsc --noEmit`) y genera el bundle Vite. El servidor local de Vite normalmente queda en `http://localhost:5173`.
 
-## Pruebas
+La configuración puede establecerse en `frontend/.env` (no se necesita incluir credenciales):
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080
+VITE_CLIENTE_ID=11111111-1111-1111-1111-111111111111
+```
+
+Si no se definen, el frontend usa esos mismos valores por defecto. `VITE_CLIENTE_ID` solo permite probar el seed ficticio; no es una identidad autenticada.
+
+## Integración API
+
+El frontend llama al backend mediante `fetch`, con `Accept: application/json` y la cabecera `X-Cliente-Id`:
+
+- `GET /api/v1/tarjetas` devuelve la lista de resúmenes (`200`).
+- `GET /api/v1/tarjetas/{id}` devuelve el detalle (`200`) o `404` si no existe para ese cliente.
+- Una cabecera `X-Cliente-Id` ausente o inválida produce `400`; los errores usan `application/problem+json`.
+
+Ejemplo de consulta local:
 
 ```sh
-npm test
+curl -H 'X-Cliente-Id: 11111111-1111-1111-1111-111111111111' \
+  http://localhost:8080/api/v1/tarjetas
 ```
 
-El comando ejecuta Jest en modo CI, sin modo interactivo. Las pruebas cubren el estado de aplicación (carga, error, filtros y marcado de lectura) y los componentes de notificación. También se puede compilar después de las pruebas con `npm run build`.
+Para consultar detalle, sustituye el path por `/api/v1/tarjetas/aaaaaaaa-0000-0000-0000-000000000001`. La configuración CORS permite `GET` y `OPTIONS`, y `Content-Type` y `X-Cliente-Id`; ajusta `CORS_ORIGINS` al origen del frontend cuando sea distinto.
 
-## Diseño e integración
+## Persistencia y límites de seguridad
 
-El flujo separa dominio, aplicación, adaptador y presentación:
+La persistencia está detrás del contrato `TarjetaRepository`, implementado por `PanacheTarjetaRepository` sobre PostgreSQL. Las consultas filtran por cliente; el servicio no debe exponer tarjetas de otros clientes. Los importes se transportan como strings decimales. La base solo almacena los últimos cuatro dígitos: no contiene PAN completo, CVV ni PIN. Todos los registros de migración son ficticios.
 
-- `src/app/domain/`: modelo `PaymentNotification` y puerto abstracto `NotificationGateway`.
-- `src/app/application/notification-store.service.ts`: carga datos y mantiene el estado reactivo con signals; ofrece filtro de no leídas y acciones de lectura.
-- `src/app/adapters/mock-notification.gateway.ts`: adaptador mock con ejemplos ficticios, sin llamadas de red.
-- `src/app/ui/`: componentes standalone organizados como átomos, moléculas y organismo.
-- `src/app/app.config.ts`: composición de dependencias; actualmente enlaza `NotificationGateway` con `MockNotificationGateway`.
+**La integración de identidad real está pendiente.** `X-Cliente-Id` es únicamente un sustituto de desarrollo controlable por el solicitante, no autenticación ni autorización segura. No desplegar así en producción. En un entorno real, validar la sesión/token y obtener la identidad del cliente de una fuente confiable en el backend, sin aceptar el identificador del cliente directamente desde el navegador.
 
-La integración con un backend está pendiente de contrato. Para incorporarla, definir el endpoint y el formato de respuesta con el servicio propietario, implementar un adaptador que extienda `NotificationGateway` y devuelva `Observable<PaymentNotification[]>`, habilitar `HttpClient` en la configuración de Angular y registrar el adaptador en `app.config.ts`. Validar y mapear la respuesta externa al modelo del dominio en el adaptador; manejar errores de red y respuestas inválidas sin exponer datos sensibles. La URL base debe provenir de configuración por entorno y no incluir secretos en el frontend (todo valor incluido en un bundle del navegador es público). Autenticación y autorización deben resolverse mediante mecanismos aprobados por el backend, no mediante credenciales codificadas en la aplicación.
+## Verificación
 
-## Persistencia y límites
-
-No hay persistencia: el mock entrega una copia de datos constantes; el store vive en memoria y sus cambios se pierden al recargar la página. No se usa localStorage, base de datos ni API. Para una integración real, el backend debe ser la fuente de verdad y persistir las notificaciones y sus estados de lectura con controles de acceso por usuario; definir también las operaciones de marcado como leído en el contrato antes de implementarlas. No guardar información financiera sensible en almacenamiento local del navegador.
+Los comandos anteriores describen las pruebas disponibles en cada módulo. El backend requiere PostgreSQL para el arranque integrado; las pruebas unitarias se ejecutan sin esa base. El frontend valida las llamadas mediante pruebas Vitest con respuestas simuladas. La ejecución de estos comandos debe realizarse en un entorno que tenga instaladas las herramientas indicadas.
