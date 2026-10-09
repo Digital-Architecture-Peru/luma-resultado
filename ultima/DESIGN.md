@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + .NET
+- ¿Qué stack? Angular + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + .NET (capa Full Stack) para "Consulta" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Consulta" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,69 +29,58 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN — Refinamiento
+# DESIGN – Refinamiento
 
 ## Decisiones de arquitectura
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| D1 | Repositorio con `web/` (React + TS + Vite) y `api/` (.NET 8, ASP.NET Core) | Builds independientes, verificables con npm y dotnet |
-| D2 | API en capas Domain → Application → Infrastructure → Api | La persistencia queda detrás de `IPagoRepository` y la lógica se prueba sin BD |
-| D3 | Solo endpoints GET | La capacidad es Consulta; reduce la superficie de riesgo |
-| D4 | Npgsql + Dapper con SQL parametrizado; migraciones SQL versionadas | Control explícito de consultas e índices; menos dependencias que EF Core |
-| D5 | Paginación `page/pageSize` (máx. 50) y filtros por fecha y estado | Acota el volumen y el costo de cada consulta |
-| D6 | Front con Atomic Design; datos vía hook `usePagos` y cliente `fetch` tipado | Evita una librería de estado adicional |
-| D7 | `NUMERIC(18,2)`/`decimal`, fechas UTC ISO-8601, moneda ISO-4217 | Evita errores de redondeo y de zona horaria |
-| D8 | Cuenta destino enmascarada (`****1234`) desde la API | Minimiza la exposición de datos |
-| D9 | Configuración por env (`ConnectionStrings__Pagos`, `VITE_API_URL`); se usa `InMemoryPagoRepository` si no hay cadena de conexión | Permite ejecutar sin BD y sin secretos |
+| D1 | Monorepo con `frontend/` (Angular) y `backend/` (Spring Boot) | Mantiene la capa Full Stack en un solo workspace y permite builds independientes. |
+| D2 | Solo lectura: `GET /api/v1/pagos` paginado y `GET /api/v1/pagos/{id}` | Es una capacidad de Consulta. No se exponen escrituras. |
+| D3 | Backend por capas: controller → service → `PagoRepository` (interfaz) → adaptador JDBC | Aísla PostgreSQL detrás de una interfaz y facilita las pruebas unitarias con mocks. |
+| D4 | `NamedParameterJdbcTemplate` con parámetros nombrados | Acceso parametrizado explícito, sin concatenar SQL. |
+| D5 | Migraciones Flyway: `V1__schema.sql` y `V2__seed_ficticio.sql` | Esquema versionado y reproducible. |
+| D6 | Montos en `NUMERIC(15,2)` / `BigDecimal` y fechas en `TIMESTAMPTZ` | Precisión monetaria y zona horaria explícita. |
+| D7 | Frontend con Atomic Design: atoms → molecules → organisms → templates → pages | Cumple el patrón pedido y reutiliza componentes. |
+| D8 | `PagosApiService` en Angular con `HttpClient` y URL base en `environment` | Configuración sin secretos. La integración queda intercambiable. |
+| D9 | Integración externa como puerto `ConsultaPagosExternaPort` con stub | La integración está "sin definir". Así se evita llamar a sistemas reales. |
+| D10 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) | Ningún secreto queda en el repositorio. |
 
 ## Estructura de módulos
 ```
-api/Pagos.sln
-  src/Pagos.Domain/          Pago, EstadoPago
-  src/Pagos.Application/     IPagoRepository, ConsultaPagosService, DTOs, validación de filtros
-  src/Pagos.Infrastructure/  PgPagoRepository, InMemoryPagoRepository
-  src/Pagos.Api/             Program.cs, /api/v1/pagos, ProblemDetails
-  tests/Pagos.Application.Tests/  xUnit
-db/migrations/V001__esquema_pagos.sql, V002__seed_ficticio.sql
-web/ package.json, tsconfig.json, vite.config.ts
-  src/components/atoms/      Monto, Fecha, BadgeEstado
-  src/components/molecules/  FiltroFechas, FilaPago
-  src/components/organisms/  TablaPagos, DetallePago
-  src/components/templates/  ConsultaLayout
-  src/pages/                 ConsultaPagosPage
-  src/services/pagosApi.ts, src/hooks/usePagos.ts, src/types/pago.ts
-  *.test.tsx                 Vitest + Testing Library
+backend/  pom.xml
+  src/main/java/.../pagos/{api,service,domain,repository,integration,config}
+  src/main/resources/{application.yml, db/migration/V1__,V2__}
+  src/test/java/.../pagos/{api,service}   # JUnit 5 + Mockito
+frontend/ package.json, angular.json
+  src/app/shared/ui/{atoms,molecules,organisms,templates}
+  src/app/features/pagos/{pages,services,models}
+  *.spec.ts                               # Jasmine/Karma
 README.md
 ```
+Ejemplos de componentes: `atom-badge-estado`, `molecule-fila-pago`, `organism-tabla-pagos`, `template-consulta` y `page-consulta-pagos`.
 
-## Contrato
-- `GET /api/v1/pagos?desde&hasta&estado&page&pageSize` devuelve `{ items, page, pageSize, total }`.
-- `GET /api/v1/pagos/{id}` devuelve el detalle, o 404 si no existe o pertenece a otro cliente.
-- Devuelve 400 (ProblemDetails) si `desde > hasta`, si el rango supera 90 días o si `pageSize` está fuera de 1–50.
+## Modelo de datos (PostgreSQL)
+- Tabla `pago`: `id UUID PK`, `cliente_id`, `cuenta_origen_mask`, `beneficiario`, `monto`, `moneda CHAR(3)`, `estado` (CHECK con PENDIENTE, PROCESADO o RECHAZADO), `fecha_pago`.
+- Índice `ix_pago_cliente_fecha (cliente_id, fecha_pago DESC)` para el listado paginado.
+- Seed: entre 10 y 20 filas ficticias, con cuentas ya enmascaradas.
 
-## Modelo de datos
-`pagos(id UUID PK, cliente_id UUID NOT NULL, referencia VARCHAR(30), beneficiario VARCHAR(120), cuenta_destino_mask VARCHAR(20), monto NUMERIC(18,2) CHECK (monto > 0), moneda CHAR(3), estado VARCHAR(15) CHECK (estado IN (...)), fecha_pago TIMESTAMPTZ NOT NULL)`
-- Índice `ix_pagos_cliente_fecha (cliente_id, fecha_pago DESC)`.
-- Seed con unos 10 registros ficticios y UUID literales (sin extensiones).
-
-## Pruebas unitarias
-- **Application:** validación de filtros, límite de paginación, enmascarado y filtrado obligatorio por cliente.
-- **Web:** formato de `Monto`, `TablaPagos` con lista vacía y con datos, y `usePagos` con `fetch` simulado.
+## Hipótesis adicionales
+- H1: "Consulta de Pagos" significa el historial de pagos realizados por el cliente, con filtros por fecha y estado.
+- H2: La autenticación de Banca por Internet existe fuera del alcance. El `clienteId` se recibe de un contexto simulado (header `X-Cliente-Id`) y queda marcado como pendiente de integrar.
+- H3: Versiones objetivo: Java 17, Spring Boot 3.x y Angular 17+. No están confirmadas por SGC, que está en fallback.
+- H4: El tamaño de página por defecto es 20 y el máximo 100.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| dotnet o npm no instalados | Se marca como no verificado en el handoff |
-| SQL de PostgreSQL sin ejecución real | Revisión estática; sintaxis estándar sin extensiones |
-| Autenticación no definida, con riesgo de acceso a pagos de otro cliente | `cliente_id` obligatorio en todo `WHERE` |
-| Integración sin definir | Solo se documenta el contrato; no hay llamadas reales |
-| Versiones de paquetes no verificadas | Versiones fijadas y declaradas en el README |
-| CORS entre web y api | Origen permitido configurable por env |
+| Sin Maven/Node local, la compilación no se verifica | Se reporta como no verificado en el handoff (T06). |
+| PostgreSQL solo se revisa de forma estática | SQL estándar sin extensiones; queda declarado en el README. |
+| Exposición de datos sensibles | Solo datos enmascarados y ficticios, sin PAN ni números completos. |
+| Autenticación simulada usada como real | Advertencia explícita en README y código (H2). |
+| Contexto SGC ausente | Las decisiones se tratan como candidate, revisables al cargar SGC. |
 
-## Hipótesis
-- **H1:** .NET 8 LTS y Node 20+.
-- **H2:** La autenticación de Banca por Internet queda fuera de alcance; el cliente llega por el header stub `X-Cliente-Id`.
-- **H3:** Solo se consultan pagos del propio cliente, con rango máximo de 90 días.
-- **H4:** Estados posibles: PENDIENTE, PROCESADO, RECHAZADO y REVERSADO.
-- **H5:** No hay conversión de moneda; el locale de formato es configurable (por defecto `es`).
-- **H6:** Solo hay pruebas unitarias; no hay pruebas de integración ni e2e contra PostgreSQL.
+## Trazabilidad a la aceptación
+- Sintaxis: archivos `.java`, `.ts`, `.sql`, `.json` y `.yml` revisables con el validador local.
+- Pruebas unitarias: `PagoServiceTest`, `PagoControllerTest`, `pagos-api.service.spec.ts` y `organism-tabla-pagos.spec.ts`.
+- El README documenta build y ejecución, la integración sin definir y la persistencia PostgreSQL.
+- El handoff es candidate y no afirma compilación ni producción.
