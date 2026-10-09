@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "tarjetas-notificaciones": {
+    "notificaciones": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
@@ -12,7 +12,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/tarjetas-notificaciones",
+            "outputPath": "dist/notificaciones",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -20,27 +20,20 @@
             "styles": ["src/styles.css"]
           },
           "configurations": {
-            "production": {
-              "outputHashing": "all"
-            },
-            "development": {
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true
-            }
+            "production": { "outputHashing": "all" },
+            "development": { "optimization": false, "sourceMap": true }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "tarjetas-notificaciones:build:production" },
-            "development": { "buildTarget": "tarjetas-notificaciones:build:development" }
+            "production": { "buildTarget": "notificaciones:build:production" },
+            "development": { "buildTarget": "notificaciones:build:development" }
           },
           "defaultConfiguration": "development"
         }
       }
     }
-  },
-  "cli": { "analytics": false }
+  }
 }
