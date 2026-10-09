@@ -1,23 +1,18 @@
 package com.banca.tarjetas.domain;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.UUID;
 
-/** Tarjeta del cliente. Solo se conservan los últimos 4 dígitos del PAN. */
+/** Tarjeta de un cliente. Nunca contiene PAN completo, CVV ni fecha completa. */
 public record Tarjeta(
         UUID id,
         UUID clienteId,
-        String ultimos4,
         String marca,
-        Tipo tipo,
-        Estado estado,
+        String tipo,
+        String ultimos4,
+        EstadoTarjeta estado,
+        BigDecimal limite,
+        BigDecimal saldo,
         String moneda,
-        BigDecimal limiteCredito,
-        BigDecimal saldoDisponible,
-        LocalDate vencimiento) {
-
-    public enum Tipo { CREDITO, DEBITO }
-
-    public enum Estado { ACTIVA, BLOQUEADA, VENCIDA }
+        String venceMesAnio) {
 }

@@ -1,25 +1,35 @@
-import type { TarjetaResumen } from "../../types/tarjeta";
-import { TarjetaResumenItem } from "../molecules/TarjetaResumenItem";
+import type { EstadoCarga } from '../../hooks/useTarjetas';
+import type { Tarjeta } from '../../types/tarjeta';
+import { Boton } from '../atoms/Boton';
+import { TarjetaCard } from '../molecules/TarjetaCard';
 
-interface Props {
-  tarjetas: TarjetaResumen[];
-  seleccionadaId: string | null;
-  onSeleccionar: (id: string) => void;
+interface ListaTarjetasProps {
+  estado: EstadoCarga;
+  tarjetas: Tarjeta[];
+  error: string | null;
+  onReintentar: () => void;
 }
 
-export function ListaTarjetas({ tarjetas, seleccionadaId, onSeleccionar }: Props) {
+export function ListaTarjetas({ estado, tarjetas, error, onReintentar }: ListaTarjetasProps) {
+  if (estado === 'loading') {
+    return <p role="status">Cargando tarjetas…</p>;
+  }
+  if (estado === 'error') {
+    return (
+      <div role="alert" className="mensaje mensaje--error">
+        <p>{error ?? 'No se pudo cargar la información.'}</p>
+        <Boton texto="Reintentar" onClick={onReintentar} />
+      </div>
+    );
+  }
   if (tarjetas.length === 0) {
-    return <p className="estado-vacio">No tienes tarjetas registradas.</p>;
+    return <p role="status">No tienes tarjetas registradas.</p>;
   }
   return (
-    <ul className="lista-tarjetas" aria-label="Mis tarjetas">
+    <ul className="lista-tarjetas">
       {tarjetas.map((t) => (
         <li key={t.id}>
-          <TarjetaResumenItem
-            tarjeta={t}
-            seleccionada={t.id === seleccionadaId}
-            onSeleccionar={onSeleccionar}
-          />
+          <TarjetaCard tarjeta={t} />
         </li>
       ))}
     </ul>
