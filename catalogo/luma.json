@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T21:41:34.877Z",
+  "actualizado": "2026-10-09T21:51:50.752Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -2974,6 +2974,73 @@
           "etapa": "Cierre",
           "segundo": 709,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 70be96d: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/70be96de3be2ae3c722fd4477aa012373e665dca\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Transacción|Cuentas|Full Stack|Angular|.NET|PostgreSQL": {
+      "clave": "Transacción|Cuentas|Full Stack|Angular|.NET|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Transacción",
+        "domain": "Cuentas",
+        "layer": "Full Stack",
+        "stack": "Angular",
+        "backendStack": ".NET",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "eafed465c0d71a424759606f35cb51d88f683c70",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/105",
+      "distTree": "d4e707d4d0bdec3c79701696777f3ec72c4923d7",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-09T21:51:26Z",
+      "duracion_s": 574,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 8f487319-83ff-4836-b8cd-ba0282dfccfc registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 50,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 50,
+          "detalle": "generando Angular + .NET (capa Full Stack) en segundo plano, tarea 37eaeee0-b993-4a9b-9b09-2587529bb929. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 338,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 432,
+          "detalle": "falló test: [frontend] npm test falló > banca-cuentas-frontend@0.1.0 test > ng test --watch=false NOTE: The \"unit-test\" builder is currently EXPERIMENTAL and not ready for production use. ❯ Building... ✔ Building... Initial chunk files | Na"
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 532,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 532,
+          "detalle": "build correcto; pruebas unitarias correctas (6); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 574,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit eafed46: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/eafed465c0d71a424759606f35cb51d88f683c70\nPull Request: https://github.com/Digita"
         }
       ]
     }
