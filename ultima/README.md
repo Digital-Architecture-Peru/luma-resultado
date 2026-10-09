@@ -1,79 +1,80 @@
-# Consulta de cuentas
+# Consulta de Pagos — Banca por Internet
 
-Aplicación de consulta de solo lectura: Angular 17 (frontend), .NET 8 Minimal API (backend), Dapper y PostgreSQL. Incluye cuentas ficticias; no integra un core bancario real.
+Aplicación de consulta (solo lectura) de pagos ficticios, con frontend React 18 + TypeScript y API Java 17 / Spring Boot 3.3. El backend persiste y consulta datos en PostgreSQL mediante JDBC; Flyway gestiona el esquema y seed de demostración. No hay integración con un core de pagos ni autenticación configurada.
+
+## Estructura
+
+- `frontend/`: Vite, React, TypeScript y Vitest. Componentes organizados con Atomic Design; `src/services/pagosApi.ts` consume la API.
+- `backend/`: Maven y Spring Boot. Capas `api` → `application` → `domain`; `infrastructure/JdbcPagoRepository` implementa el puerto de persistencia.
+- `backend/src/main/resources/db/migration/`: migraciones Flyway versionadas.
 
 ## Requisitos
 
-- Node.js/npm compatibles con Angular CLI 17.
-- .NET SDK 8 (los proyectos admiten roll-forward al runtime mayor instalado, pero compilar requiere SDK compatible).
-- PostgreSQL local y `psql` para aplicar las migraciones.
+- Java 17 y Maven.
+- Node.js compatible con Vite 5 y npm.
+- PostgreSQL accesible. La base de datos `pagos` debe existir antes de arrancar el backend (Flyway crea las tablas, no la base de datos).
 
-## Base de datos y persistencia
+## Configuración
 
-Crear una base vacía (ejemplo: `createdb accounts`) y aplicar en orden desde la raíz del repositorio:
+El backend lee configuración del entorno. No se incluyen credenciales; configura una contraseña adecuada para tu entorno.
 
-```sh
-psql "$ACCOUNTS_DB_CONNECTION" -v ON_ERROR_STOP=1 -f db/migrations/V001__create_accounts.sql
-psql "$ACCOUNTS_DB_CONNECTION" -v ON_ERROR_STOP=1 -f db/migrations/V002__seed_ficticio.sql
-```
+| Variable | Descripción | Valor predeterminado |
+|---|---|---|
+| `DB_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/pagos` |
+| `DB_USER` | Usuario de PostgreSQL | `pagos` |
+| `DB_PASSWORD` | Contraseña de PostgreSQL | vacío |
+| `DEMO_CUENTA_ID` | Cuenta ficticia consultada | `CTA-0001` |
+| `PORT` | Puerto HTTP del backend | `8080` |
+| `LOG_LEVEL` | Nivel raíz de log | `INFO` |
+| `VITE_API_BASE_URL` | Base URL para llamadas frontend | vacío (rutas relativas) |
 
-`ACCOUNTS_DB_CONNECTION` debe ser una cadena PostgreSQL aceptada por Npgsql, por ejemplo `Host=localhost;Port=5432;Database=accounts;Username=...;Password=...`. Configúrala en el entorno local; no guardes credenciales en el repositorio. Las migraciones crean la tabla e índices y cargan cuatro registros totalmente ficticios, incluyendo dos clientes. El repositorio `PgAccountRepository` accede a PostgreSQL mediante Dapper y `IAccountRepository`; el almacenamiento de cuentas no es en memoria. Las consultas siempre filtran por `customer_id`. No se proporciona migrador automático: ejecutar cada SQL una sola vez y conservar el orden.
+Crea `pagos` y un usuario con permisos de conexión, creación/alteración de tablas e índices para que Flyway pueda aplicar las migraciones. En PostgreSQL local, por ejemplo, crea la base con tu herramienta habitual como administrador; no uses credenciales de producción para desarrollo. Para que el seed corresponda a la cuenta consultada, conserva `DEMO_CUENTA_ID=CTA-0001`.
 
-## Compilar y probar
+## Compilar, probar y ejecutar
 
-Backend (desde la raíz):
+Abre terminales separadas. Primero inicia PostgreSQL y configura `DB_URL`, `DB_USER` y `DB_PASSWORD` en el entorno del backend.
 
-```sh
+```bash
 cd backend
-dotnet restore Accounts.sln
-dotnet build Accounts.sln
-dotnet test Accounts.sln
+mvn test
+mvn package
+mvn spring-boot:run
 ```
 
-Frontend:
+Al iniciar la aplicación, Flyway ejecuta las migraciones pendientes y Spring Boot atiende en `http://localhost:8080` (o el puerto `PORT`). `mvn package` también ejecuta las pruebas JUnit 5 / Mockito.
 
-```sh
+```bash
 cd frontend
 npm install
+npm test
 npm run build
-npm test -- --runInBand
+npm run dev
 ```
 
-Las pruebas unitarias .NET y Jest del frontend no necesitan conectarse a PostgreSQL. Para comprobar el flujo integral, iniciar la API con la base inicializada y luego el frontend.
+`npm test` ejecuta Vitest una vez. `npm run build` efectúa el chequeo TypeScript (`tsc --noEmit`) y genera el bundle Vite. El servidor de desarrollo queda normalmente en `http://localhost:5173`.
 
-## Ejecución local integrada
+## Integración frontend–backend
 
-Terminal 1, API (desde `backend/src/Accounts.Api`):
+En desarrollo, Vite reenvía `/api` a `http://localhost:8080`; por tanto, ejecuta ambos servicios. El cliente consulta `GET /api/v1/pagos` y envía filtros/paginación como query params. Para desplegar el frontend fuera del proxy de Vite, establece `VITE_API_BASE_URL` a la URL pública de la API al construir el bundle y configura CORS/proxy en la infraestructura según corresponda. No hay CORS ni despliegue de producción configurados aquí.
 
-```sh
-export ACCOUNTS_DB_CONNECTION='Host=localhost;Port=5432;Database=accounts;Username=postgres;Password=CAMBIAR_LOCALMENTE'
-export ASPNETCORE_ENVIRONMENT=Development
-export ASPNETCORE_URLS=http://localhost:5080
-dotnet run
-```
+### API de consulta
 
-En PowerShell, establecer las mismas variables con `$env:NOMBRE='valor'`. La API requiere `ACCOUNTS_DB_CONNECTION` al arrancar. Salud: `http://localhost:5080/health`.
+- `GET /api/v1/pagos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&estado=PENDIENTE|PROCESADO|RECHAZADO&page=0&size=20`: filtros opcionales por fechas inclusivas y estado; `page` comienza en cero, `size` predeterminado 20 y máximo 100.
+- `GET /api/v1/pagos/{id}`: detalle dentro de la cuenta actual; devuelve 404 si no existe para esa cuenta.
+- `GET /actuator/health`: estado de salud.
 
-Terminal 2, frontend (desde `frontend`):
+Las fechas se interpretan en UTC. Los errores de solicitud se representan como `application/problem+json`. La cuenta se enmascara en el DTO de respuesta.
 
-```sh
-npm start
-```
+## Persistencia y datos
 
-Abrir la URL que indique Angular CLI (normalmente `http://localhost:4200`). El proxy de desarrollo reenvía `/api` a `http://localhost:5080`; la UI usa `/api/v1`.
+`V1__schema.sql` crea `pago` con importe `NUMERIC(15,2)`, fecha `TIMESTAMPTZ`, restricciones e índices para cuenta/fecha y estado. `V2__seed_ficticio.sql` inserta pagos de ejemplo para `CTA-0001` y un registro separado de `CTA-0002`; los datos son inventados y no representan personas ni cuentas reales. Flyway registra las versiones aplicadas en su tabla de historial; no edites una migración ya aplicada: agrega una nueva migración `V3__...sql` y posteriores.
 
-## API e identidad
+El repositorio JDBC siempre limita consultas a `cuenta_id` y parametriza los valores. La cuenta de la demo la proporciona `DEMO_CUENTA_ID`; no es una identidad autenticada. La persistencia es PostgreSQL local/configurable, sin conexión al core de pagos ni procesamiento de transacciones.
 
-- `GET /api/v1/accounts?page=1&size=20`: listado paginado (tamaño máximo 50).
-- `GET /api/v1/accounts/{id}`: detalle; inexistente o ajena responde 404.
-- `GET /health`: estado del servicio.
+## Seguridad y límites
 
-Las rutas de cuentas requieren un claim `customer_id` con GUID, que debe ser establecido por autenticación aguas arriba. Este proyecto no configura proveedor, middleware ni emisión de tokens. Solo en `Development`, el backend acepta `X-Customer-Id`; el frontend local envía por defecto `11111111-1111-4111-8111-111111111111`, que corresponde a los datos semilla. Ese encabezado es exclusivamente una facilidad de desarrollo y **no es autenticación**: no habilitarlo ni confiar en él en producción. En entornos distintos de Development, una solicitud sin claim recibe 401.
+Esta aplicación es una demo de consulta, sin autenticación/autorización. Antes de un uso real, la identidad y cuenta deben obtenerse de un contexto de seguridad confiable (por ejemplo, token validado), nunca de una variable fija o un parámetro de usuario; también se requieren controles de acceso, gestión segura de secretos y configuración de red/observabilidad apropiados. No registres contraseñas ni datos sensibles.
 
-La API enmascara el número de cuenta en sus DTOs. El frontend obtiene los datos por `AccountsApi`; al desplegar fuera del proxy local debe configurar la URL base de API mediante el token Angular `API_BASE_URL` y resolver CORS/origen según la infraestructura. La integración con core bancario y el mecanismo productivo de identidad quedan fuera del alcance actual.
+## Verificación
 
-## Configuración y seguridad
-
-- Backend: `ACCOUNTS_DB_CONNECTION`, `ASPNETCORE_ENVIRONMENT`, `ASPNETCORE_URLS`.
-- Frontend: proxy de desarrollo en `frontend/proxy.conf.json`; base predeterminada `/api/v1` (`API_BASE_URL`).
-- Usar secretos del gestor de secretos/entorno local y nunca incluir contraseñas reales, datos de clientes ni tokens en código o commits.
+Los comandos indicados documentan cómo ejecutar build y pruebas; no se afirma que hayan sido ejecutados en este entorno.

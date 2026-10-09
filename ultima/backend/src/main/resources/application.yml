@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: consulta-pagos
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pagos}
+    username: ${DB_USER:pagos}
+    password: ${DB_PASSWORD:}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+app:
+  demo:
+    # H1: cuenta ficticia fija para la demo; en producción proviene del token.
+    cuenta-id: ${DEMO_CUENTA_ID:CTA-0001}
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
