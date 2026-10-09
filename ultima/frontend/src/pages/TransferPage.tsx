@@ -1,76 +1,90 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { MovementList } from '../components/organisms/MovementList';
-import { TransferForm } from '../components/organisms/TransferForm';
-import { TransferReceipt } from '../components/organisms/TransferReceipt';
-import { TransactionLayout } from '../components/templates/TransactionLayout';
-import type { Account, Movement, TransferReceipt as Receipt, TransferRequest } from '../domain/types';
-import { createTransfer, listAccounts, listMovements } from '../services/accountsApi';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError } from "../api/accountsClient";
+import type { AccountsApi } from "../api/accountsClient";
+import { Alert } from "../components/atoms/Alert";
+import { AccountList } from "../components/organisms/AccountList";
+import { TransactionList } from "../components/organisms/TransactionList";
+import { TransferForm } from "../components/organisms/TransferForm";
+import { DashboardTemplate } from "../components/templates/DashboardTemplate";
+import type { Account, Transaction, TransferRequest } from "../domain/types";
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
+interface TransferPageProps {
+  api: AccountsApi;
 }
 
-export function TransferPage() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string>();
-  const [submitting, setSubmitting] = useState(false);
-  const [serverError, setServerError] = useState<string>();
-  const [receipt, setReceipt] = useState<Receipt>();
-  const [movements, setMovements] = useState<Movement[]>([]);
-  // Una clave por intento; se renueva solo tras una transferencia exitosa.
-  const idempotencyKey = useRef(crypto.randomUUID());
+interface Feedback {
+  kind: "success" | "error";
+  text: string;
+}
 
-  const refreshAccounts = useCallback(async () => {
-    try {
-      setAccounts(await listAccounts());
-      setLoadError(undefined);
-    } catch (error) {
-      setLoadError(errorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export function TransferPage({ api }: TransferPageProps) {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  // La misma clave se reutiliza ante reintentos hasta que la transferencia se confirme.
+  const idempotencyKey = useRef<string>(crypto.randomUUID());
+
+  const loadAccounts = useCallback(async () => {
+    const list = await api.listAccounts();
+    setAccounts(list);
+    setSelectedId((current) => current ?? list[0]?.id ?? null);
+  }, [api]);
 
   useEffect(() => {
-    void refreshAccounts();
-  }, [refreshAccounts]);
+    loadAccounts()
+      .catch(() => setFeedback({ kind: "error", text: "No se pudieron cargar las cuentas." }))
+      .finally(() => setLoading(false));
+  }, [loadAccounts]);
+
+  useEffect(() => {
+    if (selectedId === null) return;
+    let cancelled = false;
+    api
+      .listTransactions(selectedId)
+      .then((list) => {
+        if (!cancelled) setTransactions(list);
+      })
+      .catch(() => {
+        if (!cancelled) setFeedback({ kind: "error", text: "No se pudieron cargar los movimientos." });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, selectedId, accounts]);
 
   const handleSubmit = async (request: TransferRequest) => {
     setSubmitting(true);
-    setServerError(undefined);
+    setFeedback(null);
     try {
-      const created = await createTransfer(request, idempotencyKey.current);
+      await api.createTransfer(request, idempotencyKey.current);
       idempotencyKey.current = crypto.randomUUID();
-      setReceipt(created);
-      setMovements(await listMovements(request.sourceAccountId));
-      await refreshAccounts();
+      setFeedback({ kind: "success", text: "Transferencia realizada con éxito." });
+      await loadAccounts();
     } catch (error) {
-      setServerError(errorMessage(error));
+      const text = error instanceof ApiError ? error.message : "No se pudo realizar la transferencia.";
+      setFeedback({ kind: "error", text });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const sourceCurrency = accounts.find((a) => a.id === receipt?.sourceAccountId)?.currency;
+  const selected = accounts.find((a) => a.id === selectedId);
 
   return (
-    <TransactionLayout
-      title="Transferir entre mis cuentas"
-      aside={receipt ? <MovementList movements={movements} currency={sourceCurrency} /> : undefined}
-    >
-      {loading ? <p className="muted">Cargando cuentas…</p> : null}
-      {loadError ? (
-        <p className="banner banner--error" role="alert">
-          {loadError}
-        </p>
-      ) : null}
-      {!loading && !receipt ? (
-        <TransferForm accounts={accounts} submitting={submitting} serverError={serverError} onSubmit={handleSubmit} />
-      ) : null}
-      {receipt ? (
-        <TransferReceipt receipt={receipt} accounts={accounts} onNewTransfer={() => setReceipt(undefined)} />
-      ) : null}
-    </TransactionLayout>
+    <DashboardTemplate
+      status={feedback ? <Alert kind={feedback.kind}>{feedback.text}</Alert> : null}
+      accounts={
+        loading ? (
+          <p className="muted">Cargando cuentas…</p>
+        ) : (
+          <AccountList accounts={accounts} selectedId={selectedId} onSelect={setSelectedId} />
+        )
+      }
+      form={<TransferForm accounts={accounts} submitting={submitting} onSubmit={handleSubmit} />}
+      movements={<TransactionList transactions={transactions} currency={selected?.currency ?? "USD"} />}
+    />
   );
 }

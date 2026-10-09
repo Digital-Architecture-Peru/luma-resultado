@@ -1,77 +1,62 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
-import type { Account } from '../../domain/types';
-import { TransferForm } from './TransferForm';
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import type { Account } from "../../domain/types";
+import { TransferForm } from "./TransferForm";
 
 const accounts: Account[] = [
-  { id: 1, number: '0001', holderAlias: 'Ahorros', currency: 'USD', balance: '100.00' },
-  { id: 2, number: '0002', holderAlias: 'Corriente', currency: 'USD', balance: '10.50' },
+  { id: 1, number: "001", holder: "Demo", currency: "USD", balance: "100.00" },
+  { id: 2, number: "002", holder: "Demo", currency: "USD", balance: "50.00" },
 ];
 
-function setup(overrides: { submitting?: boolean; serverError?: string } = {}) {
-  const onSubmit = vi.fn();
-  render(<TransferForm accounts={accounts} submitting={false} onSubmit={onSubmit} {...overrides} />);
-  return { onSubmit, user: userEvent.setup() };
+function fill(source: string, target: string, amount: string) {
+  fireEvent.change(screen.getByLabelText("Cuenta origen"), { target: { value: source } });
+  fireEvent.change(screen.getByLabelText("Cuenta destino"), { target: { value: target } });
+  fireEvent.change(screen.getByLabelText("Monto"), { target: { value: amount } });
 }
 
-describe('TransferForm', () => {
-  it('given an empty form, when submitting, then shows errors and does not call onSubmit', async () => {
-    const { onSubmit, user } = setup();
+describe("TransferForm", () => {
+  it("given empty form when submitting then shows errors and does not call onSubmit", () => {
+    const onSubmit = vi.fn();
+    render(<TransferForm accounts={accounts} submitting={false} onSubmit={onSubmit} />);
 
-    await user.click(screen.getByRole('button', { name: 'Transferir' }));
+    fireEvent.click(screen.getByRole("button", { name: "Transferir" }));
 
-    expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByRole("alert").length).toBeGreaterThanOrEqual(3);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('given valid data, when submitting, then calls onSubmit with the typed request', async () => {
-    const { onSubmit, user } = setup();
+  it("given same source and target when submitting then shows distinct-account error", () => {
+    const onSubmit = vi.fn();
+    render(<TransferForm accounts={accounts} submitting={false} onSubmit={onSubmit} />);
 
-    await user.selectOptions(screen.getByLabelText('Cuenta de origen'), '1');
-    await user.selectOptions(screen.getByLabelText('Cuenta de destino'), '2');
-    await user.type(screen.getByLabelText('Monto'), '25.50');
-    await user.type(screen.getByLabelText('Descripción (opcional)'), ' Ahorro ');
-    await user.click(screen.getByRole('button', { name: 'Transferir' }));
+    fill("1", "1", "5.00");
+    fireEvent.click(screen.getByRole("button", { name: "Transferir" }));
 
+    expect(screen.getByText("La cuenta destino debe ser distinta del origen.")).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("given valid values when submitting then calls onSubmit with the request", async () => {
+    const onSubmit = vi.fn();
+    render(<TransferForm accounts={accounts} submitting={false} onSubmit={onSubmit} />);
+
+    fill("1", "2", "10.50");
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: " alquiler " } });
+    fireEvent.click(screen.getByRole("button", { name: "Transferir" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith({
       sourceAccountId: 1,
       targetAccountId: 2,
-      amount: '25.50',
-      currency: 'USD',
-      description: 'Ahorro',
+      amount: "10.50",
+      description: "alquiler",
     });
   });
 
-  it('given amount above balance, when submitting, then shows the balance error', async () => {
-    const { onSubmit, user } = setup();
+  it("given submitting state then the button is disabled", () => {
+    render(<TransferForm accounts={accounts} submitting={true} onSubmit={vi.fn()} />);
 
-    await user.selectOptions(screen.getByLabelText('Cuenta de origen'), '2');
-    await user.selectOptions(screen.getByLabelText('Cuenta de destino'), '1');
-    await user.type(screen.getByLabelText('Monto'), '50');
-    await user.click(screen.getByRole('button', { name: 'Transferir' }));
-
-    expect(screen.getByText('El monto supera el saldo disponible.')).toBeInTheDocument();
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
-
-  it('given letters typed in amount, when typing, then only numeric characters remain', async () => {
-    const { user } = setup();
-
-    await user.type(screen.getByLabelText('Monto'), 'a1b2.5c');
-
-    expect(screen.getByLabelText('Monto')).toHaveValue('12.5');
-  });
-
-  it('given submitting state, when rendered, then disables the button', () => {
-    setup({ submitting: true });
-
-    expect(screen.getByRole('button', { name: 'Transfiriendo…' })).toBeDisabled();
-  });
-
-  it('given a server error, when rendered, then shows it as an alert', () => {
-    setup({ serverError: 'El saldo de la cuenta origen es insuficiente.' });
-
-    expect(screen.getByRole('alert')).toHaveTextContent('insuficiente');
+    const button = screen.getByRole("button", { name: "Procesando…" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
   });
 });
