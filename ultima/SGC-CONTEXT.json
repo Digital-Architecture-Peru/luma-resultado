@@ -3,11 +3,11 @@
     "where": "Banca por Internet",
     "pattern": "Component-based (Atomic Design)",
     "tests": "Unitarias",
-    "type": "Transacción",
-    "domain": "Pagos",
+    "type": "Notificación",
+    "domain": "Tarjetas",
     "layer": "Full Stack",
-    "stack": "Angular + .NET",
-    "backendStack": ".NET",
+    "stack": "React + TypeScript + Java + Spring Boot",
+    "backendStack": "Java + Spring Boot",
     "persistence": "PostgreSQL"
   },
   "sgc": {

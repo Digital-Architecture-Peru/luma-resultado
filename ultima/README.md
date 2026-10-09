@@ -1,77 +1,67 @@
-# Pagos — ejemplo full stack
+# Notificaciones de Tarjetas — Banca por Internet (candidate)
 
-Aplicación demostrativa con Angular 17, .NET 8 Web API y PostgreSQL opcional. Los datos son ficticios; no procesa pagos reales. `X-Customer-Id` es una cabecera de ejemplo, no autenticación.
+Aplicación de demostración con **React 18 + TypeScript + Vite**, **Java 17 + Spring Boot 3.2 + Maven** y **PostgreSQL**. Los registros de migración son datos ficticios. No se conecta a sistemas bancarios o canales externos.
 
 ## Requisitos
 
-Node.js/npm (Angular CLI 17), .NET SDK 8 y, opcionalmente, Docker Compose. Chrome/Chromium headless se requiere para las pruebas Karma del frontend.
-
-## Ejecución
-
-### PostgreSQL (opcional)
-
-Desde la raíz del proyecto:
-
-```bash
-DB_PASSWORD=clave-local docker compose up -d
-```
-
-Compose inicia solamente PostgreSQL en el puerto 5432. Al inicializar un volumen vacío, la imagen ejecuta en orden `db/migrations/V001__init.sql` y `V002__seed.sql`. No repite los scripts con un volumen existente. Para borrar la base local y recrearla (se pierden los datos): `docker compose down -v` y vuelve a ejecutar `docker compose up -d` con `DB_PASSWORD` definido.
-
-### API
-
-```bash
-cd backend
-dotnet restore
-dotnet run --project src/Payments.Api --urls http://localhost:5080
-```
-
-Si no se define `PAYMENTS_DB_CONNECTION`, se usa almacenamiento en memoria y los registros se pierden al reiniciar. Para persistir en PostgreSQL, configura esa variable con una cadena Npgsql que apunte a `localhost:5432`, base `payments`, usuario `payments_app` y la contraseña definida para Compose. No incluyas la contraseña en archivos versionados.
-
-Configuraciones adicionales: `Payments__MaxAmount` (predeterminado 10000) y `Cors__Origins` (predeterminado `http://localhost:4200`, admite orígenes separados por coma). Estado: <http://localhost:5080/health>.
-
-### Angular
-
-En otra terminal:
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-Abre <http://localhost:4200>. `src/environments/environment.ts` define la API local y el cliente ficticio `C-1001`.
+- Java 17 y Maven 3.8+ (o usar `./mvnw` si se incorpora un wrapper).
+- Node.js 18+ y npm.
+- PostgreSQL 14+ para ejecutar el backend. Las pruebas unitarias/API no requieren PostgreSQL.
 
 ## Compilar y probar
 
+Desde la raíz del repositorio:
+
 ```bash
 cd backend
-dotnet build Payments.sln
-dotnet test Payments.sln
-```
-
-```bash
-cd frontend
+mvn test
+mvn package
+cd ../frontend
 npm install
-npm run build
 npm test
+npm run build
 ```
 
-Las pruebas .NET son unitarias y no requieren base de datos. `npm test` ejecuta Karma sin watch y requiere Chrome/Chromium headless.
+`mvn test` ejecuta JUnit 5/Mockito y pruebas MVC; `npm test` ejecuta Vitest en modo no interactivo. `npm run build` hace primero `tsc --noEmit` y luego el build de Vite. No se afirma que estos comandos hayan sido ejecutados en este entorno.
 
-## API e integración
+## Ejecución local e integración
 
-- `POST /api/v1/payments`: cabeceras `X-Customer-Id` e `Idempotency-Key`; cuerpo con `sourceAccountId`, `beneficiaryAccount`, `amount`, `currency` y `concept`. Respuestas de creación `201`, validación `400` y clave duplicada `409`.
-- `GET /api/v1/payments/{id}`: consulta asociada al cliente de la cabecera `X-Customer-Id`.
-- `GET /api/v1/payments?accountId={id}`: lista pagos de la cuenta de origen; máximo 100.
-- `GET /health`: estado básico.
+1. Cree una base PostgreSQL `notifications` y configure las variables de conexión. Ejemplo para una instancia local (ajuste usuario/contraseña a su instalación):
 
-El frontend concentra las solicitudes en `PaymentApiService`. CORS permite por defecto el origen local Angular. `IPaymentProcessor` es el punto de integración; hoy se inyecta `FakePaymentProcessor`, sin llamadas externas, que rechaza como caso demostrativo cuentas destino terminadas en `0000`. Para una integración real hay que sustituirlo y definir autenticación, errores y estados del proveedor.
+   ```sh
+   createdb notifications
+   export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/notifications
+   export SPRING_DATASOURCE_USERNAME=notifications
+   export SPRING_DATASOURCE_PASSWORD=''
+   ```
 
-## Persistencia y límites
+   `application.yml` usa esos valores por defecto (URL local, usuario `notifications`, contraseña vacía); para un entorno real establezca credenciales apropiadas fuera del repositorio. Puede cambiar el puerto con `SERVER_PORT` (por defecto `8080`) y el nivel de log con `LOG_LEVEL` (por defecto `INFO`).
 
-`IPaymentRepository` separa persistencia del dominio. Con `PAYMENTS_DB_CONNECTION` se usa PostgreSQL mediante Npgsql/Dapper; sin esa variable se usa memoria. Las consultas son parametrizadas. El índice único sobre `idempotency_key` aplica globalmente, no por cliente.
+2. Inicie el backend, que ejecuta Flyway al arrancar:
 
-Las migraciones SQL están en `db/migrations`; la API no las ejecuta. Compose las carga solamente al inicializar una base vacía. `V002__seed.sql` contiene pagos ficticios para `C-1001`. Para bases existentes, aplica las migraciones con un procedimiento operacional controlado.
+   ```sh
+   cd backend
+   mvn spring-boot:run
+   ```
 
-No apto para producción tal cual: el cliente indicado en `X-Customer-Id` no se autentica ni autoriza; no existe procesador real ni gestión de saldos. Protege la conexión y añade autenticación, autorización y controles operativos antes de exponer el servicio.
+3. En otra terminal, arranque la interfaz:
+
+   ```sh
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+   Vite reenvía `/api` a `http://localhost:8080`. Configure `VITE_PROXY_TARGET` si el backend usa otro destino. `VITE_API_BASE_URL` permite indicar una URL base directamente en el cliente; si queda vacía, las peticiones usan rutas relativas y el proxy en desarrollo. `VITE_CUSTOMER_ID` establece el identificador de demostración enviado en `X-Customer-Id` (por defecto `CLI-0001`). Las variables `VITE_*` se incorporan al cliente y no deben contener secretos. Más detalle: [`docs/environment.md`](docs/environment.md).
+
+La API está bajo `/api/v1`: `GET /cards`, `GET /cards/{cardId}/notifications` (filtros `status`, `page`, `size`), `PATCH /notifications/{id}/read` y `GET`/`PUT /cards/{cardId}/notification-preferences`. Todas requieren `X-Customer-Id`. La identidad es únicamente una convención ficticia de demo, **no es autenticación ni autorización suficiente para producción**. El servidor comprueba la propiedad de la tarjeta para las operaciones correspondientes. Los errores se representan como `ProblemDetail`.
+
+## Persistencia e integración de notificaciones
+
+La persistencia usa PostgreSQL mediante `NamedParameterJdbcTemplate`. Flyway aplica `backend/src/main/resources/db/migration/V1__schema.sql` (tablas `card`, `notification`, `notification_preference`, restricciones e índices) y `V2__seed_ficticio.sql` (tarjetas, notificaciones y preferencias de demostración; clientes `CLI-0001` y `CLI-0002`). Las migraciones se aplican automáticamente al iniciar el backend y Flyway registra su estado en `flyway_schema_history`. No se guarda el PAN completo, únicamente los últimos cuatro dígitos. Para reiniciar datos de demo, restaure manualmente la base local y vuelva a iniciarla; no edite migraciones ya aplicadas.
+
+La UI consume la API HTTP a través de `frontend/src/services/notificationsApi.ts`. El puerto de dominio `NotificationPublisher` tiene actualmente solo el adaptador `LoggingNotificationPublisher`: al marcar una notificación como leída se registra un evento de log, no se envía push, correo ni SMS. Las preferencias se guardan, pero no activan entregas. La integración con proveedor externo, credenciales, reintentos y garantías de entrega están fuera del alcance y deben definirse antes de producción.
+
+## Alcance y límites
+
+Datos y canales son ficticios; la cabecera de cliente es deliberadamente una hipótesis para la demostración. No se ha verificado aquí compilación, pruebas ni ejecución de migraciones contra una instancia PostgreSQL real. No usar con información personal o transacciones reales.
