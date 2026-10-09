@@ -1,27 +1,26 @@
 {
-  "name": "card-notifications-frontend",
-  "version": "0.1.0",
+  "name": "notificaciones-tarjetas-frontend",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "ng serve --proxy-config proxy.conf.json",
-    "build": "tsc --noEmit -p tsconfig.app.json && ng build",
-    "test": "ng test --watch=false"
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@angular/common": "^20.3.0",
-    "@angular/compiler": "^20.3.0",
-    "@angular/core": "^20.3.0",
-    "@angular/forms": "^20.3.0",
-    "@angular/platform-browser": "^20.3.0",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "@angular/common": "^19.2.0",
+    "@angular/compiler": "^19.2.0",
+    "@angular/core": "^19.2.0",
+    "@angular/platform-browser": "^19.2.0",
+    "rxjs": "~7.8.1",
+    "tslib": "^2.8.0",
+    "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular/build": "^20.3.0",
-    "@angular/cli": "^20.3.0",
-    "@angular/compiler-cli": "^20.3.0",
-    "jsdom": "^27.0.0",
-    "typescript": "~5.9.2",
-    "vitest": "^3.2.4"
+    "@angular/build": "^19.2.0",
+    "@angular/cli": "^19.2.0",
+    "@angular/compiler-cli": "^19.2.0",
+    "typescript": "~5.7.2",
+    "vitest": "^2.1.8"
   }
 }

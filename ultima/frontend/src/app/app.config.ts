@@ -1,6 +1,7 @@
-import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 
+// Para cambiar la URL base del API, proveer API_BASE_URL aquí (por defecto '/api/v1').
 export const appConfig: ApplicationConfig = {
-  providers: [provideZonelessChangeDetection(), provideHttpClient()],
+  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideHttpClient()],
 };
