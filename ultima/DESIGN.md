@@ -2,11 +2,11 @@
 
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
-- ¿Qué tipo de capacidad? Transacción
-- ¿Sobre qué dominio? Pagos
+- ¿Qué tipo de capacidad? Notificación
+- ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + .NET
+- ¿Qué stack? React + TypeScript + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + .NET (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + Java + Spring Boot (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,67 +29,67 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento: Transacción de Pagos (Angular + .NET + PostgreSQL)
+# DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
+
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Backend .NET 8 Web API en capas `Domain / Application / Infrastructure / Api` | Aísla las reglas de pago y permite pruebas unitarias sin base de datos. |
-| D2 | Persistencia detrás de `IPaymentRepository`: Npgsql + Dapper en Infrastructure y `InMemoryPaymentRepository` para pruebas | El SQL queda explícito y todo el acceso es parametrizado (`@param`), sin concatenación. |
-| D3 | Migraciones SQL versionadas (`db/migrations/V001__init.sql`, `V002__seed.sql`) | Son legibles y se revisan de forma estática sin depender de herramientas de EF. |
-| D4 | Montos en `decimal` (.NET) y `NUMERIC(18,2)` (SQL); moneda ISO 4217 | Evita errores de redondeo con punto flotante. |
-| D5 | Clave de idempotencia (`Idempotency-Key`) con índice único | Impide pagos duplicados por reintentos o doble clic. |
-| D6 | Estados del pago: `PENDING → COMPLETED \| REJECTED`, con transiciones validadas en el dominio | El ciclo de vida es explícito y verificable. |
-| D7 | Integración sin definir: `IPaymentProcessor` con `FakePaymentProcessor` | No hay llamadas a sistemas reales. El contrato se sustituye después. |
-| D8 | Angular con componentes standalone y Reactive Forms, organizados por Atomic Design | Componentes reutilizables y validaciones declarativas. |
-| D9 | Configuración por variables de entorno (`PAYMENTS_DB_CONNECTION`, `apiBaseUrl`) | Ningún secreto queda en el repositorio. |
+| D1 | Monorepo con `frontend/` (Vite + React + TS) y `backend/` (Spring Boot, Maven) | Separa toolchains (npm / Maven) y permite verificar cada capa por separado |
+| D2 | Backend por capas con puertos: `api → application → domain ← infrastructure` | Mantiene la persistencia y la integración (sin definir) detrás de interfaces, según el diseño base |
+| D3 | Integración externa como puerto `NotificationPublisher` con adaptador `NoOp`/en memoria | No hay contrato definido; se evita cualquier llamada a sistemas reales |
+| D4 | Migraciones versionadas con Flyway (`V1__schema.sql`, `V2__seed_ficticio.sql`) | Esquema reproducible y versionado; los datos de ejemplo quedan separados del esquema |
+| D5 | Acceso parametrizado con Spring Data JPA o `NamedParameterJdbcTemplate` | Evita la concatenación de SQL |
+| D6 | Frontend con Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón solicitado; permite probar unitariamente cada nivel |
+| D7 | Configuración por entorno (`VITE_API_BASE_URL`, `SPRING_DATASOURCE_*`) | Sin secretos en el repositorio |
+| D8 | Pruebas unitarias: JUnit 5 + Mockito (servicios y controladores con `@WebMvcTest`) y Vitest + Testing Library (componentes) | Cubren el alcance "Unitarias" sin depender de una BD real |
 
-**Contrato API (v1):**
-- `POST /api/v1/payments` responde 201, 400 (validación) o 409 (idempotencia).
-- `GET /api/v1/payments/{id}`
-- `GET /api/v1/payments?accountId=`
+## Contrato API (hipótesis, v1)
+- `GET /api/v1/cards/{cardId}/notifications?status=UNREAD&page=0&size=20`
+- `PATCH /api/v1/notifications/{id}/read`
+- `GET|PUT /api/v1/cards/{cardId}/notification-preferences`
+- Errores en formato `ProblemDetail` (RFC 7807). Validación con `@Valid`.
+
+## Modelo de datos (PostgreSQL)
+- `card(id uuid PK, customer_id, brand, alias, pan_last4 char(4))`: no se almacena el PAN completo.
+- `notification(id uuid PK, card_id FK, type, title, message, amount numeric(15,2), currency char(3), status, created_at timestamptz, read_at)`
+- `notification_preference(card_id FK, type, channel, enabled, PK(card_id,type,channel))`
+- Índice: `notification(card_id, status, created_at DESC)`.
+- Restricciones `CHECK` en `type` (COMPRA, PAGO, VENCIMIENTO, BLOQUEO) y en `status` (UNREAD, READ).
 
 ## Estructura de módulos
 ```
-backend/
-  Payments.sln
-  src/Payments.Domain/        Payment, PaymentStatus, Money, reglas
-  src/Payments.Application/   CreatePaymentHandler, DTOs, validación, interfaces
-  src/Payments.Infrastructure/ PgPaymentRepository (Dapper), FakePaymentProcessor
-  src/Payments.Api/           Program.cs, PaymentsController, ProblemDetails
-  tests/Payments.UnitTests/   xUnit: dominio, handler, idempotencia
-db/migrations/                V001__init.sql, V002__seed.sql (datos ficticios)
-frontend/src/app/
-  atoms/      button, input, amount-display
-  molecules/  form-field, account-selector
-  organisms/  payment-form, payment-confirm, payment-receipt
-  templates/  payment-layout
-  pages/      payment-page (flujo captura → confirmación → comprobante)
-  core/       payment-api.service, models
-  *.spec.ts   pruebas unitarias (Jasmine/Karma)
+backend/  pom.xml
+  src/main/java/.../notifications/{api,application,domain,infrastructure/{persistence,publisher}}
+  src/main/resources/{application.yml, db/migration/V1__schema.sql, V2__seed_ficticio.sql}
+  src/test/java/.../ (service, controller)
+frontend/ package.json, vite.config.ts, tsconfig.json
+  src/components/{atoms,molecules,organisms,templates}/  src/pages/
+  src/services/notificationsApi.ts  src/hooks/useNotifications.ts  src/types/
+  src/**/*.test.tsx
 README.md
 ```
 
-## Riesgos
-- **R1:** el SQL de PostgreSQL solo recibe revisión estática, así que la sintaxis específica del motor (por ejemplo `gen_random_uuid()`) no se ejecuta.
-- **R2:** si no hay .NET SDK, Node/npm o un navegador headless instalados, la compilación y las pruebas quedan sin verificar.
-- **R3:** las validaciones del front y del back pueden divergir. Mitigación: el back es la fuente de verdad y se responde con ProblemDetails.
-- **R4:** sin autenticación real, la API no debe exponerse fuera de un entorno local.
-- **R5:** la concurrencia sobre el saldo no está modelada, porque no hay débito real.
-
 ## Hipótesis
-- **H1:** la "Transacción" es un pago de servicio o a un tercero desde una cuenta propia del cliente.
-- **H2:** la autenticación y la autorización las resuelve un gateway o BFF externo. Aquí el cliente se simula con `X-Customer-Id` ficticio.
-- **H3:** las versiones objetivo son .NET 8 LTS y Angular 17+.
-- **H4:** el límite por operación es configurable (valor de ejemplo: 10 000.00) y la moneda por defecto es ficticia (`PEN`).
-- **H5:** no hay SGC disponible (fallback), por lo que no se aplican estándares corporativos específicos.
+- H1: Las notificaciones son eventos de tarjeta (compra, pago, vencimiento, bloqueo) que se consultan y se marcan como leídas. El cliente gestiona sus preferencias por tarjeta y canal.
+- H2: La autenticación queda fuera de alcance. En desarrollo, el cliente se identifica con la cabecera ficticia `X-Customer-Id`.
+- H3: El canal de entrega (push, email, SMS) no está definido. Solo se persiste la preferencia.
+- H4: Versiones de referencia: Java 17+, Spring Boot 3.x, Node 18+. No se verificaron contra estándares SGC (estado fallback).
+- H5: El esquema PostgreSQL solo recibe revisión estática. No se ejecuta en SQLite.
 
-## Aceptación complementaria (no reemplaza la base)
-- Las pruebas unitarias cubren cuatro casos: monto ≤ 0 rechazado, transición de estado inválida, idempotencia (409) y validadores del formulario Angular.
-- La migración V001 define:
-  - clave primaria;
-  - índice único sobre `idempotency_key`;
-  - índice en `(account_id, created_at)`;
-  - `CHECK (amount > 0)`.
-- El README documenta las variables de entorno, el orden de las migraciones y lo que queda sin verificar.
-- El resultado se entrega como candidate: no se afirma compilación ni preparación para producción.
+## Riesgos
+
+| Riesgo | Mitigación |
+|---|---|
+| Faltan npm o Maven localmente, por lo que no se compila ni se prueba | Se marca como no verificado en el handoff; no se afirma compilación |
+| Exposición de datos de tarjeta (PCI/PII) | Solo `pan_last4` y datos ficticios; nada sensible en los logs |
+| El contrato de integración es desconocido | Se aísla en un puerto; el adaptador real queda pendiente |
+| Sin SGC, se desconocen los lineamientos corporativos | Se registran como hipótesis para validarlas después |
+| Atomic Design desproporcionado para el alcance | Se limita a los componentes necesarios |
+| SQL con extensiones propias de PostgreSQL | Se usa SQL estándar, salvo `uuid` y `timestamptz` |
+
+## Trazabilidad con la aceptación
+- La sintaxis se verifica con el validador local por archivo (T03).
+- Las pruebas `*Test.java` y `*.test.tsx` deben estar presentes (T04).
+- El README documenta build, ejecución, variables, integración y persistencia (T05).
+- El handoff se entrega como candidate e incluye lo no verificado (T06).
