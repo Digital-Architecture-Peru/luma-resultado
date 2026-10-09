@@ -1,32 +1,27 @@
 {
-  "name": "pagos-consulta-frontend",
-  "version": "0.1.0",
+  "name": "cards-frontend",
   "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "start": "ng serve",
-    "build": "ng build",
-    "test": "jest --ci"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@angular/animations": "17.3.12",
-    "@angular/common": "17.3.12",
-    "@angular/compiler": "17.3.12",
-    "@angular/core": "17.3.12",
-    "@angular/forms": "17.3.12",
-    "@angular/platform-browser": "17.3.12",
-    "@angular/platform-browser-dynamic": "17.3.12",
-    "rxjs": "7.8.1",
-    "tslib": "2.6.3",
-    "zone.js": "0.14.10"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "17.3.11",
-    "@angular/cli": "17.3.11",
-    "@angular/compiler-cli": "17.3.12",
-    "@types/jest": "29.5.12",
-    "jest": "29.7.0",
-    "jest-environment-jsdom": "29.7.0",
-    "jest-preset-angular": "14.0.4",
-    "typescript": "5.4.5"
+    "@testing-library/dom": "10.1.0",
+    "@testing-library/react": "16.0.0",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "4.3.1",
+    "jsdom": "24.1.0",
+    "typescript": "5.4.5",
+    "vite": "5.3.1",
+    "vitest": "1.6.0"
   }
 }
