@@ -1,9 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary';
-}
-
-export function Button({ variant = 'primary', className = '', type = 'button', ...rest }: ButtonProps) {
-  return <button type={type} className={`btn btn--${variant} ${className}`.trim()} {...rest} />;
+export function Button({ className = '', ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button className={`btn ${className}`.trim()} {...rest} />;
 }
