@@ -1,84 +1,92 @@
-# Transacción de tarjetas
+# Pago de tarjetas · Banca por Internet
 
-Aplicación de demostración para registrar pagos/cargos sobre tarjetas. Está formada por una interfaz Angular standalone y una API Java 17 con Quarkus 3.20.2. PostgreSQL conserva tarjetas ficticias y transacciones; no se almacena el PAN completo. **No es un sistema listo para producción**: autenticación y procesador de tarjetas están simulados.
+Aplicación de ejemplo para consultar tarjetas y movimientos, y registrar pagos. Stack: Angular 17 standalone, .NET 8 Web API y PostgreSQL. Los datos de seed y el procesador de pagos son ficticios; no usar en producción.
+
+## Estructura
+
+- `frontend/`: interfaz Angular y pruebas Jest.
+- `backend/`: solución .NET (`Cards.Api`, `Cards.Application`, `Cards.Domain`, `Cards.Infrastructure`) y pruebas unitarias xUnit.
+- `db/migrations/`: SQL de esquema y datos demostrativos.
 
 ## Requisitos
 
-- JDK 17 y Maven 3.9 o compatible.
-- Node.js compatible con Angular 21 (Node.js 20.19+, 22.12+ o 24+) y npm.
-- PostgreSQL accesible para ejecutar la aplicación. Las pruebas backend actuales no requieren base de datos.
+- Node.js compatible con Angular CLI 17 y npm.
+- .NET SDK 8.
+- PostgreSQL accesible para la API.
 
-## Compilar y probar
+## Base de datos
 
-Desde la raíz del repositorio:
-
-```sh
-cd backend
-mvn test
-mvn package
-cd ../frontend
-npm install
-npm test
-npm run build
-```
-
-`mvn test` ejecuta pruebas JUnit del dominio y servicio con un repositorio falso en memoria. `npm test` ejecuta las pruebas Angular/Vitest una vez, sin modo watch ni navegador. `npm run build` genera el build de producción. El build de Maven también ejecuta las pruebas configuradas por Surefire.
-
-## Configurar y ejecutar en desarrollo
-
-### 1. PostgreSQL y backend
-
-Cree una base de datos PostgreSQL llamada `tarjetas` y un usuario con permisos de conexión, creación/uso de tablas e índices. Configure las variables de entorno en la terminal donde se iniciará Quarkus; no hay archivo `.env.example` en este repositorio:
-
-| Variable | Valor por defecto / uso |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/tarjetas` |
-| `DB_USER` | `tarjetas` |
-| `DB_PASSWORD` | Contraseña del usuario PostgreSQL; configure la propiedad correspondiente de Quarkus en el entorno. No se documenta ni incorpora una contraseña en el repositorio. |
-| `PORT` | `8080` |
-| `DB_POOL_MAX` | `10` conexiones máximas del pool |
-| `CORS_ORIGINS` | `http://localhost:4200` |
-| `TARJETAS_STUB_LIMITE` | `5000.00` |
-| `LOG_LEVEL` | `INFO` |
-
-La configuración de datasource está en `backend/src/main/resources/application.properties`. Antes de arrancar, asegúrese de que `quarkus.datasource.password` esté enlazada a la contraseña elegida (por ejemplo, mediante la configuración externa de Quarkus `QUARKUS_DATASOURCE_PASSWORD`); no la escriba en el control de versiones.
+Crear una base vacía y aplicar los scripts en orden desde la raíz del repositorio. Configure `DATABASE_URL` con una cadena reconocida por `psql`:
 
 ```sh
-cd backend
-mvn quarkus:dev
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V001__init.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V002__seed.sql
 ```
 
-Flyway aplica al inicio las migraciones `V1__esquema.sql` y `V2__datos_ficticios.sql`. La semilla incluye tarjetas ficticias para `cli-001` y `cli-002` y dos transacciones iniciales para la primera tarjeta de `cli-001`. Para reiniciar los datos de demostración, use una base de datos descartable nueva; no vuelva a ejecutar manualmente las migraciones ya registradas.
+Ejemplo local (no usar credenciales reales):
 
-### 2. Angular
+```sh
+export DATABASE_URL='postgresql://localhost:5432/cards_dev'
+```
+
+Los scripts no son un migrador ni están diseñados para repetirse sobre una base ya creada: V001 crea tablas e índices; V002 agrega registros ficticios. Para reiniciar localmente, use una base vacía. El esquema persiste tarjetas y transacciones; `NUMERIC(18,2)` almacena importes, la clave de idempotencia es única y existe un índice por tarjeta/fecha. El PAN completo no se almacena, solo el valor enmascarado del seed.
+
+## Backend (.NET)
+
+Desde la raíz, configure la cadena de conexión requerida (no guardar secretos en archivos versionados) y ejecute:
+
+```sh
+export ConnectionStrings__Cards='Host=localhost;Port=5432;Database=cards_dev;Username=TU_USUARIO;Password=TU_PASSWORD'
+export Cors__AllowedOrigin='http://localhost:4200' # opcional; este es el valor por defecto
+export ASPNETCORE_URLS='http://localhost:5080'
+cd backend
+dotnet restore Cards.sln
+dotnet build Cards.sln
+dotnet test Cards.sln
+dotnet run --project src/Cards.Api
+```
+
+`ConnectionStrings__Cards` debe apuntar a la base con los scripts aplicados; la API falla al iniciar si falta. La infraestructura usa Npgsql y Dapper con consultas parametrizadas. La aplicación no aplica migraciones automáticamente. `GET /health` sirve como comprobación básica de disponibilidad.
+
+### API
+
+Base URL local: `http://localhost:5080/api/v1`.
+
+- `GET /cards`: lista tarjetas.
+- `GET /cards/{id}/transactions?page=1`: lista movimientos de la tarjeta.
+- `POST /cards/{id}/payments`: registra un pago.
+
+Ejemplo de pago:
+
+```sh
+curl -i -X POST 'http://localhost:5080/api/v1/cards/11111111-1111-4111-8111-111111111111/payments' \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: demo-payment-001' \
+  -d '{"amount":25.00,"currency":"USD","sourceAccountAlias":"Cuenta demo"}'
+```
+
+La clave de idempotencia es obligatoria (máximo 64 caracteres). Una repetición con la misma clave y contenido devuelve la transacción existente; reutilizarla para otro pago produce conflicto. Las respuestas de error usan `application/problem+json`. El middleware de errores y las validaciones determinan los códigos HTTP según el error (por ejemplo, solicitud inválida, tarjeta inexistente o conflicto).
+
+## Frontend (Angular)
 
 En otra terminal:
 
 ```sh
 cd frontend
 npm install
+npm run build
+npm test -- --runInBand
 npm start
 ```
 
-Abra <http://localhost:4200>. El servidor de desarrollo configura `proxy.conf.json`: las llamadas `/api` se reenvían a `http://localhost:8080`. Para cambiar el origen permitido por CORS del backend, defina `CORS_ORIGINS` apropiadamente.
-
-## API y flujo
-
-El frontend usa `/api` como base y envía `X-Cliente-Id: cli-001` como identidad demo. El backend lo requiere para las rutas de tarjetas; en una integración real debe derivarse de una sesión/token validado y no aceptarse como identidad confiable desde el cliente.
-
-- `GET /api/tarjetas` — tarjetas del cliente, mostrando solo identificador, últimos cuatro, tipo y estado.
-- `POST /api/tarjetas/{id}/transacciones` — registra el cargo. Requiere `X-Cliente-Id`, `Idempotency-Key` (1–64 caracteres) y JSON `{ "monto": 12.50, "moneda": "USD" }`. Devuelve `201` al registrar y `200` al repetir la clave para la misma tarjeta; tarjeta ausente o ajena produce `404`, regla de negocio `422` (`application/problem+json`).
-- `GET /api/tarjetas/{id}/transacciones?limite=20` — historial más reciente. El límite se acota entre 1 y 100.
-
-Monedas habilitadas: `USD`, `EUR`, `PEN`. El monto debe ser positivo, con hasta dos decimales, y no superar `1,000,000.00`. Las tarjetas bloqueadas no pueden operar. El stub aprueba montos menores o iguales a `TARJETAS_STUB_LIMITE` y rechaza montos superiores. La clave idempotente se conserva en la base de datos y está restringida a nivel global por una restricción `UNIQUE`; úsese una clave nueva para cada intento lógico.
+Abre `http://localhost:4200`. La URL base de la API está declarada en `frontend/src/environments/environment.ts` como `http://localhost:5080/api/v1`; actualizarla para otros entornos y permitir ese origen en CORS del backend. El script de pruebas invoca Jest.
 
 ## Integración y persistencia
 
-La API separa entrada (`api`), casos de uso (`application`), dominio (`domain`) y adaptadores (`infrastructure`). `TransaccionRepository` abstrae la persistencia y `ProcesadorTarjetasGateway` el procesador. `JdbcTransaccionRepository` usa JDBC con `PreparedStatement`; Flyway versiona el esquema PostgreSQL, con montos `NUMERIC(15,2)`, UUID para transacciones, unicidad de clave idempotente e índice de historial por tarjeta/fecha.
+Angular usa `CardsApiService` para llamar a la API; el origen configurado debe coincidir con `Cors__AllowedOrigin`. La API organiza el caso de uso en Application y delega lectura/escritura al contrato de repositorio implementado en Infrastructure sobre PostgreSQL. El pago actualiza condicionalmente el saldo disponible y registra el movimiento dentro de una transacción; una restricción única en base de datos y la lógica del caso de uso respaldan la idempotencia, incluso ante solicitudes concurrentes.
 
-`StubProcesadorGateway` no se conecta a una red de pagos. Para integrar un proveedor real, implementar/sustituir el adaptador del puerto `ProcesadorTarjetasGateway` y configurar sus credenciales fuera del repositorio. Antes de producción deben añadirse autenticación/autorización real, protección de secretos, controles operativos y pruebas de integración contra PostgreSQL/proveedor. El `X-Cliente-Id` del frontend es fijo para la demo, no autenticación.
+`ICardProcessorGateway` aísla la autorización externa; hoy se inyecta `FakeCardProcessorGateway`, que aprueba importes de hasta 100 000. No hay conexión con un procesador real ni un contrato definido: sustituir esa implementación y acordar autenticación, manejo de credenciales, timeouts y reconciliación antes de una integración real. `sourceAccountAlias` es validado, pero en el estado actual no se persiste como dato de transacción.
 
-## Estructura
+## Pruebas y límites conocidos
 
-- `backend/`: API Quarkus, modelo y servicio, adaptadores JDBC/stub, migraciones Flyway y pruebas JUnit.
-- `frontend/`: aplicación Angular, servicio HTTP, interfaz por componentes y pruebas Vitest.
+`dotnet test backend/Cards.sln` ejecuta pruebas unitarias xUnit. `npm test -- --runInBand` ejecuta pruebas Jest del servicio HTTP y componentes Angular. No hay pruebas E2E ni pruebas de integración automatizadas contra PostgreSQL; la ejecución del backend y la verificación completa del flujo requieren una base PostgreSQL preparada manualmente. Autenticación y autorización no están implementadas, por lo que este ejemplo no debe exponerse como servicio bancario real.
