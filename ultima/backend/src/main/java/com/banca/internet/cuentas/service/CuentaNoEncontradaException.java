@@ -1,10 +1,9 @@
 package com.banca.internet.cuentas.service;
 
-import java.util.UUID;
-
+/** La cuenta no existe o no pertenece al cliente (se responde igual para evitar IDOR). */
 public class CuentaNoEncontradaException extends RuntimeException {
 
-    public CuentaNoEncontradaException(UUID id) {
-        super("No existe la cuenta " + id + " para el cliente indicado");
+    public CuentaNoEncontradaException(long cuentaId) {
+        super("No se encontró la cuenta " + cuentaId);
     }
 }

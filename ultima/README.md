@@ -1,65 +1,68 @@
 # Consulta de cuentas
 
-Aplicación de consulta **solo lectura**: frontend Angular 17 y API REST Spring Boot 3 / Java 17, con PostgreSQL y migraciones Flyway. El cliente muestra las cuentas del cliente configurado y permite consultar listado paginado y detalle. Los números de cuenta se enmascaran en las respuestas.
+Aplicación de consulta de cuentas con Angular 17, Java 17, Quarkus 3.15 y PostgreSQL. La interfaz consume una API REST; el backend persiste y consulta datos mediante Hibernate ORM Panache y Flyway.
+
+## Estructura
+
+- `frontend/`: aplicación Angular standalone, componentes organizados por Atomic Design, cliente HTTP y pruebas Jest.
+- `backend/`: API JAX-RS, servicios de dominio, puerto de repositorio y adaptador Panache.
+- `backend/src/main/resources/db/migration/`: migraciones SQL versionadas. `V1` crea el esquema; `V2` inserta datos ficticios de desarrollo.
+- `docs/variables-entorno.md`: variables de configuración del backend.
 
 ## Requisitos
 
-- Java 17 y Maven 3.6 o superior.
-- Node.js compatible con Angular 17 (Node 18.13+ o 20.9+) y npm.
-- PostgreSQL accesible para la API.
-
-## Persistencia y configuración
-
-La aplicación requiere PostgreSQL. Cree una base de datos (por ejemplo `banca`) y un usuario con permisos para conectar, crear/actualizar el esquema y leer/escribir las tablas. No almacene credenciales reales en el repositorio. La configuración se toma de variables de entorno del proceso que ejecuta Spring Boot:
-
-| Variable | Predeterminado | Uso |
-|---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/banca` | URL JDBC |
-| `DB_USER` | `banca_app` | Usuario de la base |
-| `DB_PASSWORD` | vacío | Contraseña |
-| `DB_POOL_SIZE` | `5` | Máximo de conexiones Hikari |
-| `SERVER_PORT` | `8080` | Puerto HTTP de la API |
-| `CORS_ORIGENES` | `http://localhost:4200` | Orígenes permitidos |
-| `LOG_LEVEL` | `INFO` | Nivel raíz de logging |
-
-`backend/env.example.txt` es una referencia de nombres y valores de desarrollo; no es un archivo de configuración cargado automáticamente por Maven/Spring. Exporte las variables en el entorno de ejecución. Configure una contraseña segura localmente y no la agregue al control de versiones.
-
-Flyway aplica automáticamente `backend/src/main/resources/db/migration/V1__crear_cuenta.sql` y `V2__datos_ficticios.sql` al iniciar el backend. V1 crea la tabla `cuenta`, sus restricciones e índice de cliente; V2 inserta registros ficticios para `CLI-0001` y `CLI-0002`. En una base de datos de desarrollo vacía, las migraciones inicializan el esquema y los datos. No edite migraciones ya aplicadas: agregue una nueva versión. JPA tiene `ddl-auto: none`, así que Flyway es responsable del esquema.
+- Java 17 y Maven.
+- Node.js y npm compatibles con Angular CLI 17.
+- PostgreSQL accesible para ejecutar el backend.
 
 ## Compilar y probar
 
-Ejecute desde la raíz, en terminales independientes según corresponda:
+Backend — desde la raíz del repositorio:
 
 ```sh
 cd backend
-mvn test
 mvn package
 ```
 
-Las pruebas del backend usan JUnit/Mockito y Spring Boot Test; `mvn package` también las ejecuta. Las pruebas unitarias/web no sustituyen una prueba de integración contra PostgreSQL.
+`mvn package` compila y ejecuta las pruebas JUnit 5/Mockito. Las pruebas actuales de servicio y DTO no requieren una base de datos externa.
+
+Frontend:
 
 ```sh
 cd frontend
 npm install
-npm test
 npm run build
+npm test
 ```
 
-Jest ejecuta las pruebas del frontend en modo CI; el build incluye comprobación TypeScript y compilación Angular. Para instalaciones repetibles, use `npm ci` cuando exista un `package-lock.json` compatible; actualmente no hay lockfile en el repositorio.
+`npm test` ejecuta Jest en modo CI, sin modo interactivo. `npm run build` genera la compilación de Angular.
+
+## PostgreSQL, migraciones y persistencia
+
+Crea previamente una base de datos PostgreSQL y configura sus datos de conexión en el entorno del proceso backend. La aplicación usa estas variables (no se incluyen credenciales en el repositorio):
+
+```text
+QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/banca
+QUARKUS_DATASOURCE_USERNAME=<usuario configurado en PostgreSQL>
+QUARKUS_DATASOURCE_PASSWORD=<contraseña configurada en PostgreSQL>
+```
+
+Los valores entre `<...>` son marcadores: sustitúyelos en tu entorno; no los escribas en archivos versionados. Opcionalmente, configura `PORT` (por defecto `8080`), `CORS_ORIGINS` (por defecto `http://localhost:4200`) y `LOG_LEVEL` (por defecto `INFO`). Consulta `docs/variables-entorno.md`.
+
+Al iniciar, Flyway ejecuta las migraciones de `db/migration` (`quarkus.flyway.migrate-at-start=true`). Hibernate no genera ni altera el esquema (`quarkus.hibernate-orm.database.generation=none`). La tabla `cuenta` almacena identificador, cliente, número, tipo, moneda, saldo, estado y fecha de apertura; `V2` añade cuatro registros ficticios para los clientes de demostración `1` y `2`. No son datos reales. Las consultas filtran por cliente; el número de cuenta se enmascara en las respuestas.
 
 ## Ejecutar localmente
 
-1. Asegúrese de que PostgreSQL está iniciado y que la base `banca` existe. Configure `DB_USER` y `DB_PASSWORD` para las credenciales locales.
-2. Inicie la API; al arranque Flyway ejecutará las migraciones:
+1. Asegúrate de que PostgreSQL está disponible y configura las variables anteriores en la sesión de terminal.
+2. Inicia el backend:
 
    ```sh
    cd backend
-   mvn spring-boot:run
+   mvn quarkus:dev
    ```
 
-   API: `http://localhost:8080`; health: `http://localhost:8080/actuator/health`.
-
-3. En otra terminal inicie Angular:
+   La API queda en `http://localhost:8080`; el endpoint de salud de Quarkus está en `/q/health`.
+3. En otra terminal, inicia Angular:
 
    ```sh
    cd frontend
@@ -67,17 +70,25 @@ Jest ejecuta las pruebas del frontend en modo CI; el build incluye comprobación
    npm start
    ```
 
-   Abra `http://localhost:4200`. Angular llama a `http://localhost:8080/api/v1` y envía `X-Cliente-Id: CLI-0001`, según `frontend/src/environments/environment.ts`. El origen local está permitido por defecto en CORS.
+   Abre `http://localhost:4200`. El servidor de desarrollo reenvía `/api` a `http://localhost:8080` según `frontend/proxy.conf.json`.
 
-## Contrato e integración
+## API e integración
 
-- `GET /api/v1/cuentas?pagina=0&tamanio=20` lista las cuentas del cliente indicado por la cabecera requerida `X-Cliente-Id`. La página empieza en cero; `tamanio` admite de 1 a 100 y por defecto es 20. El orden es fecha de apertura descendente.
-- `GET /api/v1/cuentas/{id}` devuelve el detalle por UUID, únicamente si pertenece al cliente indicado.
-- La API devuelve DTOs, no entidades JPA; el número se presenta enmascarado (`****` y los últimos cuatro dígitos). Los errores se exponen mediante `ProblemDetail` (RFC 7807).
-- El frontend configura el origen API y el identificador ficticio en `frontend/src/environments/environment.ts`. Para otros entornos, adapte esa configuración del frontend y `CORS_ORIGENES` del backend de forma coordinada.
+Endpoints de solo lectura:
 
-**Límite importante de seguridad:** `X-Cliente-Id` es un stub de desarrollo, no autenticación. Un consumidor puede modificarlo; el filtrado por cliente en consultas no impide suplantación. No exponga esta aplicación con datos reales ni use estos datos de ejemplo como base de una integración productiva. Antes de producción, integre autenticación/autorización confiable y derive el cliente de la identidad validada, además de configurar TLS, secretos y políticas de despliegue. Movimientos y transferencias no forman parte del alcance.
+- `GET /api/v1/cuentas` — lista las cuentas del cliente.
+- `GET /api/v1/cuentas/{id}` — busca una cuenta del cliente indicado.
 
-## Estado de verificación
+Ambos requieren `X-Cliente-Id`, un entero positivo. Para probar la lista de datos de demostración:
 
-Este documento describe los comandos definidos por los manifiestos presentes. En el entorno de generación no se ejecutaron Maven, npm, Angular ni PostgreSQL; por tanto compilación, pruebas, conexión y migraciones quedan **sin verificar**.
+```sh
+curl -H 'X-Cliente-Id: 1' http://localhost:8080/api/v1/cuentas
+```
+
+Una cabecera ausente o inválida produce `400`; una cuenta inexistente o perteneciente a otro cliente produce `404`. Los errores se representan como `application/problem+json`. CORS permite por defecto el origen local de Angular y los métodos `GET`/`OPTIONS`.
+
+La integración existente es únicamente Angular → API HTTP → servicio/repositorio → PostgreSQL. No hay conexión implementada con core bancario, OIDC, JWT ni otros sistemas. `X-Cliente-Id` es una identidad simulada de demostración, no un control de seguridad: no expongas esta aplicación como servicio bancario real sin autenticación/autorización apropiadas y revisión de seguridad. El cliente Angular actualmente envía el ID de demostración `1`.
+
+## Verificación
+
+Este documento describe los comandos definidos por los manifiestos y el código inspeccionado. No se ejecutaron compilaciones ni pruebas durante la elaboración de esta documentación; ejecútalas localmente para verificar tu entorno.
