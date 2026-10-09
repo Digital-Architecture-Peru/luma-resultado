@@ -1,10 +1,10 @@
-export type Tono = 'ok' | 'alerta' | 'neutro';
+export type BadgeTone = "success" | "danger" | "neutral";
 
 interface BadgeProps {
-  texto: string;
-  tono: Tono;
+  label: string;
+  tone?: BadgeTone;
 }
 
-export function Badge({ texto, tono }: BadgeProps) {
-  return <span className={`badge badge--${tono}`}>{texto}</span>;
+export function Badge({ label, tone = "neutral" }: BadgeProps) {
+  return <span className={`badge badge--${tone}`}>{label}</span>;
 }

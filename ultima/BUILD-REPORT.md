@@ -1,59 +1,54 @@
-# Build da6d1a70-5628-4a0d-9703-cf9c0317f5bc
+# Build 845711a4-d292-4805-a125-0ce0a99c047a
 
-Stack: React + TypeScript + Java + Quarkus · capa Full Stack
+Stack: React + TypeScript + .NET · capa Full Stack
 
 Candidate generada por Microapp Builder; no es producción.
 
-43 archivos; sintaxis verificada en 20/20; sin validador local: 23; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (10); [backend] maven build correcto; [backend] maven pruebas correctas (12); dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática. (candidate).
+38 archivos; sintaxis verificada en 19/19; sin validador local: 19; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (8); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática. (candidate).
 
-Verificación: OK · build · pruebas unitarias (22) · dist/ incluido
-Detalle de verificación: build correcto; pruebas unitarias correctas (10); [backend] maven build correcto; [backend] maven pruebas correctas (12); dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática
+Verificación: OK · build · pruebas unitarias (8) · dist/ incluido
+Detalle de verificación: build correcto; pruebas unitarias correctas (8); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática
 Correcciones aplicadas: 0
 
 Recursos incrustados en el builder (hash SHA-256):
 - .github/agents/builder.agent.md 657aec3ce422
 - .github/skills/stack-agnostic-blueprint/SKILL.md 185483967f7e
 
-- backend/pom.xml: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/api/ErrorDto.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/api/ErrorMapper.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/api/PaginaDto.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/api/TarjetaDto.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/api/TarjetaResource.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/domain/ErrorNegocio.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/domain/EstadoTarjeta.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/domain/Tarjeta.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/repository/PgTarjetaRepository.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/repository/TarjetaRepository.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/service/Enmascarador.java: sin verificar (sin validador local)
-- backend/src/main/java/com/banca/tarjetas/service/TarjetaService.java: sin verificar (sin validador local)
-- backend/src/main/resources/application.properties: sin verificar (sin validador local)
-- backend/src/main/resources/db/migration/V1__esquema.sql: sin verificar (sin validador local)
-- backend/src/main/resources/db/migration/V2__datos_ficticios.sql: sin verificar (sin validador local)
-- backend/src/test/java/com/banca/tarjetas/api/TarjetaDtoTest.java: sin verificar (sin validador local)
-- backend/src/test/java/com/banca/tarjetas/service/EnmascaradorTest.java: sin verificar (sin validador local)
-- backend/src/test/java/com/banca/tarjetas/service/TarjetaServiceTest.java: sin verificar (sin validador local)
-- docs/variables-entorno.md: sin verificar (sin validador local)
+- backend/Cards.sln: sin verificar (sin validador local)
+- backend/src/Cards.Api/Cards.Api.csproj: sin verificar (sin validador local)
+- backend/src/Cards.Api/Program.cs: sin verificar (sin validador local)
+- backend/src/Cards.Application/Card.cs: sin verificar (sin validador local)
+- backend/src/Cards.Application/CardDto.cs: sin verificar (sin validador local)
+- backend/src/Cards.Application/CardMasking.cs: sin verificar (sin validador local)
+- backend/src/Cards.Application/CardQueryService.cs: sin verificar (sin validador local)
+- backend/src/Cards.Application/Cards.Application.csproj: sin verificar (sin validador local)
+- backend/src/Cards.Application/ICardRepository.cs: sin verificar (sin validador local)
+- backend/src/Cards.Infrastructure/Cards.Infrastructure.csproj: sin verificar (sin validador local)
+- backend/src/Cards.Infrastructure/PostgresCardRepository.cs: sin verificar (sin validador local)
+- backend/tests/Cards.Tests/CardMaskingTests.cs: sin verificar (sin validador local)
+- backend/tests/Cards.Tests/CardQueryServiceTests.cs: sin verificar (sin validador local)
+- backend/tests/Cards.Tests/Cards.Tests.csproj: sin verificar (sin validador local)
+- db/migrations/V001__create_cards.sql: sin verificar (sin validador local)
+- db/migrations/V002__seed_fictitious.sql: sin verificar (sin validador local)
 - frontend/index.html: sin verificar (sin validador local)
 - frontend/package.json: sintaxis OK (JSON.parse)
+- frontend/src/api/cardsClient.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/components/atoms/Amount.tsx: sintaxis OK (typescript.transpileModule)
 - frontend/src/components/atoms/Badge.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/atoms/Boton.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/molecules/TarjetaCard.test.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/molecules/TarjetaCard.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/organisms/ListaTarjetas.test.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/organisms/ListaTarjetas.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/templates/PaginaLayout.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/hooks/useTarjetas.test.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/hooks/useTarjetas.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/components/molecules/CardSummary.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/src/components/organisms/CardDetail.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/src/components/organisms/CardList.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/src/components/pages/CardsPage.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/src/components/templates/BankingLayout.tsx: sintaxis OK (typescript.transpileModule)
 - frontend/src/main.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/pages/ConsultaTarjetasPage.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/services/tarjetasApi.test.ts: sintaxis OK (typescript.transpileModule)
-- frontend/src/services/tarjetasApi.ts: sintaxis OK (typescript.transpileModule)
 - frontend/src/setupTests.ts: sintaxis OK (typescript.transpileModule)
 - frontend/src/styles.css: sin verificar (sin validador local)
-- frontend/src/types/tarjeta.ts: sintaxis OK (typescript.transpileModule)
-- frontend/src/utils/formato.ts: sintaxis OK (typescript.transpileModule)
-- frontend/src/vite-env.d.ts: sintaxis OK (typescript.createSourceFile)
+- frontend/src/types/card.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/utils/format.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/__tests__/CardList.test.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/src/__tests__/CardsPage.test.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/src/__tests__/fixtures.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/__tests__/format.test.ts: sintaxis OK (typescript.transpileModule)
 - frontend/tsconfig.json: sintaxis OK (JSON.parse)
 - frontend/vite.config.ts: sintaxis OK (typescript.transpileModule)
 - README.md: sin verificar (sin validador local)
