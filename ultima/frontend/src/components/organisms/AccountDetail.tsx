@@ -1,30 +1,34 @@
-import { TYPE_LABELS, type Account } from "../../domain/account";
-import { MoneyText } from "../atoms/MoneyText";
-import { StatusBadge } from "../atoms/StatusBadge";
+import type { Cuenta } from '../../types/cuenta';
+import { Amount } from '../atoms/Amount';
+import { Badge } from '../atoms/Badge';
 
-export function AccountDetail({ account }: { account: Account | null }) {
-  if (!account) {
-    return <p className="empty">Seleccione una cuenta para ver su detalle.</p>;
-  }
+interface AccountDetailProps {
+  cuenta: Cuenta;
+  onClose: () => void;
+}
+
+export function AccountDetail({ cuenta, onClose }: AccountDetailProps) {
+  const activa = cuenta.estado === 'ACTIVA';
   return (
-    <section aria-label="Detalle de cuenta" className="detail">
-      <h2>
-        {TYPE_LABELS[account.type]} {account.maskedNumber}
-      </h2>
+    <section className="account-detail" aria-label="Detalle de cuenta">
+      <h2>Cuenta {cuenta.numeroEnmascarado}</h2>
       <dl>
+        <dt>Tipo</dt>
+        <dd>{cuenta.tipo === 'AHORROS' ? 'Ahorros' : 'Corriente'}</dd>
         <dt>Saldo</dt>
         <dd>
-          <MoneyText amount={account.balance} currency={account.currency} />
+          <Amount value={cuenta.saldo} currency={cuenta.moneda} />
         </dd>
         <dt>Estado</dt>
         <dd>
-          <StatusBadge status={account.status} />
+          <Badge tone={activa ? 'ok' : 'warn'} label={activa ? 'Activa' : 'Bloqueada'} />
         </dd>
-        <dt>Moneda</dt>
-        <dd>{account.currency}</dd>
-        <dt>Última actualización</dt>
-        <dd>{new Date(account.updatedAt).toLocaleString("es-PE")}</dd>
+        <dt>Actualizado</dt>
+        <dd>{new Date(cuenta.actualizadoEn).toLocaleString('es-PE')}</dd>
       </dl>
+      <button type="button" onClick={onClose}>
+        Cerrar detalle
+      </button>
     </section>
   );
 }

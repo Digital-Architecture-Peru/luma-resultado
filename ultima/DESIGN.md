@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Quarkus
+- ¿Qué stack? React + TypeScript + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Consulta" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + .NET (capa Full Stack) para "Consulta" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,67 +29,76 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento (Consulta de Cuentas · Banca por Internet)
+# DESIGN · Refinamiento: Consulta de Cuentas en Banca por Internet
 
 ## Decisiones de arquitectura
+
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/`, `backend/` y `db/` | Separa las capas Full Stack y permite builds independientes (npm / Maven). |
-| D2 | API REST de solo lectura: `GET /api/v1/accounts` y `GET /api/v1/accounts/{id}` | La capacidad es de tipo Consulta. No se exponen escrituras. |
-| D3 | Capas en Quarkus: Resource → QueryService → `AccountRepository` (interfaz) → impl JDBC parametrizada | La persistencia queda detrás de una interfaz. Las pruebas unitarias usan un mock y no necesitan base de datos. |
-| D4 | Montos como `NUMERIC(18,2)` en la base, `BigDecimal` en Java y `string` en JSON | Evita errores de redondeo de punto flotante. |
-| D5 | Número de cuenta enmascarado en el DTO (`****1234`) | Minimiza la exposición de datos sensibles en el canal. |
-| D6 | Migraciones versionadas con Flyway (`V1__schema.sql`, `V2__seed.sql`) | Esquema reproducible y auditable. |
-| D7 | Atomic Design en React con un cliente HTTP aislado (`api/accountsClient.ts`) | Componentes puros y testeables. Los datos se inyectan por props. |
-| D8 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`, `VITE_API_BASE_URL`) | No hay secretos en el repositorio. |
+| D1 | Solo lectura: `GET /api/v1/cuentas` y `GET /api/v1/cuentas/{id}` | La capacidad es "Consulta"; sin escrituras se reduce la superficie de riesgo |
+| D2 | Backend .NET 8 en capas Api → Application → Infrastructure | Los casos de uso se prueban con un repositorio falso, alineado con pruebas unitarias |
+| D3 | Npgsql + Dapper con SQL parametrizado (`@clienteId`) | Control explícito del SQL, sin inyección y coherente con migraciones SQL versionadas (T04-db) |
+| D4 | Migraciones como SQL plano `V00N__*.sql` | Revisables de forma estática sin toolchain; portables a Flyway o DbUp |
+| D5 | Frontend React + Vite + TS con Atomic Design; cliente `fetch` tipado y sin librería de estado | Es el patrón pedido; el alcance pequeño no justifica Redux |
+| D6 | Errores con ProblemDetails (RFC 7807) | Es el formato estándar en .NET y se consume de forma uniforme en el front |
+| D7 | Configuración por variables de entorno (`CUENTAS_DB_CONNECTION`, `VITE_API_BASE_URL`) | No hay secretos en el repositorio |
+| D8 | Número de cuenta enmascarado en el DTO (`****1234`) | Minimiza la exposición de datos sensibles |
 
 ## Estructura de módulos
 ```
-frontend/ (Vite + React + TS, Vitest + Testing Library)
-  src/domain/account.ts
-  src/api/accountsClient.ts
-  src/components/atoms/      MoneyText, StatusBadge
-  src/components/molecules/  AccountRow, AccountFilter
-  src/components/organisms/  AccountList, AccountDetail
-  src/components/templates/  AccountsLayout
-  src/pages/AccountsPage.tsx
-  src/**/*.test.tsx
-backend/ (Quarkus, JUnit 5 + Mockito)
-  pom.xml
-  src/main/java/.../accounts/
-    api/AccountResource.java, api/dto/AccountDto.java
-    service/AccountQueryService.java
-    domain/Account.java
-    persistence/AccountRepository.java, JdbcAccountRepository.java
-  src/main/resources/application.properties
-  src/main/resources/db/migration/V1__schema.sql, V2__seed.sql
-  src/test/java/.../AccountQueryServiceTest.java, AccountMaskerTest.java
+backend/
+  src/Cuentas.Api/            Program.cs, Endpoints/CuentasEndpoints.cs
+  src/Cuentas.Application/    Dtos/, ICuentaRepository.cs, ConsultarCuentasService.cs
+  src/Cuentas.Infrastructure/ PgCuentaRepository.cs
+  tests/Cuentas.UnitTests/    xUnit: servicio + enmascarado
+  Cuentas.sln
+db/migrations/
+  V001__crear_cuentas.sql     tabla cuentas, numeric(18,2), CHECK moneda, índice (cliente_id)
+  V002__datos_ficticios.sql
+frontend/
+  src/components/atoms/       Amount, Badge, Spinner
+  src/components/molecules/   AccountRow, ErrorMessage
+  src/components/organisms/   AccountList, AccountDetail
+  src/components/templates/   BankingLayout
+  src/pages/                  CuentasPage
+  src/services/cuentasApi.ts, src/types/cuenta.ts
+  tests: Vitest + Testing Library (*.test.tsx)
+  package.json, vite.config.ts, tsconfig.json
 README.md
 ```
 
-## Modelo de datos (PostgreSQL)
-- Tabla `account` con estas columnas: `id UUID PK`, `customer_id VARCHAR(36) NOT NULL`, `account_number VARCHAR(20) UNIQUE`, `type VARCHAR(20)`, `currency CHAR(3)`, `balance NUMERIC(18,2)`, `status VARCHAR(12)` y `updated_at TIMESTAMPTZ`.
-- Restricciones `CHECK` sobre `currency`, `type` y `status`.
-- Índice `idx_account_customer (customer_id)`.
-- Seed de 5 a 8 cuentas ficticias.
-- Todas las consultas usan `PreparedStatement` con parámetros. Nunca se concatenan valores en el SQL.
+## Modelo de datos (resumen)
+Tabla `cuentas`:
+- `id uuid PK`
+- `cliente_id uuid NOT NULL`
+- `numero varchar(20) UNIQUE`
+- `tipo` ∈ {AHORROS, CORRIENTE}
+- `moneda char(3)`
+- `saldo numeric(18,2)`
+- `estado` ∈ {ACTIVA, BLOQUEADA}
+- `actualizado_en timestamptz`
 
-## Hipótesis
-- **H1:** La autenticación la resuelve un gateway externo. El backend recibe `X-Customer-Id` como marcador provisional (placeholder) y filtra las cuentas por ese cliente.
-- **H2:** Versiones objetivo: Java 17+, Quarkus 3.x y Node 18+.
-- **H3:** Las monedas son PEN y USD. Los datos son ficticios.
-- **H4:** La integración con el core bancario está sin definir. No hay llamadas a sistemas reales, solo la interfaz `AccountRepository`.
-- **H5:** La paginación es simple (`page`, `size`, con un máximo de 50).
+Índice: `ix_cuentas_cliente_id`.
+
+## Hipótesis (no confirmadas)
+- H1: El alcance cubre listado y detalle con saldo; los movimientos quedan fuera.
+- H2: No hay autenticación definida. El cliente se simula con el header `X-Cliente-Id` y datos ficticios. Debe reemplazarse por el IdP del banco.
+- H3: La integración queda sin definir. Solo se usa PostgreSQL detrás de `ICuentaRepository`.
+- H4: Las versiones objetivo son .NET 8 LTS y Node 20.
+- H5: El saldo se serializa como número con 2 decimales y el front solo lo formatea con `Intl.NumberFormat`.
+- H6: No hay paginación; se asumen pocas cuentas por cliente.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Sin `mvn` o `npm` instalados, no se verifica compilación ni pruebas | Se marca como *no verificado* en el handoff. |
-| El esquema de PostgreSQL solo admite revisión estática | SQL estándar sin extensiones. Se valida en un entorno con PostgreSQL. |
-| H1 sin confirmar (riesgo de acceso a cuentas ajenas) | El filtro por `customer_id` es obligatorio en el repositorio. Se documenta en el README. |
-| Fuga de PII en logs | No se registran el número de cuenta ni el saldo. |
+| Sin toolchain .NET/npm, la compilación no se verifica | Marcar "no verificado" en el handoff |
+| El SQL de PostgreSQL solo se revisa de forma estática | Usar sintaxis estándar y evitar extensiones |
+| La autenticación simulada se confunde con seguridad real | Advertencia explícita en README y en el código |
+| Pérdida de precisión decimal en JS | Sin aritmética en el front; evaluar el saldo como string si se requiere |
+| Fuga de datos sensibles en logs | No registrar número ni saldo; enmascarar en el DTO |
 
-## Trazabilidad de aceptación
-- Fuentes de ambas capas, pruebas unitarias (Vitest y JUnit), migraciones SQL y README presentes.
-- Sintaxis verificada donde exista validador local.
-- El resumen candidate no afirma compilación ni producción.
+## Criterios verificables complementarios (sin alterar los base)
+- El servicio devuelve solo las cuentas del `clienteId` solicitado (prueba unitaria con un repositorio falso).
+- `GET /cuentas/{id}` de otro cliente o inexistente responde 404 con ProblemDetails.
+- `AccountList` muestra el número enmascarado y el estado vacío o de error (prueba con Vitest).
+- Todas las consultas SQL usan parámetros; no hay concatenación de cadenas.
