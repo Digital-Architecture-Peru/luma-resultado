@@ -5,10 +5,9 @@
     "tests": "Unitarias",
     "type": "Consulta",
     "domain": "Tarjetas",
-    "layer": "Full Stack",
-    "persistence": "PostgreSQL",
-    "stack": "Angular + Java + Quarkus",
-    "backendStack": "Java + Quarkus"
+    "layer": "Frontend",
+    "stack": "Angular",
+    "persistence": "No requiere"
   },
   "sgc": {
     "status": "fallback",
