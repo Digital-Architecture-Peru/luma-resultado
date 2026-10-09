@@ -1,15 +1,13 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import { PaymentPage } from './pages/PaymentPage';
 import './styles.css';
 
-const root = document.getElementById('root');
-if (!root) {
-  throw new Error('No se encontro el elemento #root');
-}
+const container = document.getElementById('root');
+if (!container) throw new Error('No se encontró el elemento #root');
 
-ReactDOM.createRoot(root).render(
-  <React.StrictMode>
+createRoot(container).render(
+  <StrictMode>
     <PaymentPage />
-  </React.StrictMode>,
+  </StrictMode>,
 );

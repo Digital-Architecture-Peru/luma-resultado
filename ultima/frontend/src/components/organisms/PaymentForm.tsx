@@ -1,91 +1,85 @@
-import { useState, type FormEvent } from 'react';
-import { CURRENCIES, type Currency, type PaymentFormErrors, type PaymentFormValues, type PaymentRequest } from '../../types';
-import { toPaymentRequest, validatePayment } from '../../validation';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import type { Account, PaymentRequest } from '../../types';
+import { isPositiveAmount } from '../../utils/amount';
+import { AmountInput } from '../atoms/AmountInput';
 import { Button } from '../atoms/Button';
-import { Input } from '../atoms/Input';
-import { Select } from '../atoms/Select';
+import { TextInput } from '../atoms/TextInput';
+import { AccountSelector } from '../molecules/AccountSelector';
 import { FormField } from '../molecules/FormField';
 
 interface PaymentFormProps {
-  loading: boolean;
+  accounts: Account[];
+  submitting: boolean;
   onSubmit: (request: PaymentRequest) => void;
 }
 
-const EMPTY: PaymentFormValues = {
-  originAccount: '',
-  beneficiary: '',
-  amount: '',
-  currency: 'PEN',
-  concept: '',
-};
+type Errors = Partial<Record<'beneficiary' | 'amount' | 'reference', string>>;
 
-export function PaymentForm({ loading, onSubmit }: PaymentFormProps) {
-  const [values, setValues] = useState<PaymentFormValues>(EMPTY);
-  const [errors, setErrors] = useState<PaymentFormErrors>({});
+const BENEFICIARY_PATTERN = /^[A-Za-z0-9]{8,20}$/;
+const MAX_REFERENCE = 140;
 
-  const update = (field: keyof PaymentFormValues, value: string) =>
-    setValues((current) => ({ ...current, [field]: field === 'currency' ? (value as Currency) : value }));
+function validate(beneficiary: string, amount: string, reference: string): Errors {
+  const errors: Errors = {};
+  if (!BENEFICIARY_PATTERN.test(beneficiary)) errors.beneficiary = 'Ingrese 8 a 20 caracteres alfanuméricos.';
+  if (!isPositiveAmount(amount)) errors.amount = 'Ingrese un monto mayor que 0 (máximo 2 decimales).';
+  if (reference.length > MAX_REFERENCE) errors.reference = `Máximo ${MAX_REFERENCE} caracteres.`;
+  return errors;
+}
+
+export function PaymentForm({ accounts, submitting, onSubmit }: PaymentFormProps) {
+  const [sourceId, setSourceId] = useState('');
+  const [beneficiary, setBeneficiary] = useState('');
+  const [amount, setAmount] = useState('');
+  const [reference, setReference] = useState('');
+  const [errors, setErrors] = useState<Errors>({});
+
+  const selected = accounts.find((a) => a.id === sourceId) ?? accounts[0];
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const found = validatePayment(values);
+    if (submitting || !selected) return;
+    const found = validate(beneficiary.trim(), amount, reference.trim());
     setErrors(found);
-    if (Object.keys(found).length === 0) {
-      onSubmit(toPaymentRequest(values));
-    }
+    if (Object.keys(found).length > 0) return;
+    onSubmit({
+      sourceAccountId: selected.id,
+      beneficiaryAccount: beneficiary.trim(),
+      amount,
+      currency: selected.currency,
+      reference: reference.trim(),
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} noValidate aria-label="Formulario de pago">
-      <FormField id="originAccount" label="Cuenta de origen" error={errors.originAccount}>
-        <Input
-          id="originAccount"
-          inputMode="numeric"
-          autoComplete="off"
-          value={values.originAccount}
-          aria-invalid={Boolean(errors.originAccount)}
-          aria-describedby={errors.originAccount ? 'originAccount-error' : undefined}
-          onChange={(e) => update('originAccount', e.target.value)}
-        />
+      <FormField id="source" label="Cuenta origen">
+        <AccountSelector id="source" accounts={accounts} value={selected?.id ?? ''} onChange={setSourceId} />
       </FormField>
-      <FormField id="beneficiary" label="Beneficiario" error={errors.beneficiary}>
-        <Input
+      <FormField id="beneficiary" label="Cuenta beneficiaria" error={errors.beneficiary}>
+        <TextInput
           id="beneficiary"
-          value={values.beneficiary}
-          aria-invalid={Boolean(errors.beneficiary)}
+          value={beneficiary}
+          autoComplete="off"
+          aria-invalid={errors.beneficiary ? true : undefined}
           aria-describedby={errors.beneficiary ? 'beneficiary-error' : undefined}
-          onChange={(e) => update('beneficiary', e.target.value)}
+          onChange={(e) => setBeneficiary(e.target.value)}
         />
       </FormField>
-      <FormField id="amount" label="Importe" error={errors.amount}>
-        <Input
+      <FormField id="amount" label="Monto" error={errors.amount}>
+        <AmountInput
           id="amount"
-          inputMode="decimal"
-          value={values.amount}
-          aria-invalid={Boolean(errors.amount)}
-          aria-describedby={errors.amount ? 'amount-error' : undefined}
-          onChange={(e) => update('amount', e.target.value)}
+          value={amount}
+          onChange={setAmount}
+          invalid={Boolean(errors.amount)}
+          describedBy={errors.amount ? 'amount-error' : undefined}
         />
       </FormField>
-      <FormField id="currency" label="Moneda">
-        <Select
-          id="currency"
-          options={CURRENCIES}
-          value={values.currency}
-          onChange={(e) => update('currency', e.target.value)}
-        />
+      <FormField id="reference" label="Referencia" error={errors.reference}>
+        <TextInput id="reference" value={reference} onChange={(e) => setReference(e.target.value)} />
       </FormField>
-      <FormField id="concept" label="Concepto" error={errors.concept}>
-        <Input
-          id="concept"
-          value={values.concept}
-          aria-invalid={Boolean(errors.concept)}
-          aria-describedby={errors.concept ? 'concept-error' : undefined}
-          onChange={(e) => update('concept', e.target.value)}
-        />
-      </FormField>
-      <Button type="submit" disabled={loading}>
-        {loading ? 'Procesando...' : 'Pagar'}
+      <Button type="submit" disabled={submitting || !selected}>
+        {submitting ? 'Procesando…' : 'Pagar'}
       </Button>
     </form>
   );
