@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + .NET
+- ¿Qué stack? Angular + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + .NET (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,64 +29,59 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN (refinamiento)
+# DESIGN · Refinamiento
 
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (React + TS + Vite) y `backend/` (.NET 8, ASP.NET Core Web API) | Estructura idiomática por stack; cada parte compila y se prueba por separado |
-| D2 | Front con Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón pedido; facilita reutilizar y probar cada componente aislado |
-| D3 | Back en capas: Api / Application / Domain / Infrastructure | El dominio no depende de PostgreSQL ni de la integración aún sin definir |
-| D4 | Puerto `ICardTransactionGateway` con adaptador `FakeCoreGateway` | La integración no está definida; se usan datos ficticios sin llamar a sistemas reales |
-| D5 | Acceso a datos con Npgsql + Dapper y SQL parametrizado | SQL explícito y revisable; cumple el acceso parametrizado de T04-db |
-| D6 | Migraciones SQL versionadas en `db/migrations/V00X__*.sql` | Permiten revisión estática; no dependen de un ORM |
-| D7 | Importes en `NUMERIC(18,2)` y `decimal`, código ISO de moneda | Evita errores de redondeo de punto flotante |
-| D8 | Cabecera `Idempotency-Key` con índice único | Evita transacciones duplicadas por reintentos |
-| D9 | Solo se guarda el PAN enmascarado (últimos 4 dígitos) y un token ficticio | Minimiza el alcance PCI; nunca se guarda el PAN completo ni el CVV |
-| D10 | Estados `PENDING → APPROVED \| REJECTED` validados en el dominio | Las transiciones explícitas se pueden probar con pruebas unitarias |
+| D1 | Monorepo con `frontend/` (Angular 17+, standalone) y `backend/` (Spring Boot 3, Java 17, Maven) | Un solo workspace; cada capa compila por separado |
+| D2 | Backend hexagonal: `domain`, `application`, `adapters` | Integración sin definir: puerto `CardNetworkPort` con adaptador stub y cambio sin tocar dominio |
+| D3 | Persistencia con Spring JDBC (`NamedParameterJdbcTemplate`) y Flyway (`V1__`, `V2__`) | Acceso parametrizado explícito y migraciones versionadas (T04-db) |
+| D4 | Montos en `NUMERIC(15,2)` / `BigDecimal` y moneda ISO-4217 | Evita errores de redondeo |
+| D5 | Encabezado `Idempotency-Key` en POST con índice único | Una transacción no se duplica por reintento |
+| D6 | Solo PAN enmascarado (`****1234`) y token ficticio; nunca PAN completo ni CVV | Minimiza alcance PCI-DSS; datos ficticios |
+| D7 | Front Atomic Design: `atoms → molecules → organisms → templates → pages` y servicio HTTP tipado | Patrón pedido; componentes testeables aislados |
+| D8 | Config por `application.yml` + variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) sin valores reales | Sin secretos en repo |
 
 ## Estructura de módulos
 ```
-frontend/src/
-  components/{atoms,molecules,organisms,templates}/
-  pages/CardTransactionPage.tsx
-  services/cardTransactionsApi.ts   (fetch; URL base en VITE_API_URL)
-  domain/types.ts
-  __tests__/                        (Vitest + Testing Library)
-backend/
-  src/Cards.Api/            (controllers, DTOs, validación, ProblemDetails)
-  src/Cards.Application/    (casos de uso, puertos)
-  src/Cards.Domain/         (CardTransaction, Money, reglas)
-  src/Cards.Infrastructure/ (repositorio Dapper, FakeCoreGateway)
-  tests/Cards.UnitTests/    (xUnit; repositorio y gateway falsos)
-db/migrations/ V001__schema.sql, V002__indexes.sql, V003__seed_ficticio.sql
-README.md
+backend/src/main/java/com/bank/cards/
+  domain/        CardTransaction, Money, TransactionStatus
+  application/   CreateTransactionUseCase, port/{CardTransactionRepository,CardNetworkPort}
+  adapters/in/web/      CardTransactionController, dto/, GlobalExceptionHandler
+  adapters/out/persistence/ JdbcCardTransactionRepository
+  adapters/out/network/     StubCardNetworkAdapter
+backend/src/main/resources/db/migration/ V1__schema.sql, V2__seed_ficticio.sql
+backend/src/test/java/...  (JUnit 5 + Mockito)
+frontend/src/app/
+  shared/ui/{atoms,molecules,organisms,templates}
+  features/card-transaction/{pages,services,models}
+  *.spec.ts (Jasmine/Karma)
 ```
 
-**Modelo de datos (mínimo):**
-- `cards`: id, masked_pan, token, holder_alias, status.
-- `card_transactions`: id, card_id (FK), amount, currency, status, idempotency_key (UNIQUE), created_at (timestamptz).
+## Contrato API (mínimo)
+- `GET /api/v1/cards`: tarjetas del cliente (enmascaradas).
+- `POST /api/v1/cards/{cardId}/transactions`: `{amount, currency, sourceAccountId, description}` → `201 {transactionId, status}`.
+- `GET /api/v1/cards/{cardId}/transactions?page&size`: historial paginado.
+- Errores con RFC 7807 (`ProblemDetail`): 400 validación, 404 tarjeta, 409 idempotencia, 422 regla de negocio.
 
-**Índices:** `(card_id, created_at DESC)` e `idempotency_key`.
-
-## Hipótesis
-- **H1:** "Transacción sobre Tarjetas" se interpreta como **pago de tarjeta de crédito desde una cuenta propia**, con registro y consulta de movimientos. Si la operación es otra (compra, avance, bloqueo), se mantienen el dominio y las capas y se ajustan el caso de uso y las reglas.
-- **H2:** La autenticación la resuelve Banca por Internet fuera de este alcance. La API recibe un identificador de cliente ficticio en una cabecera, sin validación real.
-- **H3:** No hay contexto SGC (fallback). No se aplican lineamientos corporativos de nomenclatura, seguridad ni diseño visual.
-- **H4:** Se usa .NET 8 LTS y Node 20 LTS. Si la toolchain local no está instalada, la compilación y las pruebas quedan **no verificadas**.
-- **H5:** Límites de importe y reglas de negocio de ejemplo (monto > 0, tope ficticio) configurables por variables de entorno.
+## Modelo de datos
+- `card(id UUID PK, customer_id, masked_pan, brand, status, credit_limit, available_balance)`
+- `card_transaction(id UUID PK, card_id FK, amount NUMERIC(15,2) CHECK >0, currency CHAR(3), status, idempotency_key UNIQUE, created_at TIMESTAMPTZ)`
+- Índices: `card_transaction(card_id, created_at DESC)` y `card(customer_id)`.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Alcance de la transacción ambiguo (H1) | Caso de uso aislado y reemplazable; se reporta en el handoff |
-| No se ejecuta PostgreSQL | Solo revisión estática del SQL; queda declarado como no verificado |
-| Integración real desconocida | Puerto D4; sin contrato real no se afirma compatibilidad |
-| Exposición de datos de tarjeta | D9; los logs nunca incluyen token ni importes con identificación del cliente |
-| Doble cargo por reintento | D8 y transición de estado atómica en una transacción de base de datos |
-| Pruebas solo unitarias | Sin pruebas de integración ni E2E; queda declarado en el README |
+| "Transacción" ambigua | Hipótesis H1 documentada; dominio aislado para ajustar |
+| PostgreSQL solo con revisión estática | SQL estándar sin extensiones; marcado no verificado |
+| Toolchain Maven/npm ausente | Resumen indica qué no compiló |
+| Concurrencia sobre saldo | `UPDATE ... WHERE available_balance >= :amount` atómico |
+| Autenticación real fuera de alcance | `customerId` simulado; documentado como gap |
 
-## Notas para el tester
-- Probar las reglas de `Money` y las transiciones de estado.
-- Probar el rechazo de importes inválidos y la idempotencia con un repositorio falso.
-- Probar el render y la validación del formulario (organism) y el estado de éxito o error (page).
+## Hipótesis
+- **H1**: "Transacción" = pago a tarjeta de crédito desde cuenta propia. *No confirmado.*
+- **H2**: autenticación/sesión la provee la Banca por Internet existente; aquí se simula.
+- **H3**: moneda única por transacción, sin conversión FX.
+- **H4**: la red/procesador se simula con stub que siempre aprueba montos ≤ disponible.
+- **H5**: versiones Angular 17+ / Spring Boot 3.x / Java 17 sin restricción corporativa conocida (SGC en fallback).
