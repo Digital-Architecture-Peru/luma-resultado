@@ -3,10 +3,10 @@
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Transacción
-- ¿Sobre qué dominio? Cuentas
+- ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + .NET
+- ¿Qué stack? React + TypeScript + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + .NET (capa Full Stack) para "Transacción" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,84 +29,72 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN — Refinamiento
+# DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Alcance: **transferencia entre cuentas propias, misma moneda** (H1) | Es la transacción mínima verificable sobre Cuentas. |
-| D2 | .NET en capas **Domain / Application / Infrastructure / Api** con puertos (`ICuentaRepository`, `IUnitOfWork`) | Persistencia detrás de interfaces. Las pruebas unitarias no requieren BD. |
-| D3 | **Npgsql + Dapper**, SQL parametrizado, sin ORM | Pocas dependencias y SQL explícito, revisable de forma estática. |
-| D4 | Una transacción de BD con `SELECT ... FOR UPDATE` en orden ascendente de `id` | Evita el doble débito y los interbloqueos. |
-| D5 | Cabecera **`Idempotency-Key`** con índice único | Evita duplicados por reintentos del cliente. |
-| D6 | Montos `decimal` (C#) y `numeric(18,2)` (SQL) | Sin errores de punto flotante en dinero. |
-| D7 | Errores con **ProblemDetails**: 400/422 por validación o saldo, 409 por conflicto de idempotencia | Contrato uniforme para el front. |
-| D8 | Angular standalone con carpetas **atoms → molecules → organisms → templates → pages** | Aplica el patrón Atomic Design pedido. |
-| D9 | Configuración (`ConnectionStrings__Cuentas`, `API_BASE_URL`) por variables de entorno | Sin secretos en el repositorio. |
+| D1 | Repositorio con `frontend/` (React + TS, Vite) y `backend/` (Spring Boot, Maven) | Cada parte se compila y prueba con su propia toolchain. |
+| D2 | Backend en capas: `api` → `application` → `domain` ← `infrastructure` | El dominio no depende de Spring ni de la BD, así que se prueba con unitarias puras. |
+| D3 | Puerto `PaymentGateway` con un adaptador `FakePaymentGateway` | La integración está sin definir; el contrato queda listo para un adaptador real. |
+| D4 | Importes con `BigDecimal` en Java, `NUMERIC(19,2)` en SQL y `string` en el JSON | Evita los errores de redondeo de punto flotante. |
+| D5 | Encabezado `Idempotency-Key` obligatorio en `POST`, con índice único en BD | Evita pagos duplicados por reintentos o doble clic. |
+| D6 | Estados `PENDING`, `COMPLETED` y `REJECTED`, con transiciones validadas en el dominio | Da trazabilidad y prepara para una futura confirmación asíncrona. |
+| D7 | Flyway con migraciones `V1__schema.sql` y `V2__seed_ficticio.sql`; acceso con `JdbcTemplate` y parámetros `?` | Esquema versionado y sin concatenar SQL. |
+| D8 | Frontend con Atomic Design: `atoms/` (Button, Input, Amount) → `molecules/` (FormField, AccountSelect) → `organisms/` (PaymentForm, PaymentReceipt) → `templates/` → `pages/` | Es el patrón pedido y permite reutilizar en Banca por Internet. |
+| D9 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) sin valores por defecto sensibles | No se versionan secretos. |
 
 ## Contrato API (v1)
-- `GET /api/v1/cuentas`: devuelve las cuentas del titular simulado con número enmascarado y saldo.
-- `POST /api/v1/transferencias`:
-  - Body: `{origenId, destinoId, monto, moneda, concepto}`.
-  - Respuesta: `201` con el comprobante.
-
-## Modelo de datos (PostgreSQL)
-- `cuentas(id uuid pk, titular_id, numero_enmascarado, moneda char(3), saldo numeric(18,2) check ≥0, version int)`
-- `transferencias(id, idempotency_key unique, origen_id fk, destino_id fk, monto check >0, moneda, estado, creado_en timestamptz)`
-- `movimientos(id, cuenta_id fk, transferencia_id fk, tipo 'D'|'C', monto, saldo_resultante, creado_en)`
-- Índice adicional: `movimientos(cuenta_id, creado_en desc)`.
-- Migraciones versionadas:
-  - `V001__esquema.sql`
-  - `V002__indices.sql`
-  - `V003__seed_ficticio.sql`
+- `POST /api/v1/payments` recibe `{sourceAccount, beneficiary, amount, currency, reference}`. Responde `201` con `{id, status, createdAt}`, `400` si la validación falla y `409` si la idempotencia está en conflicto.
+- `GET /api/v1/payments/{id}` responde `200` o `404`.
+- `GET /api/v1/payments?account=...` lista paginada.
+- Los errores siguen el formato `application/problem+json`.
 
 ## Estructura de módulos
 ```
-backend/Cuentas.sln
-  src/Cuentas.Domain/          Cuenta, Transferencia, Movimiento, reglas
-  src/Cuentas.Application/     RealizarTransferencia (handler), puertos, DTOs
-  src/Cuentas.Infrastructure/  Repos Npgsql+Dapper, UnitOfWork
-  src/Cuentas.Api/             Minimal API, ProblemDetails
-  tests/Cuentas.UnitTests/     xUnit + fakes en memoria
-db/migrations/                 V00x__*.sql
-frontend/src/app/
-  shared/ui/{atoms,molecules,organisms,templates}/
-  features/transferencias/{pages,data-access}/   *.spec.ts junto a cada pieza
+backend/src/main/java/com/example/payments/
+  api/            PaymentController, dto/, ErrorHandler
+  application/    CreatePaymentService, PaymentQueryService
+  domain/         Payment, PaymentStatus, Money, PaymentRepository (puerto), PaymentGateway (puerto)
+  infrastructure/ JdbcPaymentRepository, FakePaymentGateway
+backend/src/main/resources/db/migration/  V1__schema.sql, V2__seed_ficticio.sql
+backend/src/test/java/...   CreatePaymentServiceTest, MoneyTest, PaymentTest (JUnit 5 + Mockito)
+frontend/src/components/{atoms,molecules,organisms,templates}/  pages/PaymentPage.tsx
+frontend/src/services/paymentsApi.ts   frontend/src/**/*.test.tsx (Vitest + Testing Library)
 ```
 
-Ejemplos por nivel de Atomic Design:
-- Átomos: `input-monto`, `boton`.
-- Moléculas: `selector-cuenta`.
-- Organismos: `form-transferencia`, `comprobante`.
-
-## Pruebas unitarias (mínimo)
-- **Dominio:**
-  - Rechaza monto ≤ 0.
-  - Rechaza saldo insuficiente.
-  - Rechaza origen igual a destino.
-  - Rechaza monedas distintas.
-- **Handler:** misma clave de idempotencia devuelve el mismo resultado.
-- **Front:** el formulario es inválido sin monto y el servicio llama al endpoint correcto (`HttpTestingController`).
+## Modelo de datos (PostgreSQL)
+- Tabla `payment` con estas columnas:
+  - `id UUID PK`
+  - `idempotency_key VARCHAR(64) UNIQUE`
+  - `source_account VARCHAR(34)`
+  - `beneficiary VARCHAR(34)`
+  - `amount NUMERIC(19,2) CHECK (amount > 0)`
+  - `currency CHAR(3)`
+  - `status VARCHAR(12)`
+  - `reference VARCHAR(140)`
+  - `created_at TIMESTAMPTZ`
+- Índice `(source_account, created_at DESC)` para el listado.
+- Los datos de semilla son ficticios, por ejemplo cuentas `ES00-FAKE-...`.
 
 ## Hipótesis
-- **H1:** "Transacción" equivale a transferencia entre cuentas propias. No hay terceros, divisas ni programación de pagos.
-- **H2:** No hay autenticación definida. Se usa un titular simulado fijo y la integración real queda fuera de alcance.
-- **H3:** PostgreSQL ≥ 13, porque `gen_random_uuid()` está disponible sin extensiones.
-- **H4:** .NET 8 LTS o posterior y Angular con componentes standalone. El runner de pruebas del front es el que trae por defecto la versión de CLI instalada.
-- **H5:** El esquema PostgreSQL solo se revisa de forma estática. La compilación depende de la toolchain local y lo que no se pueda verificar se declara como no verificado.
+- H1. "Transacción de Pagos" significa un pago desde una cuenta propia del cliente a un beneficiario. No incluye programados, recurrentes ni multimoneda.
+- H2. Autenticación, autorización y la sesión de Banca por Internet quedan fuera de alcance. El `sourceAccount` llega en la petición y se asume ya validado aguas arriba.
+- H3. No se valida saldo real. `FakePaymentGateway` rechaza los importes mayores que un umbral ficticio para poder probar `REJECTED`.
+- H4. Las versiones objetivo son Java 17+ / Spring Boot 3.x y Node 18+.
+- H5. No hay estándares corporativos disponibles porque el SGC está en fallback. Se aplican convenciones idiomáticas.
 
 ## Riesgos
-
 | Riesgo | Mitigación |
 |---|---|
-| No hay contexto SGC (fallback), así que las reglas de negocio no están confirmadas | Reglas aisladas en Domain y listadas en el README |
-| Concurrencia o doble débito | D4 + D5 + `check saldo ≥ 0` |
-| Autenticación sin definir (H2) | Marcar como pendiente. No es apto para producción |
-| SQL no ejecutado contra un motor real | Revisión estática y SQL estándar sin funciones exóticas |
-| Accesibilidad del formulario | Etiquetas asociadas y mensajes de error con `aria-describedby` |
+| No se compila ni se ejecuta si falta JDK, Maven o npm | Marcarlo como no verificado en el resumen candidate. |
+| El SQL de PostgreSQL solo recibe revisión estática | Usar SQL estándar compatible y declararlo en el README. |
+| Falta de seguridad (sin auth ni CSRF) | Documentarlo como prerequisito antes de producción. |
+| Concurrencia y doble envío | Usar D5 y deshabilitar el botón mientras se envía. |
+| El contrato de integración real es desconocido | Aislarlo tras el puerto de D3. |
 
-## Aceptación (complementa la base, no la reemplaza)
-- Existen pruebas `*.spec.ts` y xUnit que cubren los casos listados arriba.
-- El SQL usa solo parámetros, sin concatenar valores.
-- El README indica cómo compilar y ejecutar, las variables de entorno, las hipótesis H1–H5 y lo que no se verificó.
+## Trazabilidad con la aceptación
+- La sintaxis se verifica con la toolchain disponible.
+- Las pruebas unitarias en los dos stacks cubren Money, transiciones de estado, servicio con mocks y PaymentForm.
+- El README cubre build, ejecución, variables de entorno y persistencia.
+- Se mantiene la publicación con commit, sin afirmar compilación ni producción.

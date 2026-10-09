@@ -1,27 +1,28 @@
 {
-  "name": "banca-cuentas-frontend",
-  "version": "0.1.0",
+  "name": "payments-frontend",
   "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "start": "ng serve",
-    "build": "ng build",
-    "test": "ng test --watch=false"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@angular/common": "^20.2.0",
-    "@angular/compiler": "^20.2.0",
-    "@angular/core": "^20.2.0",
-    "@angular/forms": "^20.2.0",
-    "@angular/platform-browser": "^20.2.0",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.6.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@angular/build": "^20.2.0",
-    "@angular/cli": "^20.2.0",
-    "@angular/compiler-cli": "^20.2.0",
-    "jsdom": "^26.1.0",
-    "typescript": "~5.8.0",
-    "vitest": "^3.2.0"
+    "@testing-library/jest-dom": "^6.4.6",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@testing-library/dom": "^10.4.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "jsdom": "^24.1.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3",
+    "vitest": "^2.0.2"
   }
 }
