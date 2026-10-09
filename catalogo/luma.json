@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T16:01:28.743Z",
+  "actualizado": "2026-10-09T16:06:23.272Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -837,6 +837,72 @@
           "etapa": "Cierre",
           "segundo": 454,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 1af9e7d: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/1af9e7dbfb9dfb4c849e35d56dd7f5ad9cb4643f\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Consulta|Tarjetas|Frontend|Angular||": {
+      "clave": "Consulta|Tarjetas|Frontend|Angular||",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Consulta",
+        "domain": "Tarjetas",
+        "layer": "Frontend",
+        "stack": "Angular",
+        "persistence": "No requiere"
+      },
+      "commit": "83803936c30c3641b46195a00c7aaf0ac58ecdfd",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/65",
+      "distTree": "8794daf1d1c859b9a8184150031e89abcd511437",
+      "distRuta": "ultima/dist",
+      "fecha": "2026-10-09T16:05:58Z",
+      "duracion_s": 267,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo ba702577-a1f1-404b-93b7-ba563a14c2bd registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 0,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 0,
+          "detalle": "generando Angular (capa Frontend) en segundo plano, tarea 823d276b-4515-483b-89ae-20a936855f45. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 113,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 173,
+          "detalle": "falló test: npm test falló > consulta-tarjetas-banca-internet@0.1.0 test > vitest run The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details. RUN v2.1.9 "
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 237,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 237,
+          "detalle": "build correcto; pruebas unitarias correctas (17); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 267,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 8380393: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/83803936c30c3641b46195a00c7aaf0ac58ecdfd\nPull Request: https://github.com/Digita"
         }
       ]
     }
