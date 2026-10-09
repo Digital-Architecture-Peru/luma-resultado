@@ -1,36 +1,33 @@
-CREATE TABLE accounts (
-    id          BIGSERIAL PRIMARY KEY,
-    number      VARCHAR(20)   NOT NULL UNIQUE,
-    customer_id BIGINT        NOT NULL,
-    currency    CHAR(3)       NOT NULL,
-    balance     NUMERIC(19,2) NOT NULL CHECK (balance >= 0),
-    version     BIGINT        NOT NULL DEFAULT 0
+-- Esquema inicial (PostgreSQL). Migración inmutable: los cambios van en V3, V4...
+CREATE TABLE account (
+    id           BIGINT        PRIMARY KEY,
+    number       VARCHAR(20)   NOT NULL UNIQUE,
+    holder_alias VARCHAR(60)   NOT NULL,
+    currency     VARCHAR(3)    NOT NULL,
+    balance      NUMERIC(19,2) NOT NULL CHECK (balance >= 0),
+    version      BIGINT        NOT NULL DEFAULT 0
 );
 
-CREATE INDEX idx_accounts_customer ON accounts (customer_id);
-
-CREATE TABLE transfers (
-    id              BIGSERIAL PRIMARY KEY,
+CREATE TABLE transfer (
+    id              UUID          PRIMARY KEY,
     idempotency_key VARCHAR(64)   NOT NULL UNIQUE,
-    source_id       BIGINT        NOT NULL REFERENCES accounts (id),
-    target_id       BIGINT        NOT NULL REFERENCES accounts (id),
+    source_id       BIGINT        NOT NULL REFERENCES account (id),
+    target_id       BIGINT        NOT NULL REFERENCES account (id),
     amount          NUMERIC(19,2) NOT NULL CHECK (amount > 0),
-    currency        CHAR(3)       NOT NULL,
-    description     VARCHAR(140),
-    status          VARCHAR(16)   NOT NULL,
-    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    currency        VARCHAR(3)    NOT NULL,
+    description     VARCHAR(140)  NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ   NOT NULL,
     CHECK (source_id <> target_id)
 );
 
-CREATE INDEX idx_transfers_source ON transfers (source_id);
-
-CREATE TABLE account_movements (
-    id          BIGSERIAL PRIMARY KEY,
-    account_id  BIGINT        NOT NULL REFERENCES accounts (id),
-    transfer_id BIGINT        NOT NULL REFERENCES transfers (id),
+CREATE TABLE movement (
+    id          BIGSERIAL     PRIMARY KEY,
+    account_id  BIGINT        NOT NULL REFERENCES account (id),
+    transfer_id UUID          NOT NULL REFERENCES transfer (id),
     type        VARCHAR(6)    NOT NULL CHECK (type IN ('DEBIT', 'CREDIT')),
     amount      NUMERIC(19,2) NOT NULL CHECK (amount > 0),
-    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ   NOT NULL
 );
 
-CREATE INDEX idx_movements_account_created ON account_movements (account_id, created_at DESC);
+CREATE INDEX idx_movement_account_created ON movement (account_id, created_at DESC);
+CREATE INDEX idx_transfer_source ON transfer (source_id);

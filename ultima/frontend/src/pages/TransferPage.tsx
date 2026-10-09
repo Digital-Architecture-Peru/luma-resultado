@@ -1,43 +1,76 @@
-import { useCallback, useEffect, useState } from "react";
-import { TransferForm } from "../components/organisms/TransferForm";
-import { PageTemplate } from "../components/templates/PageTemplate";
-import { useTransfer } from "../hooks/useTransfer";
-import type { Account, TransfersClient } from "../types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { MovementList } from '../components/organisms/MovementList';
+import { TransferForm } from '../components/organisms/TransferForm';
+import { TransferReceipt } from '../components/organisms/TransferReceipt';
+import { TransactionLayout } from '../components/templates/TransactionLayout';
+import type { Account, Movement, TransferReceipt as Receipt, TransferRequest } from '../domain/types';
+import { createTransfer, listAccounts, listMovements } from '../services/accountsApi';
 
-interface TransferPageProps {
-  client: TransfersClient;
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
 }
 
-export function TransferPage({ client }: TransferPageProps) {
+export function TransferPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const { state, submit } = useTransfer(client);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>();
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string>();
+  const [receipt, setReceipt] = useState<Receipt>();
+  const [movements, setMovements] = useState<Movement[]>([]);
+  // Una clave por intento; se renueva solo tras una transferencia exitosa.
+  const idempotencyKey = useRef(crypto.randomUUID());
 
-  const loadAccounts = useCallback(() => {
-    client
-      .listAccounts()
-      .then(setAccounts)
-      .catch(() => setLoadError("No se pudieron cargar las cuentas"));
-  }, [client]);
+  const refreshAccounts = useCallback(async () => {
+    try {
+      setAccounts(await listAccounts());
+      setLoadError(undefined);
+    } catch (error) {
+      setLoadError(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
+    void refreshAccounts();
+  }, [refreshAccounts]);
 
-  useEffect(() => {
-    if (state.status === "success") loadAccounts();
-  }, [state.status, loadAccounts]);
+  const handleSubmit = async (request: TransferRequest) => {
+    setSubmitting(true);
+    setServerError(undefined);
+    try {
+      const created = await createTransfer(request, idempotencyKey.current);
+      idempotencyKey.current = crypto.randomUUID();
+      setReceipt(created);
+      setMovements(await listMovements(request.sourceAccountId));
+      await refreshAccounts();
+    } catch (error) {
+      setServerError(errorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const sourceCurrency = accounts.find((a) => a.id === receipt?.sourceAccountId)?.currency;
 
   return (
-    <PageTemplate title="Transferencia entre cuentas propias">
-      {loadError ? <p role="alert">{loadError}</p> : null}
-      <TransferForm accounts={accounts} submitting={state.status === "loading"} onSubmit={submit} />
-      <div role="status" aria-live="polite" className="status">
-        {state.status === "success"
-          ? `Transferencia ${state.receipt.id} realizada por ${state.receipt.amount} ${state.receipt.currency}`
-          : null}
-        {state.status === "error" ? state.message : null}
-      </div>
-    </PageTemplate>
+    <TransactionLayout
+      title="Transferir entre mis cuentas"
+      aside={receipt ? <MovementList movements={movements} currency={sourceCurrency} /> : undefined}
+    >
+      {loading ? <p className="muted">Cargando cuentas…</p> : null}
+      {loadError ? (
+        <p className="banner banner--error" role="alert">
+          {loadError}
+        </p>
+      ) : null}
+      {!loading && !receipt ? (
+        <TransferForm accounts={accounts} submitting={submitting} serverError={serverError} onSubmit={handleSubmit} />
+      ) : null}
+      {receipt ? (
+        <TransferReceipt receipt={receipt} accounts={accounts} onNewTransfer={() => setReceipt(undefined)} />
+      ) : null}
+    </TransactionLayout>
   );
 }

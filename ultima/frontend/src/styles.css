@@ -2,30 +2,34 @@
   color-scheme: light dark;
   --bg: #f4f6fa;
   --surface: #ffffff;
-  --text: #1b2430;
-  --muted: #5b6678;
-  --primary: #0b5cad;
+  --text: #1c2333;
+  --muted: #5b6579;
+  --primary: #1b5fd1;
   --primary-contrast: #ffffff;
   --danger: #b3261e;
-  --border: #d3d9e3;
+  --border: #d5dbe7;
+  --space-1: 0.25rem;
   --space-2: 0.5rem;
+  --space-3: 0.75rem;
   --space-4: 1rem;
   --space-6: 1.5rem;
+  --space-8: 2rem;
   --radius-md: 0.5rem;
-  --shadow-sm: 0 1px 3px rgb(0 0 0 / 12%);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --shadow-sm: 0 1px 3px rgb(20 30 60 / 12%);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --dur-fast: 150ms;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #12161d;
-    --surface: #1b212b;
-    --text: #e6eaf0;
-    --muted: #9aa5b6;
-    --primary: #5aa2f0;
-    --primary-contrast: #0b1320;
+    --bg: #12161f;
+    --surface: #1b212e;
+    --text: #e6eaf2;
+    --muted: #a3adc2;
+    --primary: #6aa0ff;
+    --primary-contrast: #0c1220;
     --danger: #ff8a80;
-    --border: #323b4a;
+    --border: #2f394d;
   }
 }
 
@@ -35,22 +39,43 @@
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
-.page {
-  max-inline-size: 36rem;
-  margin-inline: auto;
-  padding: var(--space-6) var(--space-4);
+h1,
+h2 {
+  line-height: 1.2;
+  text-wrap: balance;
+  margin: 0 0 var(--space-3);
 }
 
 h1 {
-  font-size: clamp(1.25rem, 4vw, 1.75rem);
-  line-height: 1.2;
-  text-wrap: balance;
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-6);
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: var(--space-6) clamp(1rem, 4vw, 2rem);
+}
+
+@media (min-width: 48rem) {
+  .layout {
+    grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+  }
+
+  .layout__header {
+    grid-column: 1 / -1;
+  }
 }
 
 .card {
@@ -61,24 +86,31 @@ h1 {
   padding: var(--space-6);
 }
 
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-block-end: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.label {
+  font-weight: 600;
 }
 
 .input {
   min-block-size: 2.5rem;
-  padding: 0 var(--space-2);
+  padding-inline: var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--bg);
   color: var(--text);
   font: inherit;
 }
 
-.input[aria-invalid="true"] {
+.input[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
@@ -88,25 +120,41 @@ h1 {
   outline-offset: 2px;
 }
 
-.field-error {
+.field__error {
   margin: 0;
   color: var(--danger);
   font-size: 0.875rem;
 }
 
+.banner--error {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  color: var(--danger);
+}
+
 .btn {
   min-block-size: 2.75rem;
-  padding: 0 var(--space-6);
-  border: 1px solid transparent;
+  padding-inline: var(--space-6);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-md);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--dur-fast),
+    opacity var(--dur-fast);
 }
 
-.btn-primary {
+.btn--primary {
   background: var(--primary);
   color: var(--primary-contrast);
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--primary);
 }
 
 .btn:disabled {
@@ -114,7 +162,42 @@ h1 {
   cursor: not-allowed;
 }
 
-.status {
-  margin-block-start: var(--space-4);
-  min-block-size: 1.5rem;
+.receipt {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.receipt dt {
+  color: var(--muted);
+}
+
+.receipt dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.table caption {
+  text-align: start;
+  font-weight: 600;
+  padding-block-end: var(--space-2);
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--border);
+  text-align: start;
+}
+
+.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }

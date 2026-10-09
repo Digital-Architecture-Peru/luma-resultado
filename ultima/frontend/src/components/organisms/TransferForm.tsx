@@ -1,77 +1,93 @@
-import { useState, type FormEvent } from "react";
-import { isValidAmount } from "../../lib/amount";
-import type { Account, TransferInput } from "../../types";
-import { Button } from "../atoms/Button";
-import { TextInput } from "../atoms/TextInput";
-import { AccountSelect } from "../molecules/AccountSelect";
-import { AmountInput } from "../molecules/AmountInput";
-import { FormField } from "../molecules/FormField";
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import type { Account, TransferFormErrors, TransferFormValues, TransferRequest } from '../../domain/types';
+import { MAX_DESCRIPTION_LENGTH, hasErrors, validateTransfer } from '../../domain/validation';
+import { AmountInput } from '../atoms/AmountInput';
+import { Button } from '../atoms/Button';
+import { Input } from '../atoms/Input';
+import { AccountSelector } from '../molecules/AccountSelector';
+import { FormField } from '../molecules/FormField';
 
 interface TransferFormProps {
   accounts: Account[];
   submitting: boolean;
-  onSubmit: (input: TransferInput) => void;
+  serverError?: string;
+  onSubmit: (request: TransferRequest) => void;
 }
 
-export function TransferForm({ accounts, submitting, onSubmit }: TransferFormProps) {
-  const [sourceId, setSourceId] = useState<number | null>(null);
-  const [targetId, setTargetId] = useState<number | null>(null);
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [touched, setTouched] = useState(false);
+const EMPTY: TransferFormValues = { sourceAccountId: '', targetAccountId: '', amount: '', description: '' };
 
-  const sameAccount = sourceId !== null && sourceId === targetId;
-  const isValid = sourceId !== null && targetId !== null && !sameAccount && isValidAmount(amount);
+export function TransferForm({ accounts, submitting, serverError, onSubmit }: TransferFormProps) {
+  const [values, setValues] = useState<TransferFormValues>(EMPTY);
+  const [errors, setErrors] = useState<TransferFormErrors>({});
 
-  const handleSubmit = (event: FormEvent) => {
+  const update = (field: keyof TransferFormValues) => (value: string) =>
+    setValues((current) => ({ ...current, [field]: value }));
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setTouched(true);
-    if (submitting || !isValid || sourceId === null || targetId === null) return;
-    const source = accounts.find((a) => a.id === sourceId);
+    const found = validateTransfer(values, accounts);
+    setErrors(found);
+    if (hasErrors(found)) {
+      return;
+    }
+    const source = accounts.find((a) => String(a.id) === values.sourceAccountId);
+    if (!source) {
+      return;
+    }
     onSubmit({
-      sourceAccountId: sourceId,
-      targetAccountId: targetId,
-      amount,
-      currency: source?.currency ?? "USD",
-      description,
+      sourceAccountId: Number(values.sourceAccountId),
+      targetAccountId: Number(values.targetAccountId),
+      amount: values.amount.trim(),
+      currency: source.currency,
+      description: values.description.trim(),
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate aria-label="Transferencia entre cuentas propias">
-      <AccountSelect
+    <form className="card form" onSubmit={handleSubmit} noValidate aria-label="Transferencia entre cuentas propias">
+      <AccountSelector
         id="source"
-        label="Cuenta origen"
+        label="Cuenta de origen"
         accounts={accounts}
-        value={sourceId}
-        onChange={setSourceId}
-        error={touched && sourceId === null ? "Seleccione la cuenta origen" : undefined}
+        value={values.sourceAccountId}
+        onChange={update('sourceAccountId')}
+        error={errors.sourceAccountId}
+        showBalance
       />
-      <AccountSelect
+      <AccountSelector
         id="target"
-        label="Cuenta destino"
+        label="Cuenta de destino"
         accounts={accounts}
-        value={targetId}
-        onChange={setTargetId}
-        error={
-          touched && targetId === null
-            ? "Seleccione la cuenta destino"
-            : sameAccount
-              ? "La cuenta destino debe ser distinta del origen"
-              : undefined
-        }
+        value={values.targetAccountId}
+        onChange={update('targetAccountId')}
+        error={errors.targetAccountId}
       />
-      <AmountInput value={amount} onChange={setAmount} touched={touched} />
-      <FormField id="description" label="Descripción (opcional)">
-        <TextInput
-          id="description"
-          maxLength={140}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+      <FormField id="amount" label="Monto" error={errors.amount}>
+        <AmountInput
+          id="amount"
+          value={values.amount}
+          onChange={update('amount')}
+          invalid={Boolean(errors.amount)}
+          describedBy={errors.amount ? 'amount-error' : undefined}
         />
       </FormField>
+      <FormField id="description" label="Descripción (opcional)" error={errors.description}>
+        <Input
+          id="description"
+          maxLength={MAX_DESCRIPTION_LENGTH + 20}
+          value={values.description}
+          invalid={Boolean(errors.description)}
+          onChange={(e) => update('description')(e.target.value)}
+        />
+      </FormField>
+      {serverError ? (
+        <p className="banner banner--error" role="alert">
+          {serverError}
+        </p>
+      ) : null}
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Procesando…" : "Transferir"}
+        {submitting ? 'Transfiriendo…' : 'Transferir'}
       </Button>
     </form>
   );
