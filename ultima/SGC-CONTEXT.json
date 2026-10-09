@@ -4,7 +4,7 @@
     "pattern": "Component-based (Atomic Design)",
     "tests": "Unitarias",
     "type": "Consulta",
-    "domain": "Tarjetas",
+    "domain": "Cuentas",
     "layer": "Frontend",
     "stack": "Angular",
     "persistence": "No requiere"

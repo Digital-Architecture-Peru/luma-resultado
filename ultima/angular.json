@@ -4,16 +4,16 @@
   "cli": { "analytics": false },
   "newProjectRoot": "projects",
   "projects": {
-    "consulta-tarjetas": {
+    "consulta-cuentas": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular/build:application",
+          "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/consulta-tarjetas",
+            "outputPath": "dist/consulta-cuentas",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -27,10 +27,10 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular/build:dev-server",
+          "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "consulta-tarjetas:build:production" },
-            "development": { "buildTarget": "consulta-tarjetas:build:development" }
+            "production": { "buildTarget": "consulta-cuentas:build:production" },
+            "development": { "buildTarget": "consulta-cuentas:build:development" }
           },
           "defaultConfiguration": "development"
         }
