@@ -1,44 +1,46 @@
-# Pago de tarjetas · Banca por Internet
+# Transacciones de tarjetas
 
-Frontend de demostración para realizar pagos a tarjetas desde una cuenta. Construido con Angular 19 standalone y signals; componentes organizados con Atomic Design. Los datos y las transacciones son ficticios.
+Aplicación web Angular 18 para simular pagos de tarjeta y avances de efectivo sobre tarjetas ficticias. Usa componentes standalone, signals y una arquitectura por capas; no se conecta a un banco ni a un servicio remoto.
 
 ## Requisitos
 
-- Node.js compatible con la versión de Angular CLI 19 y npm.
-- Instalar dependencias desde la raíz del proyecto con `npm install`.
+- Node.js compatible con Angular 18 (Node 18.19+ o 20.11+).
+- npm.
 
-## Compilar y ejecutar
+## Instalación y ejecución
+
+Desde la raíz del proyecto:
 
 ```sh
 npm install
-npm run build
 npm start
 ```
 
-`npm run build` ejecuta `ng build` en la configuración de producción predeterminada. `npm start` inicia el servidor Angular de desarrollo; abre la URL local que informa la CLI (normalmente `http://localhost:4200`). Para compilar explícitamente en modo desarrollo: `npx ng build --configuration development`.
+Abra <http://localhost:4200>. `npm start` ejecuta `ng serve` en modo desarrollo y recarga al editar fuentes.
 
-## Pruebas
+## Compilación y pruebas
 
 ```sh
+npm run build
 npm test
 ```
 
-El comando ejecuta Vitest en modo no interactivo (`vitest run`). Las pruebas unitarias cubren reglas de pago, el adaptador en memoria y el flujo de pago; no hay pruebas de renderizado de componentes. No se requieren servicios externos.
+`npm run build` ejecuta la compilación Angular de producción y un chequeo de tipos de las pruebas (`tsc -p tsconfig.spec.json --noEmit`). `npm test` ejecuta Vitest en modo no interactivo (`vitest run`). Las pruebas existentes cubren reglas de dominio y la fachada de transacciones; no hay pruebas de componentes con TestBed.
 
-## Estructura y flujo
+## Arquitectura
 
-- `src/app/atoms`: pipe de moneda y distintivo de estado.
-- `src/app/molecules`: selección de tarjeta y opciones de monto.
-- `src/app/organisms`: formulario, revisión y comprobante.
-- `src/app/domain`: modelos, validaciones, puerto de integración (`PaymentGateway`), adaptador en memoria y estado/casos de uso (`PaymentFlow`).
-- `src/app/app.config.ts`: punto de composición que enlaza el puerto con `InMemoryPaymentGateway`.
+- `src/app/domain`: tipos, reglas de validación y cálculos en centavos; `CardGateway` define el puerto de integración.
+- `src/app/adapters`: `InMemoryCardGateway` y `SEED_CARDS`, datos totalmente ficticios.
+- `src/app/application`: `TransactionFacade`, coordinación y estado reactivo con signals.
+- `src/app/ui`: componentes de interfaz organizados en atoms, molecules, organisms y pages.
+- `src/app/app.config.ts`: composición de dependencias e inyección del gateway.
 
-El flujo permite escoger tarjeta, cuenta y monto (mínimo, total o personalizado), revisar y confirmar. Las reglas rechazan tarjetas bloqueadas, montos no positivos o superiores a la deuda y pagos que excedan el saldo disponible.
+## Integración con backend
 
-## Integración
+Actualmente la integración es simulada y no definida: `InMemoryCardGateway` satisface el contrato `CardGateway`, añade una latencia simulada y mantiene datos solo en memoria. Para conectar un backend, implemente un adaptador HTTP que extienda `CardGateway`, traduzca respuestas y errores del contrato de API a los tipos de dominio, e inyéctelo en `src/app/app.config.ts` en sustitución del adaptador en memoria. La integración real debe definir autenticación, autorización, idempotencia de operaciones, manejo de errores y validación final en servidor; las validaciones del navegador no sustituyen controles del servidor. Configure URL y parámetros por ambiente/deployment y no incluya secretos en el bundle frontend.
 
-No hay API ni integración bancaria configurada. `PaymentGateway` define las operaciones para listar tarjetas y cuentas y procesar un pago. Para integrar un backend, implementar ese puerto con un adaptador HTTP, registrar el adaptador en `src/app/app.config.ts` y acordar antes el contrato de API, autenticación, autorización, idempotencia, manejo de errores y formato monetario. No enviar credenciales al frontend ni tratar las validaciones del navegador como control de seguridad: el backend debe volver a validar y autorizar cada operación. El adaptador actual sirve solo para demostración.
+No existe endpoint, contrato HTTP, backend ni credenciales configurados en este proyecto.
 
-## Persistencia y alcance de los datos
+## Persistencia y datos
 
-No existe persistencia duradera ni almacenamiento en navegador. `InMemoryPaymentGateway` inicia con tarjetas y cuentas ficticias; pagos actualizan balances solo en memoria durante la vida de la instancia y se pierden al recargar o reiniciar la aplicación. No usar datos reales ni considerar el comprobante generado como evidencia de una transacción bancaria.
+No hay persistencia local o remota. El gateway mantiene las tarjetas en memoria, inicializadas desde `SEED_CARDS`; el historial de recibos y el estado de la fachada también viven en memoria. Al recargar o cerrar la aplicación se reinician con los datos ficticios. No se usa localStorage, IndexedDB ni base de datos.

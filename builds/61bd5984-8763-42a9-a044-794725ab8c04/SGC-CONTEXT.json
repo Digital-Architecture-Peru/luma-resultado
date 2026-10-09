@@ -1,0 +1,17 @@
+{
+  "answers": {
+    "where": "Banca por Internet",
+    "pattern": "Component-based (Atomic Design)",
+    "tests": "Unitarias",
+    "type": "Transacción",
+    "domain": "Tarjetas",
+    "layer": "Frontend",
+    "stack": "Angular",
+    "persistence": "No requiere"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}
