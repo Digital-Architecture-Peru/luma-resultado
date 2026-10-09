@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T17:52:13.233Z",
+  "actualizado": "2026-10-09T18:02:00.064Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -1508,6 +1508,68 @@
           "etapa": "Cierre",
           "segundo": 406,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit cc9f15b: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/cc9f15bef497a0bb39f1f0907c6205f07d2e7c2f\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Consulta|Tarjetas|Full Stack|React + TypeScript|.NET|PostgreSQL": {
+      "clave": "Consulta|Tarjetas|Full Stack|React + TypeScript|.NET|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Consulta",
+        "domain": "Tarjetas",
+        "layer": "Full Stack",
+        "stack": "React + TypeScript",
+        "backendStack": ".NET",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "9ed0730db90f147fdffd295881ab72720c823392",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/79",
+      "distTree": "f16962b8a7a04b04f2ad1c14ad9fe829055d26af",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-09T18:01:43Z",
+      "duracion_s": 334,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 60348971-69f4-47b0-ab28-e4fefc8082d4 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 40,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 40,
+          "detalle": "generando React + TypeScript + .NET (capa Full Stack) en segundo plano, tarea eb0194d3-4b8a-4f19-b4b1-b0ca2ad81dc0. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 228,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 313,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 313,
+          "detalle": "build correcto; pruebas unitarias correctas (13); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 334,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 9ed0730: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/9ed0730db90f147fdffd295881ab72720c823392\nPull Request: https://github.com/Digita"
         }
       ]
     }
