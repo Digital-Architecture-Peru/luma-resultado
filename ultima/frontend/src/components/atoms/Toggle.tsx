@@ -1,25 +1,24 @@
 interface ToggleProps {
-  id: string;
+  /** Nombre accesible completo (p. ej. "Compra aprobada por Correo"). */
   label: string;
+  visibleText?: string;
   checked: boolean;
   disabled?: boolean;
   onChange: (checked: boolean) => void;
 }
 
-/** Átomo: interruptor accesible (checkbox con role="switch" y etiqueta asociada). */
-export function Toggle({ id, label, checked, disabled = false, onChange }: ToggleProps) {
+export function Toggle({ label, visibleText, checked, disabled = false, onChange }: ToggleProps) {
   return (
-    <label className="toggle" htmlFor={id}>
+    <label className={`toggle${disabled ? ' toggle--disabled' : ''}`}>
       <input
-        id={id}
         type="checkbox"
         role="switch"
+        aria-label={label}
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
       />
-      <span className="toggle__track" aria-hidden="true" />
-      <span className="toggle__label">{label}</span>
+      {visibleText ? <span className="toggle__text">{visibleText}</span> : null}
     </label>
   );
 }

@@ -1,95 +1,90 @@
-# Notificaciones de Tarjetas · Banca por Internet
+# Notificaciones de Tarjetas · Banca por Internet (candidate)
 
-Capacidad **Notificación** sobre el dominio **Tarjetas**: centro de notificaciones (lista paginada, filtro de no leídas, marcar como leída) y preferencias de aviso por tarjeta.
+Capacidad de **notificación** sobre el dominio **Tarjetas**: bandeja de avisos (compra aprobada/rechazada, bloqueo/desbloqueo, cambio de límite, vencimiento próximo) y preferencias por evento y canal.
 
-> Estado: **candidate**. El código no se ha compilado ni ejecutado en este entorno; no está listo para producción.
+- **Frontend**: React 18 + TypeScript + Vite, Atomic Design (`atoms → molecules → organisms → templates → pages`).
+- **Backend**: .NET 8 Web API en capas `Domain → Application → Infrastructure → Api`.
+- **Persistencia**: PostgreSQL (Npgsql + Dapper, SQL parametrizado). Migraciones en `db/migrations`.
+- **Pruebas**: unitarias con xUnit (backend) y Vitest + Testing Library (frontend).
+
+> Estado: **candidate**. No se ha ejecutado compilación ni pruebas en este entorno; ver "Límites".
 
 ## Estructura
-
 ```
-backend/    Quarkus 3.15 · Java 17 · Maven · PostgreSQL (Flyway)
-frontend/   React 18 · TypeScript · Vite · Vitest (Atomic Design)
-docker-compose.yml   PostgreSQL local (solo desarrollo)
+backend/   CardNotifications.sln, src/{Domain,Application,Infrastructure,Api}, tests/UnitTests
+frontend/  Vite + React + TS (src/components/{atoms,molecules,organisms,templates}, pages, api, hooks, model)
+db/migrations/  V001__schema.sql, V002__seed_ficticio.sql (datos ficticios)
+docker-compose.yml  PostgreSQL local (contraseña desde DB_PASSWORD)
 ```
 
-### Backend (capas)
-`api` (recurso REST, DTOs, errores) → `service` (casos de uso, validación, propiedad de tarjeta) → `port` (interfaces) → `adapter` (JDBC con consultas parametrizadas, stub de propiedad, reloj).
+## Cómo ejecutar
+Requisitos: .NET SDK 8, Node 20 LTS, PostgreSQL 14+ (o Docker).
 
-### Frontend (Atomic Design)
-`atoms` (Badge, Icon, Toggle) → `molecules` (NotificationItem, PreferenceRow, Pager) → `organisms` (NotificationList, PreferencesPanel) → `templates` (CardNotificationsLayout) → `pages` (CardNotificationsPage). Cliente HTTP tipado en `src/api`, hooks de estado remoto en `src/hooks`.
+```bash
+# 1. Base de datos (las migraciones se aplican en la primera inicialización)
+export DB_PASSWORD=<defínela-localmente>
+docker compose up -d db
+# Sin Docker: ejecutar en orden db/migrations/V001__schema.sql y V002__seed_ficticio.sql
+
+# 2. Backend
+export ASPNETCORE_ENVIRONMENT=Development
+export ASPNETCORE_URLS=http://localhost:5080
+export ConnectionStrings__Notifications="Host=localhost;Port=5432;Database=card_notifications;Username=cardnotif;Password=$DB_PASSWORD"
+dotnet run --project backend/src/CardNotifications.Api
+
+# 3. Frontend (proxy /api -> VITE_API_TARGET, por defecto http://localhost:5080)
+cd frontend && npm install && npm run dev
+```
+
+Build y pruebas:
+```bash
+dotnet build backend/CardNotifications.sln && dotnet test backend/CardNotifications.sln
+cd frontend && npm run build && npm test     # build incluye type-check (tsc --noEmit)
+```
 
 ## Variables de entorno
+| Variable | Uso |
+|---|---|
+| `ConnectionStrings__Notifications` | Cadena Npgsql (obligatoria; el API no arranca sin ella) |
+| `DB_PASSWORD` | Contraseña del PostgreSQL local (docker-compose) |
+| `ASPNETCORE_ENVIRONMENT` / `ASPNETCORE_URLS` | Entorno y URL del API |
+| `VITE_API_TARGET` | Destino del proxy de desarrollo del frontend |
 
-Backend (no se incluyen valores reales; defínelas en tu entorno o en un `.env` local ignorado por git):
+No hay secretos en el repositorio.
 
-| Variable | Descripción | Por defecto |
+## API v1
+| Método | Ruta | Respuesta |
 |---|---|---|
-| `QUARKUS_DATASOURCE_JDBC_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/cards_notifications` |
-| `QUARKUS_DATASOURCE_USERNAME` | Usuario de la base | (obligatoria) |
-| `QUARKUS_DATASOURCE_PASSWORD` | Contraseña de la base | (obligatoria) |
-| `DB_POOL_MAX_SIZE` | Tamaño máximo del pool | `10` |
-| `FLYWAY_LOCATIONS` | Ubicaciones de migraciones; quita `db/seed` fuera de demo | `db/migration,db/seed` |
-| `CORS_ORIGINS` | Orígenes permitidos | `http://localhost:5173` |
-| `LOG_LEVEL` | Nivel de log | `INFO` |
-| `PORT` | Puerto HTTP | `8080` |
+| GET | `/api/v1/cards/notifications?status=unread\|all&page=&size=` | 200 `{items, unread, page, size}` (size ≤ 50) |
+| PATCH | `/api/v1/cards/notifications/{id}/read` | 204 / 404 (idempotente) |
+| POST | `/api/v1/cards/notifications/read-all` | 200 `{updated}` |
+| GET | `/api/v1/cards/notification-preferences` | 200 matriz completa evento × canal |
+| PUT | `/api/v1/cards/notification-preferences` | 200 / 422 si se desactiva un aviso de seguridad |
+| GET | `/health` | 200 |
+| POST | `/api/v1/cards/notifications/simulate` | **Solo Development**: genera notificaciones desde la fuente fake |
 
-Frontend (Vite): `VITE_API_BASE_URL` (por defecto `http://localhost:8080/api/v1`) y `VITE_CUSTOMER_ID` (por defecto `cust-demo-001`, identidad ficticia).
+Errores en `application/problem+json`. Se propaga `X-Correlation-Id` y se incluye en el ámbito de logs.
 
-## Compilar, probar y ejecutar
+## Integración (sin definir)
+La fuente real de eventos y los canales externos no están definidos, por lo que hay puertos con implementación **fake**:
+- `ICardEventSource` → `FakeCardEventSource` (eventos ficticios).
+- `IChannelDispatcher` → `FakeChannelDispatcher` (solo registra canal y tipo).
 
-```bash
-# Backend (requiere JDK 17 y Maven)
-cd backend
-mvn test           # pruebas unitarias (no necesitan PostgreSQL)
-mvn package
-mvn quarkus:dev    # requiere PostgreSQL y las variables anteriores
-
-# Base de datos local (opcional)
-export QUARKUS_DATASOURCE_USERNAME=<usuario> QUARKUS_DATASOURCE_PASSWORD=<contraseña>
-docker compose up -d
-
-# Frontend (requiere Node 18+)
-cd frontend
-npm install
-npm test           # vitest run (una sola pasada)
-npm run build      # tsc --noEmit && vite build
-npm run dev        # http://localhost:5173
-```
-
-## API `/api/v1`
-
-Todas las rutas requieren el encabezado `X-Customer-Id` (la autenticación real pertenece a Banca por Internet).
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/cards/{cardId}/notifications?unread=false&page=0&size=20` | Lista paginada (máx. `size=50`), más recientes primero |
-| PATCH | `/notifications/{id}/read` | Marca como leída (idempotente) |
-| GET | `/cards/{cardId}/notification-preferences` | Preferencias (tipos sin fila = activados) |
-| PUT | `/cards/{cardId}/notification-preferences` | Cuerpo: `[{"type":"PURCHASE","enabled":false}]` |
-
-Errores: JSON con `type`, `title`, `status`, `detail` (campos de RFC 7807) y códigos 400, 401, 403, 404, 500. Salud: `/q/health`.
-
-Ejemplo:
-```bash
-curl -H "X-Customer-Id: cust-demo-001" \
-  "http://localhost:8080/api/v1/cards/11111111-1111-4111-8111-111111111111/notifications?unread=true"
-```
+El canal real es **in-app**; correo, SMS y push existen solo como preferencia. Para integrar, implementar los puertos y registrarlos en `Program.cs`.
 
 ## Persistencia (PostgreSQL)
+- `card_notification`: `id uuid PK`, `customer_id`, `card_ref`, `card_last4 char(4)`, `type`, `title`, `body`, `severity`, `created_at timestamptz`, `read_at timestamptz NULL`.
+- `notification_preference`: PK (`customer_id`, `event_type`, `channel`), `enabled`.
+- Índices: (`customer_id`, `created_at DESC`) y parcial de no leídas (`WHERE read_at IS NULL`).
+- Nunca se guarda ni muestra el PAN: solo `card_last4` y `card_ref` opaco. Fechas en UTC; el navegador las muestra en hora local.
 
-- `db/migration/V1__schema.sql`: tablas `card_notification` y `notification_preference`, restricciones CHECK e índices (`(card_id, created_at DESC)` y parcial `WHERE read_at IS NULL`).
-- `db/seed/V2__seed.sql`: datos **ficticios** para demostración.
-- Solo se guardan `card_id` (UUID) y los últimos 4 dígitos; nunca el PAN.
-- Flyway migra al arrancar (`quarkus.flyway.migrate-at-start=true`). Las consultas JDBC usan parámetros.
+## Seguridad y supuestos
+- `customer_id` proviene del claim `sub`. **Stub de desarrollo**: en `Development` se acepta la cabecera `X-Customer-Id` (o el cliente `CUST-DEMO-001`); fuera de `Development` el API responde 401 hasta configurar autenticación real. Debe sustituirse antes de cualquier uso productivo.
+- Avisos de seguridad (bloqueo, desbloqueo, compra rechazada) no se pueden desactivar en in-app (regla en backend y frontend).
+- Paginación por offset (suficiente para demostración). Se asumen .NET 8 y Node 20.
 
-## Integración (sin definir) e hipótesis
-
-- **H1** Notificación = centro de notificaciones en la app. Push, SMS y email quedan fuera; las preferencias se guardan pero aún no gobiernan un envío.
-- **H2** La identidad llega por `X-Customer-Id` y la propiedad de la tarjeta la valida `CardOwnershipPort`, hoy un **stub** (`StubCardOwnership`) con datos ficticios.
-- **H3** La integración con el core de tarjetas o el motor de eventos no está definida; los eventos se simulan con el seed.
-- **H4** Paginación por offset. **H5** Moneda única (PEN) y textos en español.
-- Los errores usan `application/json` con los campos de RFC 7807 (no `application/problem+json`).
-
-## Seguridad
-
-Sin secretos en el repositorio, validación de entrada en el servicio, verificación de propiedad de la tarjeta antes de cada consulta o cambio (anti-IDOR), `last4` únicamente en las respuestas y sin registrar cuerpos de petición. Esto no constituye una afirmación de que el sistema sea seguro.
+## Límites (no verificado)
+- No se ha ejecutado `dotnet build/test` ni `npm install/build/test` en este entorno.
+- El esquema PostgreSQL solo tiene revisión estática; no se ejecutó contra un motor real.
+- `PgNotificationRepository` no tiene pruebas de integración (solo unitarias del dominio/servicio y del frontend).
+- Sin autenticación real, sin integración real, sin despliegue. Añade `bin/ obj/ node_modules/ dist/ .env` a tu `.gitignore`.

@@ -1,33 +1,27 @@
-import type { IconName } from "../../domain/notificationMeta";
+import type { Severity } from '../../api/types';
 
-const PATHS: Record<IconName, string> = {
-  cart: "M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.2a1 1 0 0 0 1-.8L19 8H6.2M9 19.5a1 1 0 1 0 0 .01M17 19.5a1 1 0 1 0 0 .01",
-  calendar: "M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM4 10h16M8 3v4M16 3v4",
-  lock: "M6 11h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM8 11V8a4 4 0 0 1 8 0v3",
-  gauge: "M4 17a8 8 0 1 1 16 0M12 17l4-5",
+const PATHS: Record<Severity, string> = {
+  Info: 'M12 8h.01M11 12h1v5h1',
+  Warning: 'M12 9v4M12 17h.01M10.3 4l-8 14a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3l-8-14a2 2 0 0 0-3.4 0z',
+  Critical: 'M12 8v5M12 16h.01M8 3h8l5 5v8l-5 5H8l-5-5V8z',
 };
 
-interface IconProps {
-  name: IconName;
-}
-
-/** Átomo: icono SVG decorativo (oculto para lectores de pantalla). */
-export function Icon({ name }: IconProps) {
+export function Icon({ severity }: { severity: Severity }) {
   return (
     <svg
       className="icon"
-      width="20"
-      height="20"
       viewBox="0 0 24 24"
+      width="16"
+      height="16"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
     >
-      <path d={PATHS[name]} />
+      <path d={PATHS[severity]} />
     </svg>
   );
 }

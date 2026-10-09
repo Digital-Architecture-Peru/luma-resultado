@@ -1,33 +1,37 @@
-export type NotificationType = "PURCHASE" | "PAYMENT_DUE" | "CARD_BLOCKED" | "LIMIT_REACHED";
+export type NotificationType =
+  | 'PurchaseApproved'
+  | 'PurchaseDeclined'
+  | 'CardBlocked'
+  | 'CardUnblocked'
+  | 'LimitChanged'
+  | 'ExpiryUpcoming';
+
+export type Severity = 'Info' | 'Warning' | 'Critical';
+
+export type Channel = 'InApp' | 'Email' | 'Sms' | 'Push';
 
 export interface CardNotification {
   id: string;
-  cardId: string;
   cardLast4: string;
   type: NotificationType;
   title: string;
-  message: string;
-  amount: number | null;
-  currency: string;
-  read: boolean;
-  readAt: string | null;
+  body: string;
+  severity: Severity;
   createdAt: string;
+  readAt: string | null;
 }
 
-export interface Page<T> {
-  items: T[];
+export interface NotificationPage {
+  items: CardNotification[];
+  unread: number;
   page: number;
   size: number;
-  total: number;
 }
 
 export interface Preference {
-  type: NotificationType;
+  eventType: NotificationType;
+  channel: Channel;
   enabled: boolean;
 }
 
-export interface ListOptions {
-  unreadOnly: boolean;
-  page: number;
-  size: number;
-}
+export type NotificationFilter = 'all' | 'unread';

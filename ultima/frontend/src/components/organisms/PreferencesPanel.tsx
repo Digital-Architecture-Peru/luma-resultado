@@ -1,34 +1,37 @@
-import type { NotificationType, Preference } from "../../api/types";
-import type { RemoteState } from "../../hooks/useCardNotifications";
-import { PreferenceRow } from "../molecules/PreferenceRow";
+import type { Channel, NotificationType, Preference } from '../../api/types';
+import { EVENT_ORDER } from '../../model/notifications';
+import { Button } from '../atoms/Button';
+import { PreferenceRow } from '../molecules/PreferenceRow';
 
 interface PreferencesPanelProps {
-  preferences: RemoteState<Preference[]>;
+  preferences: Preference[];
   saving: boolean;
-  saveError: string | null;
-  onToggle: (type: NotificationType, enabled: boolean) => void;
+  saved: boolean;
+  error: string | null;
+  onToggle: (eventType: NotificationType, channel: Channel, enabled: boolean) => void;
+  onSave: () => void;
 }
 
-/** Organismo: panel de preferencias de aviso de la tarjeta seleccionada. */
-export function PreferencesPanel({ preferences, saving, saveError, onToggle }: PreferencesPanelProps) {
+export function PreferencesPanel({ preferences, saving, saved, error, onToggle, onSave }: PreferencesPanelProps) {
   return (
-    <section className="panel" aria-labelledby="preferences-title">
-      <h2 id="preferences-title" className="panel__title">
-        Preferencias de aviso
-      </h2>
-      {preferences.status === "loading" && <p role="status">Cargando preferencias…</p>}
-      {preferences.status === "error" && <p role="alert">{preferences.message}</p>}
-      {preferences.status === "success" &&
-        preferences.data.map((preference) => (
-          <PreferenceRow
-            key={preference.type}
-            type={preference.type}
-            enabled={preference.enabled}
-            disabled={saving}
-            onChange={onToggle}
-          />
-        ))}
-      {saveError !== null && <p role="alert">{saveError}</p>}
+    <section aria-labelledby="preferences-heading" className="card">
+      <h2 id="preferences-heading">Preferencias de aviso</h2>
+      <p className="muted">
+        Los avisos de seguridad (bloqueo, desbloqueo y compra rechazada) siempre se muestran en la banca.
+        Correo, SMS y push son preferencias; el envío real aún no está integrado.
+      </p>
+      {EVENT_ORDER.map((eventType) => (
+        <PreferenceRow key={eventType} eventType={eventType} preferences={preferences} onToggle={onToggle} />
+      ))}
+      <div className="card__footer">
+        <Button disabled={saving} onClick={onSave}>
+          {saving ? 'Guardando…' : 'Guardar preferencias'}
+        </Button>
+        <p role="status" aria-live="polite">
+          {saved ? 'Preferencias guardadas.' : ''}
+        </p>
+        {error ? <p role="alert" className="error">{error}</p> : null}
+      </div>
     </section>
   );
 }

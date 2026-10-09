@@ -1,12 +1,13 @@
-import type { ReactNode } from "react";
-import type { Tone } from "../../domain/notificationMeta";
+import type { Severity } from '../../api/types';
+import { SEVERITY_LABELS } from '../../model/notifications';
+import { Icon } from './Icon';
 
-interface BadgeProps {
-  tone: Tone;
-  children: ReactNode;
-}
-
-/** Átomo: etiqueta corta. El significado va en el texto, no solo en el color. */
-export function Badge({ tone, children }: BadgeProps) {
-  return <span className={`badge badge--${tone}`}>{children}</span>;
+/** La severidad se comunica con icono y texto, no solo con color. */
+export function Badge({ severity }: { severity: Severity }) {
+  return (
+    <span className={`badge badge--${severity.toLowerCase()}`}>
+      <Icon severity={severity} />
+      {SEVERITY_LABELS[severity]}
+    </span>
+  );
 }
