@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { ConsultaPagosPage } from './pagos/pages/consulta-pagos.page';
+import { ConsultaPagosPageComponent } from './pages/consulta-pagos/consulta-pagos.page';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [ConsultaPagosPage],
-  template: '<app-consulta-pagos-page />',
+  imports: [ConsultaPagosPageComponent],
+  template: `<app-consulta-pagos />`,
 })
 export class AppComponent {}
