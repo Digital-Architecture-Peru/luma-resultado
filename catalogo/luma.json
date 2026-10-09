@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T16:53:29.828Z",
+  "actualizado": "2026-10-09T17:03:55.812Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -1045,6 +1045,67 @@
           "etapa": "Cierre",
           "segundo": 369,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit f07c7db: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/f07c7db31dda8c2f6ab0dea57e3074ca5b194f41\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Transacción|Tarjetas|Frontend|Angular||": {
+      "clave": "Transacción|Tarjetas|Frontend|Angular||",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Transacción",
+        "domain": "Tarjetas",
+        "layer": "Frontend",
+        "stack": "Angular",
+        "persistence": "No requiere"
+      },
+      "commit": "1383dc78cf636f5f60e8fc64a52f6eb8c62378e6",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/70",
+      "distTree": "fb2d498be3b4ce21ef5f3da3ce122c4f110a3c8b",
+      "distRuta": "ultima/dist",
+      "fecha": "2026-10-09T17:03:34Z",
+      "duracion_s": 268,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 7bd224e5-7714-48ed-b5d9-13b154283730 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 0,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 0,
+          "detalle": "generando Angular (capa Frontend) en segundo plano, tarea 61bd5984-8763-42a9-a044-794725ab8c04. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 137,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 246,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 246,
+          "detalle": "build correcto; pruebas unitarias correctas (17); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 268,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 1383dc7: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/1383dc78cf636f5f60e8fc64a52f6eb8c62378e6\nPull Request: https://github.com/Digita"
         }
       ]
     }
