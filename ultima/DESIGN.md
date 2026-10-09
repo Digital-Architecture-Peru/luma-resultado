@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Spring Boot
+- ¿Qué stack? Angular + Java + Quarkus
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Quarkus (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,65 +29,59 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento
+# DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| AD1 | Repositorio con `backend/` (Maven) y `frontend/` (Angular CLI) | Builds y pruebas independientes por capa |
-| AD2 | Backend hexagonal ligero: `domain` → `application` (puertos) → `adapter` (web, persistence) | La integración no está definida. El puerto `PaymentGateway` permite un stub ficticio hoy y un adaptador real después |
-| AD3 | Montos en `BigDecimal` / `NUMERIC(19,2)` y moneda `CHAR(3)` (ISO 4217) | Evita errores de redondeo en dinero |
-| AD4 | Idempotencia con el header `Idempotency-Key`, respaldada por un índice `UNIQUE` | En una transacción de pago hay que impedir el doble cargo por reintento o doble clic |
-| AD5 | Estados `PENDING → COMPLETED \| REJECTED` y columna `version` (bloqueo optimista) | Trazabilidad del ciclo y control de concurrencia sobre el saldo |
-| AD6 | Migraciones Flyway: `V1__schema.sql`, `V2__seed_ficticio.sql`. Acceso con Spring Data JPA o `JdbcTemplate` parametrizado | Esquema versionado y sin SQL concatenado |
-| AD7 | Errores con `ProblemDetail` (RFC 7807) y Bean Validation | Contrato de error uniforme que el frontend puede mapear |
-| AD8 | Frontend con Atomic Design, componentes standalone y Reactive Forms | Responde al patrón pedido. Los componentes son reutilizables y se prueban por separado |
-| AD9 | Configuración por variables de entorno `DB_URL`, `DB_USER`, `DB_PASSWORD`, sin valores por defecto sensibles | No incluir secretos |
-
-## Contrato API (v1)
-- `GET /api/v1/accounts`: cuentas ficticias del cliente.
-- `POST /api/v1/payments` con header `Idempotency-Key` y cuerpo `{sourceAccountId, targetAccount, amount, currency, reference}`. Respuestas: 201, 400, 409 (clave repetida con otro cuerpo) y 422 (saldo insuficiente).
-- `GET /api/v1/payments/{id}`: estado y comprobante.
-
-## Modelo de datos (PostgreSQL)
-- `account(id UUID PK, customer_id, number UNIQUE, currency, balance NUMERIC(19,2) CHECK ≥ 0, version)`
-- `payment(id UUID PK, idempotency_key UNIQUE, source_account_id FK, target_account, amount CHECK > 0, currency, status, reference, created_at)`
-- Índices: `payment(source_account_id, created_at DESC)` y `account(customer_id)`.
+| D1 | Monorepo con `frontend/` (Angular), `backend/` (Quarkus) y migraciones en `backend/src/main/resources/db/migration` | Un solo entregable Full Stack; cada parte compila con su propia toolchain (npm, Maven). |
+| D2 | Backend hexagonal ligero: `api` → `application` → `domain` ← `infrastructure` | La integración está sin definir: se aísla detrás de `PasarelaPagoPort` con un adaptador stub. |
+| D3 | REST `POST /api/v1/pagos` con cabecera `Idempotency-Key`; `GET /api/v1/pagos/{id}`; `GET /api/v1/pagos?cuentaOrigen=` | Evita pagos duplicados por reintento del usuario o de la red. |
+| D4 | Importes con `BigDecimal` / `NUMERIC(19,2)` y moneda ISO-4217 | Sin errores de redondeo en dinero. |
+| D5 | Estados `PENDIENTE → CONFIRMADO / RECHAZADO` validados en el dominio | Transiciones explícitas y fáciles de probar unitariamente. |
+| D6 | Flyway (`V1__esquema.sql`, `V2__datos_ficticios.sql`) y acceso por Panache/JPA con parámetros enlazados | Esquema versionado, sin SQL concatenado. |
+| D7 | Angular standalone, formularios reactivos y Atomic Design (atoms/molecules/organisms/templates/pages) | Corresponde al patrón elegido y permite reutilizar piezas en Banca por Internet. |
+| D8 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `API_BASE_URL`) | Sin secretos en el repositorio. |
 
 ## Estructura de módulos
 ```
-backend/src/main/java/.../payments/
-  domain/       Payment, Account, PaymentStatus, Money
-  application/  PaymentService, ports/{PaymentRepository, AccountRepository, PaymentGateway}
-  adapter/web/  PaymentController, AccountController, dto/, ErrorHandler
-  adapter/persistence/  entidades + repositorios
-  adapter/gateway/      FakePaymentGateway
-backend/src/main/resources/db/migration/  V1, V2
-backend/src/test/java/...  PaymentServiceTest, PaymentControllerTest (MockMvc standalone + Mockito)
-frontend/src/app/payments/
-  atoms/      amount-input, app-button, status-badge
-  molecules/  form-field, account-selector
-  organisms/  payment-form, payment-receipt
-  templates/  payment-layout
-  pages/      new-payment-page
-  services/   payment-api.service.ts (+ .spec con HttpTestingController)
+backend/  pom.xml
+  src/main/java/.../pagos/
+    api/            PagoResource, PagoRequest/Response, ErrorMapper
+    application/    RegistrarPagoUseCase, ConsultarPagoUseCase
+    domain/         Pago, EstadoPago, Monto, ReglasPago, PasarelaPagoPort, PagoRepository
+    infrastructure/ PagoEntity, PagoPanacheRepository, PasarelaPagoStub
+  src/test/java/... RegistrarPagoUseCaseTest, ReglasPagoTest, PagoResourceTest (mocks)
+frontend/  package.json, angular.json
+  src/app/pagos/
+    atoms/      input-monto, boton, etiqueta-estado
+    molecules/  campo-cuenta, resumen-importe
+    organisms/  formulario-pago, detalle-pago
+    templates/  layout-transaccion
+    pages/      nuevo-pago.page, confirmacion.page
+    services/   pagos-api.service (HttpClient)
+  *.spec.ts junto a cada componente o servicio
 ```
 
-## Hipótesis
-- H1: "Transacción" se interpreta como una transferencia o pago desde una cuenta propia hacia una cuenta destino. Todos los datos son ficticios.
-- H2: la autenticación la provee Banca por Internet y queda fuera de alcance. El `customerId` llega de forma simulada.
-- H3: el procesamiento es síncrono y no hay core bancario real; `FakePaymentGateway` aprueba o rechaza de forma determinista.
-- H4: las versiones son orientativas: Java 17, Spring Boot 3.x y Angular 17 o superior.
-- H5: las pruebas "Unitarias" no incluyen e2e ni pruebas contra un PostgreSQL real.
+## Modelo de datos (PostgreSQL)
+- Tabla `pago`: `id UUID PK`, `idempotency_key VARCHAR UNIQUE`, `cuenta_origen`, `cuenta_destino`, `monto NUMERIC(19,2) CHECK (monto > 0)`, `moneda CHAR(3)`, `estado`, `creado_en TIMESTAMPTZ`.
+- Índices: `(cuenta_origen, creado_en DESC)` y un índice único sobre `idempotency_key`.
+- Datos ficticios con cuentas inventadas (por ejemplo `0000-FAKE-0001`).
+
+## Pruebas unitarias
+- Backend: JUnit 5 + Mockito sobre las reglas de dominio, los casos de uso (incluida la idempotencia) y el mapeo de errores.
+- Frontend: el runner por defecto del Angular CLI cubre las validaciones del formulario, los átomos y el servicio con `HttpTestingController`.
 
 ## Riesgos
-| Riesgo | Mitigación |
-|---|---|
-| Sin toolchain local (Maven/npm) no se compila ni se prueba | Se marca como no verificado en el handoff |
-| El SQL de PostgreSQL solo recibe revisión estática | Usar SQL estándar y evitar extensiones |
-| Condición de carrera sobre el saldo | `version` optimista y operación `@Transactional` |
-| La integración indefinida puede cambiar el contrato | Puerto aislado y DTO versionado `/v1` |
-| SGC en fallback, sin reglas corporativas aplicadas | Registrar este hecho como pendiente de validar |
+- **R1:** la compilación y las pruebas pueden no ejecutarse si faltan JDK, Maven o Node. Quedan marcadas como no verificadas.
+- **R2:** el SQL de PostgreSQL solo recibe revisión estática y puede tener errores que solo aparecen en tiempo de ejecución.
+- **R3:** la autenticación y autorización no están definidas. Un endpoint de pagos expuesto sin ellas es un riesgo grave fuera de la demo.
+- **R4:** el SGC está en fallback, así que pueden faltar convenciones corporativas (nombres, librería de UI, observabilidad).
+- **R5:** sin una pasarela real no se validan tiempos de espera, reintentos ni conciliación.
 
-## Trazabilidad con la aceptación
-Las fuentes y pruebas responden a T02/T04, las migraciones a T04-db y el README (build, variables de entorno, Flyway) a T05. El cierre es candidate, sin afirmar compilación.
+## Hipótesis
+- **H1:** la autenticación la aporta Banca por Internet. Aquí se simula el usuario y no se implementa seguridad real.
+- **H2:** las versiones son las LTS vigentes de Quarkus y Java 21, y Angular es una versión estable reciente. Hay que confirmarlas con la toolchain disponible.
+- **H3:** solo se manejan pagos en la misma moneda, sin límites diarios ni OTP. Esas reglas quedan como extensión futura.
+- **H4:** la pasarela stub confirma o rechaza según reglas ficticias deterministas.
+- **H5:** no hay requisitos de auditoría regulatoria específicos. Solo se usa `creado_en` y logs sin datos sensibles.
