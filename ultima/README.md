@@ -1,67 +1,95 @@
-# Notificaciones de Tarjetas — Banca por Internet (candidate)
+# Notificaciones de Tarjetas · Banca por Internet
 
-Aplicación de demostración con **React 18 + TypeScript + Vite**, **Java 17 + Spring Boot 3.2 + Maven** y **PostgreSQL**. Los registros de migración son datos ficticios. No se conecta a sistemas bancarios o canales externos.
+Capacidad **Notificación** sobre el dominio **Tarjetas**: centro de notificaciones (lista paginada, filtro de no leídas, marcar como leída) y preferencias de aviso por tarjeta.
 
-## Requisitos
+> Estado: **candidate**. El código no se ha compilado ni ejecutado en este entorno; no está listo para producción.
 
-- Java 17 y Maven 3.8+ (o usar `./mvnw` si se incorpora un wrapper).
-- Node.js 18+ y npm.
-- PostgreSQL 14+ para ejecutar el backend. Las pruebas unitarias/API no requieren PostgreSQL.
+## Estructura
 
-## Compilar y probar
-
-Desde la raíz del repositorio:
-
-```bash
-cd backend
-mvn test
-mvn package
-cd ../frontend
-npm install
-npm test
-npm run build
+```
+backend/    Quarkus 3.15 · Java 17 · Maven · PostgreSQL (Flyway)
+frontend/   React 18 · TypeScript · Vite · Vitest (Atomic Design)
+docker-compose.yml   PostgreSQL local (solo desarrollo)
 ```
 
-`mvn test` ejecuta JUnit 5/Mockito y pruebas MVC; `npm test` ejecuta Vitest en modo no interactivo. `npm run build` hace primero `tsc --noEmit` y luego el build de Vite. No se afirma que estos comandos hayan sido ejecutados en este entorno.
+### Backend (capas)
+`api` (recurso REST, DTOs, errores) → `service` (casos de uso, validación, propiedad de tarjeta) → `port` (interfaces) → `adapter` (JDBC con consultas parametrizadas, stub de propiedad, reloj).
 
-## Ejecución local e integración
+### Frontend (Atomic Design)
+`atoms` (Badge, Icon, Toggle) → `molecules` (NotificationItem, PreferenceRow, Pager) → `organisms` (NotificationList, PreferencesPanel) → `templates` (CardNotificationsLayout) → `pages` (CardNotificationsPage). Cliente HTTP tipado en `src/api`, hooks de estado remoto en `src/hooks`.
 
-1. Cree una base PostgreSQL `notifications` y configure las variables de conexión. Ejemplo para una instancia local (ajuste usuario/contraseña a su instalación):
+## Variables de entorno
 
-   ```sh
-   createdb notifications
-   export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/notifications
-   export SPRING_DATASOURCE_USERNAME=notifications
-   export SPRING_DATASOURCE_PASSWORD=''
-   ```
+Backend (no se incluyen valores reales; defínelas en tu entorno o en un `.env` local ignorado por git):
 
-   `application.yml` usa esos valores por defecto (URL local, usuario `notifications`, contraseña vacía); para un entorno real establezca credenciales apropiadas fuera del repositorio. Puede cambiar el puerto con `SERVER_PORT` (por defecto `8080`) y el nivel de log con `LOG_LEVEL` (por defecto `INFO`).
+| Variable | Descripción | Por defecto |
+|---|---|---|
+| `QUARKUS_DATASOURCE_JDBC_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/cards_notifications` |
+| `QUARKUS_DATASOURCE_USERNAME` | Usuario de la base | (obligatoria) |
+| `QUARKUS_DATASOURCE_PASSWORD` | Contraseña de la base | (obligatoria) |
+| `DB_POOL_MAX_SIZE` | Tamaño máximo del pool | `10` |
+| `FLYWAY_LOCATIONS` | Ubicaciones de migraciones; quita `db/seed` fuera de demo | `db/migration,db/seed` |
+| `CORS_ORIGINS` | Orígenes permitidos | `http://localhost:5173` |
+| `LOG_LEVEL` | Nivel de log | `INFO` |
+| `PORT` | Puerto HTTP | `8080` |
 
-2. Inicie el backend, que ejecuta Flyway al arrancar:
+Frontend (Vite): `VITE_API_BASE_URL` (por defecto `http://localhost:8080/api/v1`) y `VITE_CUSTOMER_ID` (por defecto `cust-demo-001`, identidad ficticia).
 
-   ```sh
-   cd backend
-   mvn spring-boot:run
-   ```
+## Compilar, probar y ejecutar
 
-3. En otra terminal, arranque la interfaz:
+```bash
+# Backend (requiere JDK 17 y Maven)
+cd backend
+mvn test           # pruebas unitarias (no necesitan PostgreSQL)
+mvn package
+mvn quarkus:dev    # requiere PostgreSQL y las variables anteriores
 
-   ```sh
-   cd frontend
-   npm install
-   npm run dev
-   ```
+# Base de datos local (opcional)
+export QUARKUS_DATASOURCE_USERNAME=<usuario> QUARKUS_DATASOURCE_PASSWORD=<contraseña>
+docker compose up -d
 
-   Vite reenvía `/api` a `http://localhost:8080`. Configure `VITE_PROXY_TARGET` si el backend usa otro destino. `VITE_API_BASE_URL` permite indicar una URL base directamente en el cliente; si queda vacía, las peticiones usan rutas relativas y el proxy en desarrollo. `VITE_CUSTOMER_ID` establece el identificador de demostración enviado en `X-Customer-Id` (por defecto `CLI-0001`). Las variables `VITE_*` se incorporan al cliente y no deben contener secretos. Más detalle: [`docs/environment.md`](docs/environment.md).
+# Frontend (requiere Node 18+)
+cd frontend
+npm install
+npm test           # vitest run (una sola pasada)
+npm run build      # tsc --noEmit && vite build
+npm run dev        # http://localhost:5173
+```
 
-La API está bajo `/api/v1`: `GET /cards`, `GET /cards/{cardId}/notifications` (filtros `status`, `page`, `size`), `PATCH /notifications/{id}/read` y `GET`/`PUT /cards/{cardId}/notification-preferences`. Todas requieren `X-Customer-Id`. La identidad es únicamente una convención ficticia de demo, **no es autenticación ni autorización suficiente para producción**. El servidor comprueba la propiedad de la tarjeta para las operaciones correspondientes. Los errores se representan como `ProblemDetail`.
+## API `/api/v1`
 
-## Persistencia e integración de notificaciones
+Todas las rutas requieren el encabezado `X-Customer-Id` (la autenticación real pertenece a Banca por Internet).
 
-La persistencia usa PostgreSQL mediante `NamedParameterJdbcTemplate`. Flyway aplica `backend/src/main/resources/db/migration/V1__schema.sql` (tablas `card`, `notification`, `notification_preference`, restricciones e índices) y `V2__seed_ficticio.sql` (tarjetas, notificaciones y preferencias de demostración; clientes `CLI-0001` y `CLI-0002`). Las migraciones se aplican automáticamente al iniciar el backend y Flyway registra su estado en `flyway_schema_history`. No se guarda el PAN completo, únicamente los últimos cuatro dígitos. Para reiniciar datos de demo, restaure manualmente la base local y vuelva a iniciarla; no edite migraciones ya aplicadas.
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/cards/{cardId}/notifications?unread=false&page=0&size=20` | Lista paginada (máx. `size=50`), más recientes primero |
+| PATCH | `/notifications/{id}/read` | Marca como leída (idempotente) |
+| GET | `/cards/{cardId}/notification-preferences` | Preferencias (tipos sin fila = activados) |
+| PUT | `/cards/{cardId}/notification-preferences` | Cuerpo: `[{"type":"PURCHASE","enabled":false}]` |
 
-La UI consume la API HTTP a través de `frontend/src/services/notificationsApi.ts`. El puerto de dominio `NotificationPublisher` tiene actualmente solo el adaptador `LoggingNotificationPublisher`: al marcar una notificación como leída se registra un evento de log, no se envía push, correo ni SMS. Las preferencias se guardan, pero no activan entregas. La integración con proveedor externo, credenciales, reintentos y garantías de entrega están fuera del alcance y deben definirse antes de producción.
+Errores: JSON con `type`, `title`, `status`, `detail` (campos de RFC 7807) y códigos 400, 401, 403, 404, 500. Salud: `/q/health`.
 
-## Alcance y límites
+Ejemplo:
+```bash
+curl -H "X-Customer-Id: cust-demo-001" \
+  "http://localhost:8080/api/v1/cards/11111111-1111-4111-8111-111111111111/notifications?unread=true"
+```
 
-Datos y canales son ficticios; la cabecera de cliente es deliberadamente una hipótesis para la demostración. No se ha verificado aquí compilación, pruebas ni ejecución de migraciones contra una instancia PostgreSQL real. No usar con información personal o transacciones reales.
+## Persistencia (PostgreSQL)
+
+- `db/migration/V1__schema.sql`: tablas `card_notification` y `notification_preference`, restricciones CHECK e índices (`(card_id, created_at DESC)` y parcial `WHERE read_at IS NULL`).
+- `db/seed/V2__seed.sql`: datos **ficticios** para demostración.
+- Solo se guardan `card_id` (UUID) y los últimos 4 dígitos; nunca el PAN.
+- Flyway migra al arrancar (`quarkus.flyway.migrate-at-start=true`). Las consultas JDBC usan parámetros.
+
+## Integración (sin definir) e hipótesis
+
+- **H1** Notificación = centro de notificaciones en la app. Push, SMS y email quedan fuera; las preferencias se guardan pero aún no gobiernan un envío.
+- **H2** La identidad llega por `X-Customer-Id` y la propiedad de la tarjeta la valida `CardOwnershipPort`, hoy un **stub** (`StubCardOwnership`) con datos ficticios.
+- **H3** La integración con el core de tarjetas o el motor de eventos no está definida; los eventos se simulan con el seed.
+- **H4** Paginación por offset. **H5** Moneda única (PEN) y textos en español.
+- Los errores usan `application/json` con los campos de RFC 7807 (no `application/problem+json`).
+
+## Seguridad
+
+Sin secretos en el repositorio, validación de entrada en el servicio, verificación de propiedad de la tarjeta antes de cada consulta o cambio (anti-IDOR), `last4` únicamente en las respuestas y sin registrar cuerpos de petición. Esto no constituye una afirmación de que el sistema sea seguro.

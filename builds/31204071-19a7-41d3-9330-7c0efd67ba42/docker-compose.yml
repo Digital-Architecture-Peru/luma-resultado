@@ -1,0 +1,15 @@
+# Solo para desarrollo local. Las credenciales se toman del entorno (ver backend/.env.example).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cards_notifications
+      POSTGRES_USER: ${QUARKUS_DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${QUARKUS_DATASOURCE_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

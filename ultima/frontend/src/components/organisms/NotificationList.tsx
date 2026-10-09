@@ -1,26 +1,48 @@
-import type { RemoteStatus } from '../../hooks/useNotifications';
-import type { CardNotification } from '../../types/notification';
-import NotificationItem from '../molecules/NotificationItem';
+import type { CardNotification } from "../../api/types";
+import type { RemoteState } from "../../hooks/useCardNotifications";
+import { NotificationItem } from "../molecules/NotificationItem";
 
 interface NotificationListProps {
-  status: RemoteStatus;
-  items: CardNotification[];
-  error: string | null;
+  items: RemoteState<CardNotification[]>;
+  pendingId: string | null;
+  emptyMessage: string;
   onMarkRead: (id: string) => void;
+  onRetry: () => void;
 }
 
-export default function NotificationList({ status, items, error, onMarkRead }: NotificationListProps) {
+/** Organismo: lista de notificaciones con estados de carga, error y vacío. */
+export function NotificationList({ items, pendingId, emptyMessage, onMarkRead, onRetry }: NotificationListProps) {
+  if (items.status === "loading") {
+    return (
+      <p role="status" className="state state--loading">
+        Cargando notificaciones…
+      </p>
+    );
+  }
+  if (items.status === "error") {
+    return (
+      <div role="alert" className="state state--error">
+        <p>{items.message}</p>
+        <button type="button" className="button button--secondary" onClick={onRetry}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+  if (items.data.length === 0) {
+    return <p className="state state--empty">{emptyMessage}</p>;
+  }
   return (
-    <section aria-labelledby="notifications-heading">
-      <h2 id="notifications-heading">Notificaciones</h2>
-      {error && <p role="alert" className="feedback feedback--error">{error}</p>}
-      {status === 'loading' && <p role="status" className="feedback">Cargando notificaciones…</p>}
-      {status === 'success' && items.length === 0 && <p className="feedback">No hay notificaciones.</p>}
-      <ul className="notification-list">
-        {items.map((n) => (
-          <NotificationItem key={n.id} notification={n} onMarkRead={onMarkRead} />
-        ))}
-      </ul>
-    </section>
+    <ul className="notification-list">
+      {items.data.map((notification) => (
+        <li key={notification.id}>
+          <NotificationItem
+            notification={notification}
+            busy={pendingId === notification.id}
+            onMarkRead={onMarkRead}
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
