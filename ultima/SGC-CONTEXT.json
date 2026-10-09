@@ -6,8 +6,8 @@
     "type": "Consulta",
     "domain": "Pagos",
     "layer": "Full Stack",
-    "stack": "Angular + Java + Spring Boot",
-    "backendStack": "Java + Spring Boot",
+    "stack": "Angular + Java + Quarkus",
+    "backendStack": "Java + Quarkus",
     "persistence": "PostgreSQL"
   },
   "sgc": {
