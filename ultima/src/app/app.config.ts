@@ -1,12 +1,12 @@
-import { ApplicationConfig } from '@angular/core';
-import { PagosRepository } from './domain/pagos.repository';
-import { PagosMockRepository } from './adapters/pagos-mock.repository';
+import { ApplicationConfig, inject, provideZoneChangeDetection } from '@angular/core';
+import { InMemoryPaymentGateway, PaymentGateway } from './domain/payment-gateway';
+import { PaymentFlow } from './domain/payment-flow';
 
-/**
- * Único punto de composición: la integración real aún no está definida,
- * por eso se enlaza el puerto PagosRepository con un adaptador de datos ficticios.
- * Para integrar un API real, sustituir useClass por un adaptador HTTP.
- */
+/** Único punto de composición: aquí se cambia el adaptador cuando la integración esté definida. */
 export const appConfig: ApplicationConfig = {
-  providers: [{ provide: PagosRepository, useClass: PagosMockRepository }],
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    { provide: PaymentGateway, useFactory: () => new InMemoryPaymentGateway() },
+    { provide: PaymentFlow, useFactory: () => new PaymentFlow(inject(PaymentGateway)) },
+  ],
 };

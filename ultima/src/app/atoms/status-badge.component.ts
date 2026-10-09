@@ -1,13 +1,14 @@
-import { Component, computed, input } from '@angular/core';
-import { ETIQUETA_ESTADO, EstadoPago } from '../domain/pago.model';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-/** Átomo: estado del pago con texto (no solo color). */
+export type BadgeTone = 'success' | 'danger' | 'neutral';
+
+/** Átomo: etiqueta de estado (texto + color, nunca solo color). */
 @Component({
   selector: 'app-status-badge',
   standalone: true,
-  template: `<span class="badge" [class]="'badge badge--' + estado().toLowerCase()">{{ etiqueta() }}</span>`,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<span class="badge" [class]="'badge badge--' + tone()"><ng-content /></span>`,
 })
 export class StatusBadgeComponent {
-  readonly estado = input.required<EstadoPago>();
-  readonly etiqueta = computed(() => ETIQUETA_ESTADO[this.estado()]);
+  readonly tone = input<BadgeTone>('neutral');
 }

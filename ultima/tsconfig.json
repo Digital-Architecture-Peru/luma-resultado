@@ -8,14 +8,13 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "sourceMap": true,
-    "declaration": false,
+    "isolatedModules": true,
     "experimentalDecorators": true,
-    "moduleResolution": "bundler",
+    "useDefineForClassFields": false,
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
+    "moduleResolution": "bundler",
     "lib": ["ES2022", "dom"]
   },
   "angularCompilerOptions": {

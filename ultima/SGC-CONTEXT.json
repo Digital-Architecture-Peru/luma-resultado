@@ -3,8 +3,8 @@
     "where": "Banca por Internet",
     "pattern": "Component-based (Atomic Design)",
     "tests": "Unitarias",
-    "type": "Consulta",
-    "domain": "Pagos",
+    "type": "Transacción",
+    "domain": "Tarjetas",
     "layer": "Frontend",
     "stack": "Angular",
     "persistence": "No requiere"

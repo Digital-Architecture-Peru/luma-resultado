@@ -1,0 +1,80 @@
+[
+  {
+    "id": "T01-read-context",
+    "title": "Leer SGC-CONTEXT.json, DESIGN.md y los requisitos",
+    "dependsOn": [],
+    "acceptance": "Requisitos y restricciones citados en el resumen final",
+    "evidence": {
+      "kind": "manual",
+      "ref": "handoff"
+    },
+    "status": "unverified"
+  },
+  {
+    "id": "T02-source",
+    "title": "Implementar la capa Frontend en Angular para \"Transacción\" sobre Tarjetas con patrón Component-based (Atomic Design)",
+    "dependsOn": [
+      "T01-read-context"
+    ],
+    "acceptance": "Fuentes del stack escritas en el workspace",
+    "evidence": {
+      "kind": "file",
+      "ref": "src"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T03-syntax",
+    "title": "Verificar sintaxis de los archivos con el validador local disponible",
+    "dependsOn": [
+      "T02-source"
+    ],
+    "acceptance": "Sin errores de sintaxis en los archivos verificables",
+    "evidence": {
+      "kind": "validation",
+      "ref": "syntax"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T04-tests",
+    "title": "Incluir pruebas (Unitarias) del stack",
+    "dependsOn": [
+      "T02-source"
+    ],
+    "acceptance": "Archivos de prueba presentes",
+    "evidence": {
+      "kind": "validation",
+      "ref": "tests"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T05-docs",
+    "title": "Documentar build/ejecución, integración (sin definir) y persistencia (No requiere)",
+    "dependsOn": [
+      "T02-source"
+    ],
+    "acceptance": "README.md presente",
+    "evidence": {
+      "kind": "file",
+      "ref": "README.md"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T06-handoff",
+    "title": "Cerrar con resumen candidate sin afirmar compilación ni producción",
+    "dependsOn": [
+      "T03-syntax",
+      "T04-tests",
+      "T05-docs"
+    ],
+    "acceptance": "Resumen con lo no verificado",
+    "evidence": {
+      "kind": "manual",
+      "ref": "handoff"
+    },
+    "status": "unverified"
+  }
+]
