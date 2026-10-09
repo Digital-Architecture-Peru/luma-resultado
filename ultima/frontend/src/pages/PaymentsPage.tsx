@@ -1,95 +1,61 @@
-import { useCallback, useEffect, useState } from 'react';
-import { FilterBar } from '../components/molecules/FilterBar';
-import { PaymentDetail } from '../components/organisms/PaymentDetail';
+import { useEffect, useState } from 'react';
+import type { PaymentsApi } from '../api/paymentsClient';
+import type { PagedPayments } from '../api/types';
+import { Pagination } from '../components/molecules/Pagination';
+import { PaymentFilters } from '../components/organisms/PaymentFilters';
+import type { PaymentFilterValues } from '../components/organisms/PaymentFilters';
 import { PaymentsTable } from '../components/organisms/PaymentsTable';
-import { PaymentsTemplate } from '../components/templates/PaymentsTemplate';
-import type { PaymentsApi } from '../services/paymentsApi';
-import type { PageResult, Payment, PaymentFilters } from '../types';
+import { PageTemplate } from '../components/templates/PageTemplate';
 
-type RemoteState = 'idle' | 'loading' | 'success' | 'error';
+const PAGE_SIZE = 10;
+const NO_FILTERS: PaymentFilterValues = { from: '', to: '', status: '' };
 
-const PAGE_SIZE = 20;
+type RemoteState =
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'success'; data: PagedPayments };
 
 export function PaymentsPage({ api }: { api: PaymentsApi }) {
-  const [filters, setFilters] = useState<PaymentFilters>({ page: 0, size: PAGE_SIZE });
-  const [state, setState] = useState<RemoteState>('idle');
-  const [error, setError] = useState('');
-  const [result, setResult] = useState<PageResult<Payment> | null>(null);
-  const [selected, setSelected] = useState<Payment | null>(null);
+  const [filters, setFilters] = useState<PaymentFilterValues>(NO_FILTERS);
+  const [page, setPage] = useState(1);
+  const [state, setState] = useState<RemoteState>({ kind: 'loading' });
 
   useEffect(() => {
     let cancelled = false;
-    setState('loading');
+    setState({ kind: 'loading' });
     api
-      .list(filters)
+      .list({ ...filters, page, pageSize: PAGE_SIZE })
       .then((data) => {
-        if (cancelled) return;
-        setResult(data);
-        setState('success');
+        if (!cancelled) setState({ kind: 'success', data });
       })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'Error desconocido');
-        setState('error');
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setState({ kind: 'error', message: err instanceof Error ? err.message : 'Error inesperado.' });
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [api, filters]);
+  }, [api, filters, page]);
 
-  const search = useCallback((next: PaymentFilters) => {
-    setSelected(null);
-    setFilters({ ...next, size: PAGE_SIZE });
-  }, []);
-
-  const select = useCallback(
-    (id: string) => {
-      api
-        .get(id)
-        .then(setSelected)
-        .catch((e: unknown) => {
-          setError(e instanceof Error ? e.message : 'Error desconocido');
-          setState('error');
-        });
-    },
-    [api],
-  );
-
-  const page = filters.page ?? 0;
-  const total = result?.total ?? 0;
-  const hasPrev = page > 0;
-  const hasNext = (page + 1) * PAGE_SIZE < total;
-
-  const statusText =
-    state === 'loading'
-      ? 'Cargando pagos…'
-      : state === 'error'
-        ? `No se pudo completar la consulta: ${error}`
-        : state === 'success'
-          ? `${total} pago(s) encontrados`
-          : '';
+  const applyFilters = (values: PaymentFilterValues) => {
+    setPage(1);
+    setFilters(values);
+  };
 
   return (
-    <PaymentsTemplate
-      filters={<FilterBar onSearch={search} disabled={state === 'loading'} />}
-      status={statusText}
-      list={
+    <PageTemplate title="Consulta de pagos">
+      <PaymentFilters initial={NO_FILTERS} onSubmit={applyFilters} />
+      <div aria-live="polite">
+        {state.kind === 'loading' && <p role="status">Cargando pagos…</p>}
+        {state.kind === 'error' && <p role="alert">{state.message}</p>}
+      </div>
+      {state.kind === 'success' && (
         <>
-          {result && state !== 'error' && <PaymentsTable payments={result.items} onSelect={select} />}
-          <nav className="pager" aria-label="Paginación">
-            <button type="button" className="btn btn--secondary" disabled={!hasPrev}
-              onClick={() => setFilters({ ...filters, page: page - 1 })}>
-              Anterior
-            </button>
-            <span>Página {page + 1}</span>
-            <button type="button" className="btn btn--secondary" disabled={!hasNext}
-              onClick={() => setFilters({ ...filters, page: page + 1 })}>
-              Siguiente
-            </button>
-          </nav>
+          <PaymentsTable payments={state.data.items} />
+          <Pagination page={state.data.page} pageSize={state.data.pageSize} total={state.data.total} onChange={setPage} />
         </>
-      }
-      detail={selected && <PaymentDetail payment={selected} onClose={() => setSelected(null)} />}
-    />
+      )}
+    </PageTemplate>
   );
 }
