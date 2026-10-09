@@ -1,57 +1,42 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { PaymentForm, validate } from './PaymentForm';
+import { PaymentForm } from './PaymentForm';
 
-const ACCOUNTS = ['ES00-FAKE-0001', 'ES00-FAKE-0002'];
-
-describe('validate', () => {
-  const base = { sourceAccount: 'A', beneficiary: 'B', amount: '10.00', currency: 'EUR', reference: '' };
-
-  it('given valid values then no errors', () => {
-    expect(validate(base)).toEqual({});
-  });
-
-  it('given zero or 3 decimals then amount error', () => {
-    expect(validate({ ...base, amount: '0' }).amount).toBeDefined();
-    expect(validate({ ...base, amount: '1.234' }).amount).toBeDefined();
-  });
-
-  it('given beneficiary equal to source then error', () => {
-    expect(validate({ ...base, beneficiary: 'A' }).beneficiary).toBeDefined();
-  });
-});
+async function fillValidForm() {
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Cuenta de origen'), '00012345678901');
+  await user.type(screen.getByLabelText('Beneficiario'), 'Empresa Demo');
+  await user.type(screen.getByLabelText('Importe'), '99.90');
+  await user.type(screen.getByLabelText('Concepto'), 'Recibo');
+  return user;
+}
 
 describe('PaymentForm', () => {
-  it('given empty fields when submitting then shows errors and does not call onSubmit', async () => {
+  it('given empty form when submitting then shows errors and does not call onSubmit', async () => {
     const onSubmit = vi.fn();
-    render(<PaymentForm accounts={ACCOUNTS} submitting={false} onSubmit={onSubmit} />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Pagar' }));
-
+    render(<PaymentForm loading={false} onSubmit={onSubmit} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Pagar' }));
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('given valid data when submitting then calls onSubmit with values', async () => {
+  it('given valid data when submitting then calls onSubmit with the request', async () => {
     const onSubmit = vi.fn();
-    render(<PaymentForm accounts={ACCOUNTS} submitting={false} onSubmit={onSubmit} />);
-
-    await userEvent.type(screen.getByLabelText('Beneficiario'), 'ES00-FAKE-9001');
-    await userEvent.type(screen.getByLabelText('Importe (EUR)'), '25.50');
-    await userEvent.click(screen.getByRole('button', { name: 'Pagar' }));
-
+    render(<PaymentForm loading={false} onSubmit={onSubmit} />);
+    const user = await fillValidForm();
+    await user.click(screen.getByRole('button', { name: 'Pagar' }));
     expect(onSubmit).toHaveBeenCalledWith({
-      sourceAccount: 'ES00-FAKE-0001',
-      beneficiary: 'ES00-FAKE-9001',
-      amount: '25.50',
-      currency: 'EUR',
-      reference: '',
+      originAccount: '00012345678901',
+      beneficiary: 'Empresa Demo',
+      amount: 99.9,
+      currency: 'PEN',
+      concept: 'Recibo',
     });
   });
 
-  it('given submitting true then button is disabled', () => {
-    render(<PaymentForm accounts={ACCOUNTS} submitting onSubmit={vi.fn()} />);
-    expect(screen.getByRole('button')).toBeDisabled();
+  it('given loading when rendering then submit button is disabled', () => {
+    render(<PaymentForm loading onSubmit={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Procesando...' })).toBeDisabled();
   });
 });

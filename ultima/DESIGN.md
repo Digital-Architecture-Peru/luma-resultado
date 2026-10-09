@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Spring Boot
+- ¿Qué stack? React + TypeScript + Java + Quarkus
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -34,67 +34,55 @@ Estado: fallback (SGC no configurado)
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Repositorio con `frontend/` (React + TS, Vite) y `backend/` (Spring Boot, Maven) | Cada parte se compila y prueba con su propia toolchain. |
-| D2 | Backend en capas: `api` → `application` → `domain` ← `infrastructure` | El dominio no depende de Spring ni de la BD, así que se prueba con unitarias puras. |
-| D3 | Puerto `PaymentGateway` con un adaptador `FakePaymentGateway` | La integración está sin definir; el contrato queda listo para un adaptador real. |
-| D4 | Importes con `BigDecimal` en Java, `NUMERIC(19,2)` en SQL y `string` en el JSON | Evita los errores de redondeo de punto flotante. |
-| D5 | Encabezado `Idempotency-Key` obligatorio en `POST`, con índice único en BD | Evita pagos duplicados por reintentos o doble clic. |
-| D6 | Estados `PENDING`, `COMPLETED` y `REJECTED`, con transiciones validadas en el dominio | Da trazabilidad y prepara para una futura confirmación asíncrona. |
-| D7 | Flyway con migraciones `V1__schema.sql` y `V2__seed_ficticio.sql`; acceso con `JdbcTemplate` y parámetros `?` | Esquema versionado y sin concatenar SQL. |
-| D8 | Frontend con Atomic Design: `atoms/` (Button, Input, Amount) → `molecules/` (FormField, AccountSelect) → `organisms/` (PaymentForm, PaymentReceipt) → `templates/` → `pages/` | Es el patrón pedido y permite reutilizar en Banca por Internet. |
-| D9 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) sin valores por defecto sensibles | No se versionan secretos. |
+| D1 | Monorepo con `frontend/` (React + TS + Vite) y `backend/` (Quarkus + Maven) | Separa toolchains y permite compilar y probar cada capa por separado. |
+| D2 | Backend en capas: `api` → `application` → `domain` ← `infrastructure` | El dominio queda sin dependencias de framework y se prueba con unitarias puras. |
+| D3 | Puerto `PaymentRepository` (interfaz) con implementación JDBC/Panache sobre PostgreSQL | Cumple "persistencia detrás de interfaces" y permite usar mocks en las unitarias. |
+| D4 | Migraciones versionadas con Flyway (`V1__schema.sql`, `V2__seed.sql`) | Esquema reproducible y auditable. Los datos semilla son ficticios. |
+| D5 | Importes en `BigDecimal` / `NUMERIC(19,2)` y moneda ISO 4217 | Evita errores de redondeo de punto flotante en dinero. |
+| D6 | Cabecera `Idempotency-Key` en `POST` con índice único | Evita pagos duplicados por doble envío. |
+| D7 | Estados `PENDIENTE → CONFIRMADO / RECHAZADO` validados en el dominio | Las transiciones explícitas se pueden comprobar con unitarias. |
+| D8 | Frontend con Atomic Design y un hook `usePayment` que aísla la llamada HTTP | Los componentes se prueban sin red. La URL base se toma de `VITE_API_URL`. |
+| D9 | Configuración solo por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) | No hay secretos en el repositorio. Se incluye `.env.example` con valores ficticios. |
 
-## Contrato API (v1)
-- `POST /api/v1/payments` recibe `{sourceAccount, beneficiary, amount, currency, reference}`. Responde `201` con `{id, status, createdAt}`, `400` si la validación falla y `409` si la idempotencia está en conflicto.
-- `GET /api/v1/payments/{id}` responde `200` o `404`.
-- `GET /api/v1/payments?account=...` lista paginada.
-- Los errores siguen el formato `application/problem+json`.
+## Contrato API (candidate)
+- `POST /api/v1/payments`: recibe `{originAccount, beneficiary, amount, currency, concept}` y responde `201` con `{id, status}`. Errores posibles: `400` (validación) y `409` (idempotencia).
+- `GET /api/v1/payments/{id}`: responde `200` o `404`.
 
 ## Estructura de módulos
 ```
-backend/src/main/java/com/example/payments/
-  api/            PaymentController, dto/, ErrorHandler
-  application/    CreatePaymentService, PaymentQueryService
-  domain/         Payment, PaymentStatus, Money, PaymentRepository (puerto), PaymentGateway (puerto)
-  infrastructure/ JdbcPaymentRepository, FakePaymentGateway
-backend/src/main/resources/db/migration/  V1__schema.sql, V2__seed_ficticio.sql
-backend/src/test/java/...   CreatePaymentServiceTest, MoneyTest, PaymentTest (JUnit 5 + Mockito)
-frontend/src/components/{atoms,molecules,organisms,templates}/  pages/PaymentPage.tsx
-frontend/src/services/paymentsApi.ts   frontend/src/**/*.test.tsx (Vitest + Testing Library)
+frontend/
+  src/components/{atoms,molecules,organisms,templates}/
+  src/pages/PaymentPage.tsx
+  src/hooks/usePayment.ts   src/api/paymentsClient.ts
+  src/**/*.test.tsx         (Vitest + Testing Library)
+  package.json  vite.config.ts  tsconfig.json
+backend/
+  src/main/java/.../payments/{api,application,domain,infrastructure}/
+  src/main/resources/application.properties
+  src/main/resources/db/migration/V1__schema.sql, V2__seed.sql
+  src/test/java/.../ (JUnit 5 + Mockito, dominio y servicio)
+  pom.xml
+README.md
 ```
 
-## Modelo de datos (PostgreSQL)
-- Tabla `payment` con estas columnas:
-  - `id UUID PK`
-  - `idempotency_key VARCHAR(64) UNIQUE`
-  - `source_account VARCHAR(34)`
-  - `beneficiary VARCHAR(34)`
-  - `amount NUMERIC(19,2) CHECK (amount > 0)`
-  - `currency CHAR(3)`
-  - `status VARCHAR(12)`
-  - `reference VARCHAR(140)`
-  - `created_at TIMESTAMPTZ`
-- Índice `(source_account, created_at DESC)` para el listado.
-- Los datos de semilla son ficticios, por ejemplo cuentas `ES00-FAKE-...`.
-
 ## Hipótesis
-- H1. "Transacción de Pagos" significa un pago desde una cuenta propia del cliente a un beneficiario. No incluye programados, recurrentes ni multimoneda.
-- H2. Autenticación, autorización y la sesión de Banca por Internet quedan fuera de alcance. El `sourceAccount` llega en la petición y se asume ya validado aguas arriba.
-- H3. No se valida saldo real. `FakePaymentGateway` rechaza los importes mayores que un umbral ficticio para poder probar `REJECTED`.
-- H4. Las versiones objetivo son Java 17+ / Spring Boot 3.x y Node 18+.
-- H5. No hay estándares corporativos disponibles porque el SGC está en fallback. Se aplican convenciones idiomáticas.
+- H1: "Transacción" significa un pago desde una cuenta del cliente a un beneficiario o servicio. No incluye transferencias interbancarias reales.
+- H2: La autenticación y la autorización quedan fuera de alcance. El cliente se simula con datos ficticios.
+- H3: No hay integración definida. La confirmación del pago la simula un adaptador local (stub).
+- H4: Las pruebas son solo unitarias. No se incluyen pruebas de integración ni e2e, ni Testcontainers.
+- H5: Se usan Quarkus 3.x y Java 17+, y Node 18+. Las versiones exactas no están verificadas.
+- H6: La validación de importe (> 0 y con límite máximo) y de moneda (lista cerrada, por ejemplo PEN/USD) es regla de dominio supuesta.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| No se compila ni se ejecuta si falta JDK, Maven o npm | Marcarlo como no verificado en el resumen candidate. |
-| El SQL de PostgreSQL solo recibe revisión estática | Usar SQL estándar compatible y declararlo en el README. |
-| Falta de seguridad (sin auth ni CSRF) | Documentarlo como prerequisito antes de producción. |
-| Concurrencia y doble envío | Usar D5 y deshabilitar el botón mientras se envía. |
-| El contrato de integración real es desconocido | Aislarlo tras el puerto de D3. |
+| No hay JDK, Maven o Node locales, así que no se compila | Se marca como no verificado en el handoff. Solo se revisa la sintaxis. |
+| El SQL de PostgreSQL no se ejecuta en SQLite | Solo revisión estática, declarada como tal. |
+| SGC en estado fallback: puede haber reglas corporativas ausentes | Las hipótesis quedan explícitas para validarlas con el negocio. |
+| Doble envío o reintentos | D6 (idempotencia) y botón deshabilitado mientras la petición está en curso. |
+| Se filtran datos sensibles en los logs | No se registran números de cuenta completos; se enmascaran. |
 
 ## Trazabilidad con la aceptación
-- La sintaxis se verifica con la toolchain disponible.
-- Las pruebas unitarias en los dos stacks cubren Money, transiciones de estado, servicio con mocks y PaymentForm.
-- El README cubre build, ejecución, variables de entorno y persistencia.
-- Se mantiene la publicación con commit, sin afirmar compilación ni producción.
+- La sintaxis verificable corresponde a los archivos `.ts`, `.tsx`, `.java` y `.sql` de la estructura anterior.
+- Las pruebas presentes son `*.test.tsx` y `*Test.java`.
+- El README.md documenta build, ejecución, variables de entorno, integración pendiente y PostgreSQL con Flyway.

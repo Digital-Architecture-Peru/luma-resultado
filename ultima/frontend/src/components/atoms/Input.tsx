@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes } from 'react';
 
-export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={`input ${className}`.trim()} {...rest} />;
+export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className="input" {...props} />;
 }

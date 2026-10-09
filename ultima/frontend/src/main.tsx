@@ -1,5 +1,5 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
 import { PaymentPage } from './pages/PaymentPage';
 import './styles.css';
 
@@ -8,8 +8,8 @@ if (!root) {
   throw new Error('No se encontro el elemento #root');
 }
 
-createRoot(root).render(
-  <StrictMode>
+ReactDOM.createRoot(root).render(
+  <React.StrictMode>
     <PaymentPage />
-  </StrictMode>,
+  </React.StrictMode>,
 );
