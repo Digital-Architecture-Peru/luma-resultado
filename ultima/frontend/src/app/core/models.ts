@@ -1,42 +1,35 @@
 export interface Account {
   id: number;
-  number: string;
-  holder: string;
+  numberMasked: string;
   currency: string;
-  balance: number;
+  /** Decimal como string para no perder precision. */
+  balance: string;
 }
 
 export interface TransferRequest {
   sourceAccountId: number;
   targetAccountId: number;
-  amount: number;
+  amount: string;
   currency: string;
   description: string;
 }
 
-export interface Transfer {
-  id: number;
+export interface TransferResponse {
+  transferId: string;
   status: string;
-  sourceAccountId: number;
-  targetAccountId: number;
-  amount: number;
-  currency: string;
-  description: string | null;
   createdAt: string;
 }
 
 export interface Movement {
   id: number;
-  transferId: number;
+  accountId: number;
+  transferId: string;
   type: 'DEBIT' | 'CREDIT';
-  amount: number;
+  amount: string;
   createdAt: string;
 }
 
-export interface MovementPage {
-  content: Movement[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
+export interface SubmittedTransfer {
+  request: TransferRequest;
+  idempotencyKey: string;
 }

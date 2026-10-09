@@ -3,34 +3,32 @@
   --bg: #f5f7fa;
   --surface: #ffffff;
   --text: #1c2430;
-  --muted: #5a6572;
+  --muted: #5b6676;
   --primary: #0b5cad;
   --primary-contrast: #ffffff;
   --danger: #b42318;
   --success: #067647;
   --border: #d5dbe3;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --radius-md: 8px;
-  --shadow-sm: 0 1px 3px rgb(16 24 40 / 12%);
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --radius-md: 0.5rem;
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 10%);
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --dur-fast: 150ms;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #11161d;
     --surface: #1a212b;
-    --text: #e6eaf0;
-    --muted: #9aa6b4;
-    --primary: #5aa2f0;
-    --primary-contrast: #0b1320;
-    --danger: #ff8f85;
-    --success: #5fd39b;
-    --border: #2f3a47;
+    --text: #e6ebf2;
+    --muted: #9aa6b6;
+    --primary: #5aa2ee;
+    --primary-contrast: #0b1118;
+    --danger: #ff8a80;
+    --success: #5fd39a;
+    --border: #2e3846;
   }
 }
 
@@ -38,50 +36,52 @@
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
-h1, h2 { line-height: 1.2; text-wrap: balance; }
-h1 { font-size: clamp(1.4rem, 3vw, 1.9rem); margin: 0 0 var(--space-2); }
-h2 { font-size: 1.1rem; margin: var(--space-6) 0 var(--space-3); }
+.top, .layout { max-inline-size: 72rem; margin-inline: auto; padding-inline: clamp(1rem, 4vw, 2rem); }
+.top h1 { font-size: clamp(1.25rem, 3vw, 1.75rem); text-wrap: balance; }
+.layout { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); padding-block-end: var(--space-6); }
 
-.shell { max-inline-size: 72rem; margin-inline: auto; padding: var(--space-6) clamp(1rem, 4vw, 2rem); }
-.layout { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
-.muted { color: var(--muted); }
-.sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
-
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-4); display: grid; gap: var(--space-4); }
-.field { display: grid; gap: var(--space-1); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-4); }
+.field { display: grid; gap: var(--space-2); margin-block-end: var(--space-4); }
 .field label { font-weight: 600; }
-.field-error { color: var(--danger); margin: 0; font-size: 0.9rem; }
 
-.input { inline-size: 100%; min-block-size: 40px; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; }
+.input {
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.input:focus-visible, .btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 .input[aria-invalid='true'] { border-color: var(--danger); }
-:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 
-.btn { min-block-size: 44px; padding-inline: var(--space-6); border: 0; border-radius: var(--radius-md); background: var(--primary); color: var(--primary-contrast); font: inherit; font-weight: 600; cursor: pointer; transition: background-color var(--dur-fast), opacity var(--dur-fast); }
-.btn:hover:not(:disabled) { background: color-mix(in oklab, var(--primary) 85%, black); }
+.btn {
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.msg { margin-block: var(--space-4); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border); font-weight: 600; }
-.msg-ok { color: var(--success); border-color: var(--success); }
-.msg-error { color: var(--danger); border-color: var(--danger); }
+.field-error { margin: 0; color: var(--danger); font-size: 0.875rem; }
+.status { padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border); }
+.status.ok { color: var(--success); }
+.status.err { color: var(--danger); }
+.muted { color: var(--muted); }
 
-.accounts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
-.account { inline-size: 100%; min-block-size: 44px; display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-md); font: inherit; cursor: pointer; }
-.account[aria-pressed='true'] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
-
-.table { inline-size: 100%; border-collapse: collapse; background: var(--surface); }
-.table th, .table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); text-align: start; }
+.table { inline-size: 100%; border-collapse: collapse; }
+.table caption { text-align: start; font-weight: 600; padding-block-end: var(--space-2); }
+.table th, .table td { padding: var(--space-2); border-block-end: 1px solid var(--border); text-align: start; }
 .table .num { text-align: end; font-variant-numeric: tabular-nums; }
-
-.badge { display: inline-block; padding: 2px var(--space-2); border-radius: 999px; border: 1px solid var(--border); font-size: 0.85rem; }
-.badge-ok { color: var(--success); border-color: var(--success); }
-.badge-warn { color: var(--danger); border-color: var(--danger); }
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
-}

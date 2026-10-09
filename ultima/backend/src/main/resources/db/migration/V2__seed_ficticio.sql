@@ -1,6 +1,6 @@
--- Datos ficticios para desarrollo; no corresponden a personas ni cuentas reales.
-INSERT INTO account (number, holder, customer_id, currency, balance) VALUES
-    ('0001-0000-0001', 'Cliente Demo', 'CLI-001', 'USD', 1500.00),
-    ('0001-0000-0002', 'Cliente Demo', 'CLI-001', 'USD',  320.50),
-    ('0001-0000-0003', 'Cliente Demo', 'CLI-001', 'EUR',  800.00),
-    ('0002-0000-0001', 'Otro Cliente', 'CLI-002', 'USD',  100.00);
+-- Datos ficticios para desarrollo. No corresponden a clientes reales.
+INSERT INTO account (number_masked, owner_id, currency, balance) VALUES
+    ('****1001', 'demo-owner', 'USD', 1500.00),
+    ('****1002', 'demo-owner', 'USD',  250.50),
+    ('****1003', 'demo-owner', 'EUR',  800.00),
+    ('****2001', 'otro-titular', 'USD', 9999.00);
