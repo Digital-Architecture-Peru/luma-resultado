@@ -1,102 +1,55 @@
-# Consulta de Pagos
+# Transacción de Tarjetas · Banca por Internet (candidate)
 
-Aplicación de solo lectura para consultar pagos, compuesta por frontend Angular 17, API .NET 8 Minimal API y PostgreSQL. Los registros incluidos en el seed son ficticios. La identidad del cliente es actualmente simulada: no se debe exponer esta configuración como autenticación de producción.
+Pago de tarjeta de crédito desde una cuenta propia y consulta de movimientos. Datos 100 % ficticios.
 
-## Requisitos
+- `backend/`: Java 17 + Spring Boot 3.2 + PostgreSQL (Flyway, `NamedParameterJdbcTemplate`).
+- `frontend/`: React 18 + TypeScript + Vite, Atomic Design (`atoms → molecules → organisms → templates → pages`).
 
-- .NET SDK 8
-- Node.js compatible con Angular 17 y npm
-- PostgreSQL y `psql` para ejecutar la aplicación con persistencia
-
-## Estructura
-
-- `frontend/`: Angular, componentes organizados por Atomic Design, cliente HTTP y pruebas Jest.
-- `backend/`: solución .NET con proyectos Domain, Application, Infrastructure y Api, más pruebas unitarias xUnit.
-- `db/migrations/`: SQL de esquema y seed ficticio, aplicar en orden.
-
-## Configuración y base de datos
-
-Crear una base de datos PostgreSQL llamada `pagos` (o elegir otro nombre y ajustar la conexión), por ejemplo:
-
-```sh
-createdb pagos
-psql -d pagos -v ON_ERROR_STOP=1 -f db/migrations/V001__esquema.sql
-psql -d pagos -v ON_ERROR_STOP=1 -f db/migrations/V002__seed_ficticio.sql
-```
-
-Las migraciones no son idempotentes: no volver a aplicarlas sobre una base ya inicializada. V001 crea `pagos`, restricciones e índices; V002 inserta datos de demostración relativos al momento de ejecución. Para reiniciar el entorno local, eliminar y recrear la base de datos y ejecutar ambas migraciones.
-
-Configurar las variables en el entorno del proceso que ejecuta la API:
-
-| Variable | Uso | Valor de desarrollo sugerido |
+## Variables de entorno
+| Variable | Capa | Por defecto |
 |---|---|---|
-| `PAGOS_DB_CONNECTION` | Cadena de conexión Npgsql. Obligatoria al iniciar la API. | `Host=localhost;Port=5432;Database=pagos;Username=postgres;Password=<contraseña-local>` |
-| `PAGOS_STUB_CUENTAS` | Identificadores de cuenta autorizados por el stub, separados por coma. | `0012345678,0098765432` (valor por defecto) |
-| `CORS_ORIGIN` | Origen único permitido por CORS. | `http://localhost:4200` (valor por defecto) |
+| `DB_URL` | backend | `jdbc:postgresql://localhost:5432/cards` |
+| `DB_USER`, `DB_PASSWORD` | backend | sin valor (obligatorias, nunca se versionan) |
+| `PORT` | backend | `8080` |
+| `CORS_ALLOWED_ORIGIN` | backend | `http://localhost:5173` |
+| `LOG_LEVEL` | backend | `INFO` |
+| `VITE_API_BASE_URL` | frontend | `http://localhost:8080` |
+| `VITE_CUSTOMER_ID` | frontend | `cust-001` (ficticio) |
 
-No guardar contraseñas reales en el repositorio. La URL del backend que utiliza Angular se define en `frontend/src/environments/environment.ts` como `apiBaseUrl` y, por tanto, queda fijada al compilar el frontend.
-
-## Ejecutar en desarrollo
-
-Inicializar PostgreSQL y las migraciones según la sección anterior. Luego ejecutar cada proceso en una terminal separada.
-
-### API
-
-Desde la raíz del repositorio:
-
-```sh
-# Linux/macOS
-export PAGOS_DB_CONNECTION='Host=localhost;Port=5432;Database=pagos;Username=postgres;Password=<contraseña-local>'
-export CORS_ORIGIN='http://localhost:4200'
-
+## Ejecutar
+```bash
+# Cree una BD PostgreSQL vacía "cards"; Flyway aplica V1 (esquema) y V2 (seed ficticio).
 cd backend
-dotnet restore Pagos.sln
-dotnet run --project src/Pagos.Api/Pagos.Api.csproj --urls http://localhost:5080
-```
+export DB_USER=... DB_PASSWORD=...
+mvn spring-boot:run
 
-En PowerShell, establecer las variables con `$env:PAGOS_DB_CONNECTION = '...'` y `$env:CORS_ORIGIN = 'http://localhost:4200'` antes de ejecutar `dotnet`.
-
-### Frontend
-
-```sh
-cd frontend
+cd ../frontend
 npm install
-npm start
+npm run dev        # http://localhost:5173
 ```
 
-Abrir `http://localhost:4200`. Para consumir otro backend, actualizar `apiBaseUrl` en el archivo de environment antes de iniciar o compilar.
-
-## Compilar y probar
-
-```sh
-# Backend, desde backend/
-dotnet build Pagos.sln
-dotnet test Pagos.sln
-
-# Frontend, desde frontend/
-npm install
-npm test
-npm run build
+## Pruebas unitarias
+```bash
+cd backend && mvn test        # JUnit 5 + Mockito (PaymentService) y @WebMvcTest (CardController)
+cd frontend && npm test       # Vitest + Testing Library (atoms, organisms, validación, cliente API)
+cd frontend && npm run build  # type-check + build
 ```
 
-`dotnet test` ejecuta las pruebas xUnit de validación y del handler con dobles de prueba; no requiere una base PostgreSQL. `npm test` ejecuta Jest en modo CI/no interactivo. El build de Angular realiza la compilación de producción.
+## API v1 (header `X-Customer-Id`, ficticio: la autenticación la resuelve Banca por Internet)
+| Método | Ruta | Respuesta |
+|---|---|---|
+| GET | `/api/v1/cards` | Tarjetas enmascaradas (`last4`) |
+| GET | `/api/v1/accounts` | Cuentas de origen (añadido al contrato para poblar el formulario) |
+| GET | `/api/v1/cards/{id}/transactions?page=&size=` | Movimientos paginados |
+| POST | `/api/v1/cards/{id}/payments` + `Idempotency-Key` | `201`; `409` clave duplicada o conflicto de concurrencia; `422` saldo insuficiente / monto inválido |
 
-## API disponible
+Los montos viajan como string (`"150.00"`). Errores en formato RFC 7807. Health: `/actuator/health`.
 
-- `GET /health`: comprobación básica de disponibilidad; devuelve `status: ok`.
-- `GET /api/v1/pagos?desde=<ISO-8601>&hasta=<ISO-8601>&estado=<estado>&page=1&size=20`: consulta paginada. Estado es opcional; paginación y fechas se validan en Application. El tamaño máximo es 100 y el rango máximo es 90 días; si se omiten fechas, la consulta usa los últimos 30 días. Errores de validación se devuelven como `application/problem+json` con estado 400.
-- `GET /api/v1/pagos/{id}`: detalle por UUID. Devuelve 404 si el pago no existe o no pertenece a las cuentas del cliente actual.
+## Integración (sin definir)
+`CoreBankingPort` aísla el core bancario; `FakeCoreBankingAdapter` acepta todo. Un adaptador real implementa esa interfaz sin tocar el dominio.
 
-Estados admitidos: `PENDIENTE`, `PROCESADO`, `RECHAZADO` y `ANULADO`. Las fechas se almacenan como `timestamptz` y se consultan en UTC.
+## Persistencia (PostgreSQL)
+Tablas `card`, `account`, `card_transaction` (migraciones en `backend/src/main/resources/db/migration`). Bloqueo optimista con `version`; `idempotency_key` UNIQUE; solo se guardan los últimos 4 dígitos de la tarjeta.
 
-## Integración y persistencia
-
-Angular inyecta `PagosApiService`, que envía solicitudes HTTP a la URL configurada en `environment.ts`; `HttpClient` recibe el filtro de consulta y modela la página de respuesta. La API registra `ConsultarPagosHandler` y `ObtenerPagoHandler`, los cuales dependen de las abstracciones de Application. `PagoRepository` implementa `IPagoRepository` usando Dapper y Npgsql; sus consultas parametrizan los valores y limitan lectura a las cuentas de `ICurrentCustomer`.
-
-En esta entrega, `StubCurrentCustomer` obtiene `PAGOS_STUB_CUENTAS` o usa las dos cuentas ficticias predeterminadas. No hay proveedor de identidad, autenticación ni integración con un gateway implementados: la sustitución del stub por identidad confiable del canal es un requisito antes de cualquier despliegue real. CORS permite el origen indicado por `CORS_ORIGIN`.
-
-PostgreSQL persiste los pagos en la tabla `pagos`: monto `numeric(18,2)`, código de moneda de tres letras, estado restringido y fecha `timestamptz`; existen índices por cuenta/fecha y estado. Las migraciones SQL son la fuente del esquema y del seed, no hay migrador automático en la API. El repositorio implementa únicamente operaciones de consulta.
-
-## Límites conocidos
-
-Los datos son de demostración y el stub de cliente no es una medida de seguridad. Las pruebas unitarias no verifican conexión real a PostgreSQL ni ejecución de migraciones; para validar la integración completa hace falta una base configurada y arrancar API y Angular. No se afirma aquí que build, pruebas o SQL hayan sido ejecutados.
+## Límites
+Sin pruebas de integración ni E2E; SQL de PostgreSQL con revisión estática; restricciones SGC no validadas (fallback).

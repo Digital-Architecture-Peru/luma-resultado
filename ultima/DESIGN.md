@@ -2,11 +2,11 @@
 
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
-- ¿Qué tipo de capacidad? Consulta
-- ¿Sobre qué dominio? Pagos
+- ¿Qué tipo de capacidad? Transacción
+- ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + .NET
+- ¿Qué stack? React + TypeScript + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + .NET (capa Full Stack) para "Consulta" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + Java + Spring Boot (capa Full Stack) para "Transacción" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -31,83 +31,75 @@ Estado: fallback (SGC no configurado)
 
 # DESIGN · Refinamiento
 
-## Decisiones de arquitectura
+## Alcance propuesto (hipótesis H1)
+"Transacción sobre Tarjetas" se interpreta como **pago de tarjeta de crédito desde una cuenta propia** y **consulta de los movimientos de la tarjeta**. El alcance usa solo datos ficticios.
 
+## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Backend **.NET 8 Web API** en capas `Api / Application / Domain / Infrastructure` | Separa el contrato HTTP de la lógica de consulta y del acceso a PostgreSQL. Permite probar cada capa de forma unitaria. |
-| D2 | **Solo lectura**, con *query handlers* (CQRS ligero) | La capacidad es "Consulta". No se exponen endpoints de escritura. |
-| D3 | Acceso a datos con **Npgsql + Dapper** detrás de `IPagoRepository` | Las consultas quedan explícitas y **parametrizadas**, con menos dependencias que EF Core. La interfaz permite usar un *fake* en memoria en las pruebas. |
-| D4 | Migraciones **SQL versionadas** (`V001__esquema.sql`, `V002__seed_ficticio.sql`) | Son revisables de forma estática. No dependen de una herramienta de migración en runtime. |
-| D5 | Contrato REST: `GET /api/v1/pagos?desde&hasta&estado&page&size` y `GET /api/v1/pagos/{id}` | La paginación obligatoria (`size` ≤ 100) y un rango de fechas de 90 días como máximo acotan la carga. |
-| D6 | Montos con `decimal` / `numeric(18,2)` y moneda ISO 4217 | Evita errores de redondeo de punto flotante. |
-| D7 | Frontend **Angular standalone** organizado por **Atomic Design** | Cumple el patrón pedido. Un `PagosApiService` usa `HttpClient`, con `apiBaseUrl` definido en `environment`. |
-| D8 | Configuración por variables de entorno (`PAGOS_DB_CONNECTION`, `API_BASE_URL`) | Ningún secreto queda en el repositorio. |
+| D1 | Monorepo con `frontend/` (Vite + React + TS) y `backend/` (Spring Boot 3, Java 17, Maven) | Cada capa se compila con su toolchain nativa y se verifica por separado. |
+| D2 | El frontend sigue Atomic Design: atoms → molecules → organisms → templates → pages | Es el patrón pedido y permite probar componentes aislados. |
+| D3 | El backend usa capas controller → service → port (interfaz) → adapter | La integración está sin definir: un `CoreBankingPort` con adaptador fake permite cambiarla sin tocar el dominio. |
+| D4 | Persistencia con Flyway (`V1__schema.sql`, `V2__seed.sql`) y `NamedParameterJdbcTemplate` | Las migraciones quedan versionadas y todo acceso es parametrizado, sin concatenar SQL. |
+| D5 | Montos en `NUMERIC(15,2)` y `BigDecimal`; en JSON viajan como string `"150.00"` | Evita errores de punto flotante en dinero. |
+| D6 | Header `Idempotency-Key` con restricción UNIQUE en BD | Impide pagos duplicados si el usuario reintenta. |
+| D7 | Solo se guarda el PAN enmascarado (`last4`) | Minimiza el alcance PCI. Nunca se almacena el PAN completo. |
+| D8 | Errores en formato RFC 7807 (`ProblemDetail`) y validación con Bean Validation | Son contratos de error uniformes que el front puede consumir. |
+| D9 | Configuración por variables de entorno: `DB_URL`, `DB_USER`, `DB_PASSWORD`, `VITE_API_BASE_URL` | No hay secretos en el repositorio ni valores por defecto sensibles. |
+
+## Contrato API (v1)
+- `GET /api/v1/cards` devuelve las tarjetas del cliente enmascaradas.
+- `GET /api/v1/cards/{cardId}/transactions?page=&size=` devuelve los movimientos paginados.
+- `POST /api/v1/cards/{cardId}/payments` recibe `{sourceAccountId, amount}` y el header `Idempotency-Key`.
+  - Responde `201` en el caso normal.
+  - Responde `409` si la clave está duplicada.
+  - Responde `422` si el saldo es insuficiente o el monto es inválido.
+
+## Modelo de datos
+- `card(id, customer_id, last4, brand, credit_limit, balance, version)`
+- `account(id, customer_id, alias, balance, version)`
+- `card_transaction(id, card_id, type, amount, status, idempotency_key UNIQUE, created_at)`
+- Índices:
+  - `idx_tx_card_created(card_id, created_at DESC)`
+  - `idx_card_customer(customer_id)`
+- La columna `version` soporta bloqueo optimista en el débito y el abono.
 
 ## Estructura de módulos
-
 ```
-backend/
-  Pagos.sln
-  src/Pagos.Api/            Program.cs, Endpoints/PagosEndpoints.cs
-  src/Pagos.Application/    Queries/ConsultarPagos*.cs, Dtos/, Validators/
-  src/Pagos.Domain/         Pago.cs, EstadoPago.cs
-  src/Pagos.Infrastructure/ PagoRepository.cs (Dapper), SqlConnectionFactory.cs
-  tests/Pagos.UnitTests/    xUnit: handlers, validadores, mapeo
-db/migrations/              V001__esquema.sql, V002__seed_ficticio.sql
-frontend/src/app/
-  atoms/      estado-badge, monto
-  molecules/  filtro-fechas, fila-pago
-  organisms/  tabla-pagos, panel-filtros
-  templates/  consulta-layout
-  pages/      consulta-pagos
-  core/       pagos-api.service.ts, pago.model.ts
-  *.spec.ts   pruebas unitarias de componentes y servicio (HttpTestingController)
-README.md
+backend/src/main/java/com/example/cards/
+  api/        CardController, dto/, ErrorHandler
+  domain/     Card, Payment, PaymentService
+  port/       CardRepository, CoreBankingPort
+  adapter/    JdbcCardRepository, FakeCoreBankingAdapter
+backend/src/main/resources/db/migration/  V1__schema.sql, V2__seed.sql
+backend/src/test/java/...                 PaymentServiceTest, CardControllerTest
+frontend/src/components/{atoms,molecules,organisms,templates}/
+frontend/src/pages/CardPaymentPage.tsx
+frontend/src/services/cardsApi.ts
+frontend/src/**/*.test.tsx                Vitest + Testing Library
 ```
 
-## Modelo de datos (PostgreSQL)
-
-Tabla `pagos` con estas columnas:
-- `id uuid PK`
-- `cuenta_id`
-- `referencia`
-- `beneficiario`
-- `monto numeric(18,2)`
-- `moneda char(3)`
-- `estado`, con `CHECK` sobre los valores válidos
-- `fecha_pago timestamptz`
-- `canal`
-
-Índices:
-- `(cuenta_id, fecha_pago DESC)`
-- `(estado)`
-
-El seed contiene únicamente datos ficticios.
-
-## Riesgos
-
-| Riesgo | Mitigación |
-|---|---|
-| Falta la toolchain (`dotnet`, `npm`) en el entorno | Lo que no se pueda compilar ni probar se marca como **no verificado** en el handoff. |
-| El SQL de PostgreSQL solo admite revisión estática | Se usa sintaxis estándar y se evitan extensiones. |
-| Exposición de datos de otro cliente | El `cuenta_id` debería salir del token, no del query string. Ver hipótesis H3. |
-| Zona horaria en los filtros de fecha | Se almacena en UTC (`timestamptz`) y se convierte solo en la UI. |
-| Integración sin definir | Queda aislada tras `IPagoRepository`. No hay llamadas a sistemas reales. |
+## Pruebas unitarias
+- **Backend:** JUnit 5 + Mockito sobre `PaymentService` (idempotencia, saldo insuficiente, monto ≤ 0) y `@WebMvcTest` del controlador.
+- **Frontend:** atoms y molecules (Input de monto, Button), validación del formulario y servicio API con `fetch` mockeado.
 
 ## Hipótesis
+- **H1:** el alcance es pago de tarjeta y consulta de movimientos. Debe confirmarse con negocio.
+- **H2:** la autenticación la resuelve Banca por Internet. Aquí `customerId` llega por header ficticio `X-Customer-Id`.
+- **H3:** las versiones son Java 17 y Node 20. Si no hay toolchain local, la compilación queda como no verificada.
+- **H4:** el SQL de PostgreSQL solo recibe revisión estática, porque no se ejecuta en SQLite.
 
-- **H1:** Versiones .NET 8 LTS y Angular 17 o superior.
-- **H2:** La autenticación la resuelve el canal de Banca por Internet (gateway o BFF existente). Aquí se simula con un `ICurrentCustomer` *stub*.
-- **H3:** Un cliente solo consulta los pagos de sus propias cuentas.
-- **H4:** Los estados de pago son `PENDIENTE`, `PROCESADO`, `RECHAZADO` y `ANULADO`.
-- **H5:** Los números de cuenta se muestran enmascarados en la UI (últimos 4 dígitos).
-- **H6:** SGC no está configurado (modo fallback), por lo que no se aplican lineamientos corporativos adicionales.
+## Riesgos
+| Riesgo | Mitigación |
+|---|---|
+| Alcance ambiguo (H1) | Diseño por puertos; ampliar sin romper el contrato v1. |
+| Concurrencia en saldo | Bloqueo optimista (`version`) + reintento controlado. |
+| Pagos duplicados | D6. |
+| Fuga de datos de tarjeta | D7; los logs no incluyen montos ni identificadores completos. |
+| Sin contexto SGC (fallback) | Las restricciones corporativas no se han validado; revisar antes de pasar a producción. |
+| Sin pruebas de integración ni E2E | Se declara explícitamente en el resumen final. |
 
-## Aceptación complementaria
-
-Estos criterios son compatibles con los de la plantilla y no los sustituyen:
-
-- Existe al menos una prueba unitaria para el handler de consulta, el validador de rango de fechas, `PagosApiService` y `tabla-pagos`.
-- Todo el SQL de acceso usa parámetros; no hay concatenación de entradas.
-- El README documenta las variables de entorno, los comandos `dotnet test` y `npm test`, y el orden de aplicación de las migraciones.
+## Criterios complementarios (no reemplazan la Aceptación base)
+- Las migraciones V1 y V2 existen y todas las consultas usan parámetros con nombre.
+- Existe al menos una prueba unitaria por capa (service, controller, componente React).
+- El README documenta las variables de entorno y los comandos `mvn test` y `npm test`.
