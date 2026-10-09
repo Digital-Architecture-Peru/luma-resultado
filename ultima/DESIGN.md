@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Quarkus
+- ¿Qué stack? Angular + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Quarkus (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + .NET (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,59 +29,67 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN (refinamiento)
+# DESIGN · Refinamiento: Transacción de Pagos (Angular + .NET + PostgreSQL)
 
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (Angular), `backend/` (Quarkus) y migraciones en `backend/src/main/resources/db/migration` | Un solo entregable Full Stack; cada parte compila con su propia toolchain (npm, Maven). |
-| D2 | Backend hexagonal ligero: `api` → `application` → `domain` ← `infrastructure` | La integración está sin definir: se aísla detrás de `PasarelaPagoPort` con un adaptador stub. |
-| D3 | REST `POST /api/v1/pagos` con cabecera `Idempotency-Key`; `GET /api/v1/pagos/{id}`; `GET /api/v1/pagos?cuentaOrigen=` | Evita pagos duplicados por reintento del usuario o de la red. |
-| D4 | Importes con `BigDecimal` / `NUMERIC(19,2)` y moneda ISO-4217 | Sin errores de redondeo en dinero. |
-| D5 | Estados `PENDIENTE → CONFIRMADO / RECHAZADO` validados en el dominio | Transiciones explícitas y fáciles de probar unitariamente. |
-| D6 | Flyway (`V1__esquema.sql`, `V2__datos_ficticios.sql`) y acceso por Panache/JPA con parámetros enlazados | Esquema versionado, sin SQL concatenado. |
-| D7 | Angular standalone, formularios reactivos y Atomic Design (atoms/molecules/organisms/templates/pages) | Corresponde al patrón elegido y permite reutilizar piezas en Banca por Internet. |
-| D8 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `API_BASE_URL`) | Sin secretos en el repositorio. |
+| D1 | Backend .NET 8 Web API en capas `Domain / Application / Infrastructure / Api` | Aísla las reglas de pago y permite pruebas unitarias sin base de datos. |
+| D2 | Persistencia detrás de `IPaymentRepository`: Npgsql + Dapper en Infrastructure y `InMemoryPaymentRepository` para pruebas | El SQL queda explícito y todo el acceso es parametrizado (`@param`), sin concatenación. |
+| D3 | Migraciones SQL versionadas (`db/migrations/V001__init.sql`, `V002__seed.sql`) | Son legibles y se revisan de forma estática sin depender de herramientas de EF. |
+| D4 | Montos en `decimal` (.NET) y `NUMERIC(18,2)` (SQL); moneda ISO 4217 | Evita errores de redondeo con punto flotante. |
+| D5 | Clave de idempotencia (`Idempotency-Key`) con índice único | Impide pagos duplicados por reintentos o doble clic. |
+| D6 | Estados del pago: `PENDING → COMPLETED \| REJECTED`, con transiciones validadas en el dominio | El ciclo de vida es explícito y verificable. |
+| D7 | Integración sin definir: `IPaymentProcessor` con `FakePaymentProcessor` | No hay llamadas a sistemas reales. El contrato se sustituye después. |
+| D8 | Angular con componentes standalone y Reactive Forms, organizados por Atomic Design | Componentes reutilizables y validaciones declarativas. |
+| D9 | Configuración por variables de entorno (`PAYMENTS_DB_CONNECTION`, `apiBaseUrl`) | Ningún secreto queda en el repositorio. |
+
+**Contrato API (v1):**
+- `POST /api/v1/payments` responde 201, 400 (validación) o 409 (idempotencia).
+- `GET /api/v1/payments/{id}`
+- `GET /api/v1/payments?accountId=`
 
 ## Estructura de módulos
 ```
-backend/  pom.xml
-  src/main/java/.../pagos/
-    api/            PagoResource, PagoRequest/Response, ErrorMapper
-    application/    RegistrarPagoUseCase, ConsultarPagoUseCase
-    domain/         Pago, EstadoPago, Monto, ReglasPago, PasarelaPagoPort, PagoRepository
-    infrastructure/ PagoEntity, PagoPanacheRepository, PasarelaPagoStub
-  src/test/java/... RegistrarPagoUseCaseTest, ReglasPagoTest, PagoResourceTest (mocks)
-frontend/  package.json, angular.json
-  src/app/pagos/
-    atoms/      input-monto, boton, etiqueta-estado
-    molecules/  campo-cuenta, resumen-importe
-    organisms/  formulario-pago, detalle-pago
-    templates/  layout-transaccion
-    pages/      nuevo-pago.page, confirmacion.page
-    services/   pagos-api.service (HttpClient)
-  *.spec.ts junto a cada componente o servicio
+backend/
+  Payments.sln
+  src/Payments.Domain/        Payment, PaymentStatus, Money, reglas
+  src/Payments.Application/   CreatePaymentHandler, DTOs, validación, interfaces
+  src/Payments.Infrastructure/ PgPaymentRepository (Dapper), FakePaymentProcessor
+  src/Payments.Api/           Program.cs, PaymentsController, ProblemDetails
+  tests/Payments.UnitTests/   xUnit: dominio, handler, idempotencia
+db/migrations/                V001__init.sql, V002__seed.sql (datos ficticios)
+frontend/src/app/
+  atoms/      button, input, amount-display
+  molecules/  form-field, account-selector
+  organisms/  payment-form, payment-confirm, payment-receipt
+  templates/  payment-layout
+  pages/      payment-page (flujo captura → confirmación → comprobante)
+  core/       payment-api.service, models
+  *.spec.ts   pruebas unitarias (Jasmine/Karma)
+README.md
 ```
 
-## Modelo de datos (PostgreSQL)
-- Tabla `pago`: `id UUID PK`, `idempotency_key VARCHAR UNIQUE`, `cuenta_origen`, `cuenta_destino`, `monto NUMERIC(19,2) CHECK (monto > 0)`, `moneda CHAR(3)`, `estado`, `creado_en TIMESTAMPTZ`.
-- Índices: `(cuenta_origen, creado_en DESC)` y un índice único sobre `idempotency_key`.
-- Datos ficticios con cuentas inventadas (por ejemplo `0000-FAKE-0001`).
-
-## Pruebas unitarias
-- Backend: JUnit 5 + Mockito sobre las reglas de dominio, los casos de uso (incluida la idempotencia) y el mapeo de errores.
-- Frontend: el runner por defecto del Angular CLI cubre las validaciones del formulario, los átomos y el servicio con `HttpTestingController`.
-
 ## Riesgos
-- **R1:** la compilación y las pruebas pueden no ejecutarse si faltan JDK, Maven o Node. Quedan marcadas como no verificadas.
-- **R2:** el SQL de PostgreSQL solo recibe revisión estática y puede tener errores que solo aparecen en tiempo de ejecución.
-- **R3:** la autenticación y autorización no están definidas. Un endpoint de pagos expuesto sin ellas es un riesgo grave fuera de la demo.
-- **R4:** el SGC está en fallback, así que pueden faltar convenciones corporativas (nombres, librería de UI, observabilidad).
-- **R5:** sin una pasarela real no se validan tiempos de espera, reintentos ni conciliación.
+- **R1:** el SQL de PostgreSQL solo recibe revisión estática, así que la sintaxis específica del motor (por ejemplo `gen_random_uuid()`) no se ejecuta.
+- **R2:** si no hay .NET SDK, Node/npm o un navegador headless instalados, la compilación y las pruebas quedan sin verificar.
+- **R3:** las validaciones del front y del back pueden divergir. Mitigación: el back es la fuente de verdad y se responde con ProblemDetails.
+- **R4:** sin autenticación real, la API no debe exponerse fuera de un entorno local.
+- **R5:** la concurrencia sobre el saldo no está modelada, porque no hay débito real.
 
 ## Hipótesis
-- **H1:** la autenticación la aporta Banca por Internet. Aquí se simula el usuario y no se implementa seguridad real.
-- **H2:** las versiones son las LTS vigentes de Quarkus y Java 21, y Angular es una versión estable reciente. Hay que confirmarlas con la toolchain disponible.
-- **H3:** solo se manejan pagos en la misma moneda, sin límites diarios ni OTP. Esas reglas quedan como extensión futura.
-- **H4:** la pasarela stub confirma o rechaza según reglas ficticias deterministas.
-- **H5:** no hay requisitos de auditoría regulatoria específicos. Solo se usa `creado_en` y logs sin datos sensibles.
+- **H1:** la "Transacción" es un pago de servicio o a un tercero desde una cuenta propia del cliente.
+- **H2:** la autenticación y la autorización las resuelve un gateway o BFF externo. Aquí el cliente se simula con `X-Customer-Id` ficticio.
+- **H3:** las versiones objetivo son .NET 8 LTS y Angular 17+.
+- **H4:** el límite por operación es configurable (valor de ejemplo: 10 000.00) y la moneda por defecto es ficticia (`PEN`).
+- **H5:** no hay SGC disponible (fallback), por lo que no se aplican estándares corporativos específicos.
+
+## Aceptación complementaria (no reemplaza la base)
+- Las pruebas unitarias cubren cuatro casos: monto ≤ 0 rechazado, transición de estado inválida, idempotencia (409) y validadores del formulario Angular.
+- La migración V001 define:
+  - clave primaria;
+  - índice único sobre `idempotency_key`;
+  - índice en `(account_id, created_at)`;
+  - `CHECK (amount > 0)`.
+- El README documenta las variables de entorno, el orden de las migraciones y lo que queda sin verificar.
+- El resultado se entrega como candidate: no se afirma compilación ni preparación para producción.

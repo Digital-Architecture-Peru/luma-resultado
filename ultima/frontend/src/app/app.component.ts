@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { PaymentPageComponent } from './pages/payment-page.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  template: `<router-outlet />`,
+  standalone: true,
+  imports: [PaymentPageComponent],
+  template: `<app-payment-page></app-payment-page>`
 })
 export class AppComponent {}
