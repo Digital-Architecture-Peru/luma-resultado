@@ -1,16 +1,7 @@
-import type { PaymentStatus } from '../../types';
-
-const LABELS: Record<PaymentStatus, string> = {
-  PENDING: 'Pendiente',
-  COMPLETED: 'Completado',
-  REJECTED: 'Rechazado',
-};
-
-export function statusLabel(status: PaymentStatus): string {
-  return LABELS[status];
-}
+import type { PaymentStatus } from '../../api/types';
+import { STATUS_LABELS } from '../../utils/format';
 
 /** El estado se comunica con texto, no solo con color. */
 export function StatusBadge({ status }: { status: PaymentStatus }) {
-  return <span className={`badge badge--${status.toLowerCase()}`}>{statusLabel(status)}</span>;
+  return <span className={`badge badge--${status.toLowerCase()}`}>{STATUS_LABELS[status]}</span>;
 }
