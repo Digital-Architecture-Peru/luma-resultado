@@ -1,92 +1,90 @@
-# Pago de tarjetas · Banca por Internet
+# Transferencias entre cuentas propias
 
-Aplicación de ejemplo para consultar tarjetas y movimientos, y registrar pagos. Stack: Angular 17 standalone, .NET 8 Web API y PostgreSQL. Los datos de seed y el procesador de pagos son ficticios; no usar en producción.
-
-## Estructura
-
-- `frontend/`: interfaz Angular y pruebas Jest.
-- `backend/`: solución .NET (`Cards.Api`, `Cards.Application`, `Cards.Domain`, `Cards.Infrastructure`) y pruebas unitarias xUnit.
-- `db/migrations/`: SQL de esquema y datos demostrativos.
+Aplicación monorepo con `frontend/` (React 18, TypeScript y Vite) y `backend/` (Java 17, Spring Boot 3, JDBC y PostgreSQL). Permite consultar cuentas propias y ejecutar transferencias en una misma moneda. La interfaz consume la API del backend mediante rutas relativas `/api`.
 
 ## Requisitos
 
-- Node.js compatible con Angular CLI 17 y npm.
-- .NET SDK 8.
-- PostgreSQL accesible para la API.
+- JDK 17 y Maven 3.6+.
+- Node.js compatible con npm (Node 18+ recomendado).
+- PostgreSQL accesible desde el backend.
 
-## Base de datos
+## Configuración y ejecución local
 
-Crear una base vacía y aplicar los scripts en orden desde la raíz del repositorio. Configure `DATABASE_URL` con una cadena reconocida por `psql`:
+1. Cree una base de datos PostgreSQL vacía, por ejemplo `banking`. Configure credenciales propias en el entorno; no se incluyen credenciales para producción. El backend usa por defecto URL `jdbc:postgresql://localhost:5432/banking`, usuario `banking` y contraseña vacía. Puede establecer `DB_URL`, `DB_USER` y `DB_PASSWORD`.
+2. En una terminal, inicie la API:
 
-```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V001__init.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V002__seed.sql
-```
+   ```sh
+   cd backend
+   mvn spring-boot:run
+   ```
 
-Ejemplo local (no usar credenciales reales):
+   Flyway aplica automáticamente las migraciones al arrancar. Puerto por defecto: `8080` (`PORT` lo cambia). El límite por transferencia es `10000.00`; se configura con `TRANSFER_MAX_AMOUNT`.
+3. En otra terminal, inicie el frontend:
 
-```sh
-export DATABASE_URL='postgresql://localhost:5432/cards_dev'
-```
+   ```sh
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-Los scripts no son un migrador ni están diseñados para repetirse sobre una base ya creada: V001 crea tablas e índices; V002 agrega registros ficticios. Para reiniciar localmente, use una base vacía. El esquema persiste tarjetas y transacciones; `NUMERIC(18,2)` almacena importes, la clave de idempotencia es única y existe un índice por tarjeta/fecha. El PAN completo no se almacena, solo el valor enmascarado del seed.
+   Abra la dirección que indique Vite (usualmente `http://localhost:5173`). El proxy de desarrollo reenvía `/api` a `http://localhost:8080`. Para compilar frontend para distribución: `npm run build`; los artefactos quedan en `frontend/dist/`.
 
-## Backend (.NET)
+El frontend envía `X-Customer-Id`, configurable mediante `VITE_CUSTOMER_ID` (por defecto `1`). Es un stub ficticio y **no es autenticación**; no exponer la aplicación como banca real.
 
-Desde la raíz, configure la cadena de conexión requerida (no guardar secretos en archivos versionados) y ejecute:
+## API
 
-```sh
-export ConnectionStrings__Cards='Host=localhost;Port=5432;Database=cards_dev;Username=TU_USUARIO;Password=TU_PASSWORD'
-export Cors__AllowedOrigin='http://localhost:4200' # opcional; este es el valor por defecto
-export ASPNETCORE_URLS='http://localhost:5080'
-cd backend
-dotnet restore Cards.sln
-dotnet build Cards.sln
-dotnet test Cards.sln
-dotnet run --project src/Cards.Api
-```
+Todas las rutas usan el prefijo `/api/v1`. Las consultas requieren cabecera `X-Customer-Id`.
 
-`ConnectionStrings__Cards` debe apuntar a la base con los scripts aplicados; la API falla al iniciar si falta. La infraestructura usa Npgsql y Dapper con consultas parametrizadas. La aplicación no aplica migraciones automáticamente. `GET /health` sirve como comprobación básica de disponibilidad.
+- `GET /accounts` — cuentas del cliente.
+- `GET /accounts/{id}/movements?page=0&size=20` — movimientos paginados de una cuenta propia (tamaño máximo 50).
+- `POST /transfers` — crea una transferencia. Requiere `Idempotency-Key` (no vacío, máximo 64 caracteres) y `X-Customer-Id`.
 
-### API
-
-Base URL local: `http://localhost:5080/api/v1`.
-
-- `GET /cards`: lista tarjetas.
-- `GET /cards/{id}/transactions?page=1`: lista movimientos de la tarjeta.
-- `POST /cards/{id}/payments`: registra un pago.
-
-Ejemplo de pago:
+Ejemplo de solicitud:
 
 ```sh
-curl -i -X POST 'http://localhost:5080/api/v1/cards/11111111-1111-4111-8111-111111111111/payments' \
+curl -i -X POST http://localhost:8080/api/v1/transfers \
   -H 'Content-Type: application/json' \
-  -H 'Idempotency-Key: demo-payment-001' \
-  -d '{"amount":25.00,"currency":"USD","sourceAccountAlias":"Cuenta demo"}'
+  -H 'X-Customer-Id: 1' \
+  -H 'Idempotency-Key: demo-transfer-001' \
+  -d '{"sourceAccountId":1,"targetAccountId":2,"amount":"25.50","currency":"USD","description":"Ahorro"}'
 ```
 
-La clave de idempotencia es obligatoria (máximo 64 caracteres). Una repetición con la misma clave y contenido devuelve la transacción existente; reutilizarla para otro pago produce conflicto. Las respuestas de error usan `application/problem+json`. El middleware de errores y las validaciones determinan los códigos HTTP según el error (por ejemplo, solicitud inválida, tarjeta inexistente o conflicto).
+`amount` es texto decimal, admite hasta dos decimales; se responde con monto en texto y estado `COMPLETED` (HTTP 201). Una clave ya usada se rechaza, no reproduce la respuesta original. Errores de negocio se devuelven como `application/problem+json`; por ejemplo, duplicado o saldo insuficiente son conflictos, y datos inválidos son `422`. No reutilice la clave de ejemplo si ya se ejecutó.
 
-## Frontend (Angular)
+## Persistencia y consistencia
 
-En otra terminal:
+PostgreSQL es la persistencia real del backend. `V1__schema.sql` crea cuentas, transferencias y movimientos; `V2__seed_ficticio.sql` inserta cuentas de muestra para los clientes ficticios 1 y 2. No usar estos datos en producción. Flyway mantiene el historial de migraciones.
+
+El servicio de transferencia ejecuta actualizaciones de saldos, alta de transferencia y dos movimientos dentro de una transacción JDBC. Bloquea cuentas por id ascendente (`SELECT ... FOR UPDATE`) para serializar operaciones concurrentes y reducir deadlocks; la clave de idempotencia tiene restricción única en base de datos. Los montos se guardan como `NUMERIC(19,2)`. Las cuentas de origen y destino deben usar la moneda solicitada.
+
+La autorización al core se representa mediante `CoreBankingPort`, pero actualmente `FakeCoreBankingAdapter` autoriza todo: no hay integración con un core bancario real. Para producción deben reemplazarse tanto este adaptador como la identidad simulada por integraciones seguras y autenticadas.
+
+## Pruebas
+
+Desde la raíz del repositorio:
 
 ```sh
-cd frontend
-npm install
-npm run build
-npm test -- --runInBand
-npm start
+(cd backend && mvn test)
+(cd frontend && npm install && npm test)
+(cd frontend && npm run build)
 ```
 
-Abre `http://localhost:4200`. La URL base de la API está declarada en `frontend/src/environments/environment.ts` como `http://localhost:5080/api/v1`; actualizarla para otros entornos y permitir ese origen en CORS del backend. El script de pruebas invoca Jest.
+Las pruebas Java son unitarias (JUnit 5/Mockito) y no requieren PostgreSQL. Vitest ejecuta las pruebas del frontend en jsdom; el build frontend incluye chequeo de tipos (`tsc --noEmit`). No hay pruebas de integración contra PostgreSQL ni pruebas end-to-end.
 
-## Integración y persistencia
+## Configuración del backend
 
-Angular usa `CardsApiService` para llamar a la API; el origen configurado debe coincidir con `Cors__AllowedOrigin`. La API organiza el caso de uso en Application y delega lectura/escritura al contrato de repositorio implementado en Infrastructure sobre PostgreSQL. El pago actualiza condicionalmente el saldo disponible y registra el movimiento dentro de una transacción; una restricción única en base de datos y la lógica del caso de uso respaldan la idempotencia, incluso ante solicitudes concurrentes.
+| Variable | Predeterminado | Uso |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/banking` | URL JDBC |
+| `DB_USER` | `banking` | Usuario de base de datos |
+| `DB_PASSWORD` | vacío | Contraseña; establecer fuera del repositorio |
+| `PORT` | `8080` | Puerto HTTP |
+| `TRANSFER_MAX_AMOUNT` | `10000.00` | Límite positivo por operación |
+| `LOG_LEVEL` | `INFO` | Nivel raíz de logging |
+| `VITE_CUSTOMER_ID` | `1` | Identidad de demostración del frontend |
 
-`ICardProcessorGateway` aísla la autorización externa; hoy se inyecta `FakeCardProcessorGateway`, que aprueba importes de hasta 100 000. No hay conexión con un procesador real ni un contrato definido: sustituir esa implementación y acordar autenticación, manejo de credenciales, timeouts y reconciliación antes de una integración real. `sourceAccountAlias` es validado, pero en el estado actual no se persiste como dato de transacción.
+Actuator expone health. No hay configuración CORS separada; en desarrollo se usa el proxy Vite.
 
-## Pruebas y límites conocidos
+## Estado de verificación
 
-`dotnet test backend/Cards.sln` ejecuta pruebas unitarias xUnit. `npm test -- --runInBand` ejecuta pruebas Jest del servicio HTTP y componentes Angular. No hay pruebas E2E ni pruebas de integración automatizadas contra PostgreSQL; la ejecución del backend y la verificación completa del flujo requieren una base PostgreSQL preparada manualmente. Autenticación y autorización no están implementadas, por lo que este ejemplo no debe exponerse como servicio bancario real.
+Documentación basada en el código y manifiestos existentes. En esta sesión no se ejecutaron Maven, npm, las pruebas ni migraciones contra una base PostgreSQL.
