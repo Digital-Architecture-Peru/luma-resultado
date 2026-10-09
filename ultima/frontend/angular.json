@@ -10,7 +10,7 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular/build:application",
+          "builder": "@angular-devkit/build-angular:application",
           "options": {
             "outputPath": "dist/notificaciones",
             "index": "src/index.html",
@@ -20,14 +20,19 @@
             "styles": ["src/styles.css"]
           },
           "configurations": {
-            "production": { "outputHashing": "all" },
-            "development": { "optimization": false, "sourceMap": true }
+            "production": {
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular/build:dev-server",
-          "options": { "proxyConfig": "proxy.conf.json" },
+          "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": { "buildTarget": "notificaciones:build:production" },
             "development": { "buildTarget": "notificaciones:build:development" }

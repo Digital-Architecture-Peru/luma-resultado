@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Quarkus
+- ¿Qué stack? Angular + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Quarkus (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + .NET (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -32,58 +32,65 @@ Estado: fallback (SGC no configurado)
 # DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| AD1 | Repositorio con dos módulos independientes: `frontend/` (Angular) y `backend/` (Quarkus con Maven) | El alcance es Full Stack. Cada capa se compila y prueba por separado. |
-| AD2 | Backend en capas: `resource` (REST), luego `service` y luego el puerto `NotificacionRepository`, con una implementación JDBC/Panache que usa parámetros enlazados | Mantiene la persistencia detrás de interfaces. El servicio se prueba de forma unitaria con un mock del puerto, sin base de datos. |
-| AD3 | Contrato REST versionado: `GET /api/v1/tarjetas/{tarjetaId}/notificaciones?leida=&page=&size=` y `PATCH /api/v1/notificaciones/{id}/leida` | Es la superficie mínima para listar notificaciones y marcarlas como leídas. La paginación evita respuestas sin límite. |
-| AD4 | Migraciones Flyway: `V1__esquema.sql` y `V2__datos_ficticios.sql`. Índices en `(tarjeta_id, creada_en DESC)` y un índice parcial `WHERE leida = false` | El esquema queda versionado y reproducible. Los índices cubren las consultas del listado y de las no leídas. |
-| AD5 | Front con componentes standalone organizados según Atomic Design: `atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/`. Acceso HTTP centralizado en `core/services` | Aplica el patrón solicitado. Los componentes presentacionales no tienen dependencias y se prueban de forma aislada. |
-| AD6 | Solo se guardan los últimos 4 dígitos de la tarjeta (`ultimos4`). Nunca se guarda el PAN | Reduce el alcance de cumplimiento de datos de tarjeta. |
-| AD7 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_DATASOURCE_USERNAME`, `QUARKUS_DATASOURCE_PASSWORD`, `API_BASE_URL`), sin valores reales por defecto | No hay secretos en el repositorio. |
-| AD8 | Pruebas unitarias: JUnit 5 + Mockito en el backend, Jasmine/Karma (`*.spec.ts`) en el front | Se limita a lo pedido (Unitarias). No se incluyen pruebas de integración contra PostgreSQL. |
+| D1 | Backend .NET 8 Web API en capas: `Domain`, `Application`, `Infrastructure`, `Api` | Aísla reglas de negocio y permite pruebas unitarias sin BD ni HTTP |
+| D2 | Persistencia con Npgsql + Dapper, solo con consultas parametrizadas | SQL explícito, revisable de forma estática y sin concatenación de cadenas. No se usa EF Core para evitar migraciones generadas que no se pueden verificar aquí |
+| D3 | Migraciones SQL versionadas (`V001__init.sql`, `V002__seed_ficticio.sql`) | Son legibles y se pueden aplicar con cualquier runner. El runner concreto queda fuera de alcance |
+| D4 | `INotificationRepository` con implementación Postgres e implementación InMemory | Las pruebas no dependen de PostgreSQL y la demo funciona sin BD |
+| D5 | `INotificationDispatcher` con implementación `FakeDispatcher` | La integración está sin definir. El contrato queda listo para conectar email, SMS o push |
+| D6 | Nunca se almacena el PAN. Solo se guardan `card_ref` (token ficticio) y `card_last4` | Minimiza el alcance PCI y la exposición de datos sensibles |
+| D7 | Angular con standalone components, signals y `HttpClient`. Atomic Design en `atoms/molecules/organisms/templates/pages` | Es el patrón pedido y da componentes pequeños y fáciles de probar |
+| D8 | API REST `v1`: `GET /api/v1/notifications?unreadOnly&page`, `PATCH /api/v1/notifications/{id}/read`, `GET`/`PUT /api/v1/notification-preferences` | Contrato mínimo para bandeja y preferencias, con versionado explícito |
+| D9 | Identidad del cliente mediante la abstracción `ICurrentCustomer`, con un fake en la demo | La autenticación de la Banca por Internet no está documentada |
+| D10 | Pruebas con xUnit (.NET) y Jasmine/TestBed (Angular, `*.spec.ts`) | Son los runners por defecto de cada stack y no añaden dependencias extra |
 
 ## Estructura de módulos
 ```
 backend/
-  pom.xml
-  src/main/java/com/example/tarjetas/notificaciones/
-    api/        NotificacionResource.java, dto/
-    domain/     Notificacion.java, TipoNotificacion.java
-    service/    NotificacionService.java
-    port/       NotificacionRepository.java
-    infra/      JdbcNotificacionRepository.java
-  src/main/resources/application.properties
-  src/main/resources/db/migration/V1__esquema.sql, V2__datos_ficticios.sql
-  src/test/java/.../service/NotificacionServiceTest.java
+  Tarjetas.Notificaciones.sln
+  src/Domain/            Notification, NotificationType, Preference
+  src/Application/       NotificationService, interfaces (Repository, Dispatcher, ICurrentCustomer)
+  src/Infrastructure/    PostgresNotificationRepository (Dapper), InMemoryRepository, FakeDispatcher
+  src/Api/               Controllers, Program.cs, appsettings.json (sin secretos; ConnectionStrings__Default por env)
+  tests/Application.Tests/   xUnit
+db/migrations/           V001__init.sql, V002__seed_ficticio.sql
 frontend/
   package.json, angular.json
-  src/app/core/services/notificacion.service.ts (+ .spec.ts)
-  src/app/ui/atoms/        badge-tipo, icono-estado
-  src/app/ui/molecules/    item-notificacion
-  src/app/ui/organisms/    lista-notificaciones
-  src/app/ui/templates/    layout-notificaciones
-  src/app/pages/           notificaciones-tarjeta.page
+  src/app/notifications/
+    atoms/      badge, icon-button
+    molecules/  notification-item
+    organisms/  notification-list, preferences-form
+    templates/  notifications-layout
+    pages/      notifications-page
+    data/       notifications.api.ts, models.ts
+  src/environments/  apiBaseUrl
 README.md
 ```
 
+## Modelo de datos (PostgreSQL)
+- **`notification`**:
+  - Columnas: `id uuid PK`, `customer_id`, `card_ref`, `card_last4 char(4)`, `type` (CHECK: `COMPRA`, `BLOQUEO`, `VENCIMIENTO`, `PAGO_MINIMO`), `title`, `body`, `event_id`, `created_at timestamptz`, `read_at null`.
+  - Restricción `UNIQUE(event_id)` para tener idempotencia.
+  - Índice parcial `(customer_id, created_at DESC) WHERE read_at IS NULL`.
+- **`notification_preference`**: `PK(customer_id, type, channel)`, `enabled bool`.
+
 ## Riesgos
-- **R1:** puede que no haya JDK, Maven o Node en el entorno. En ese caso la compilación queda como no verificada y solo se revisa la sintaxis.
-- **R2:** el SQL de PostgreSQL solo recibe revisión estática. Algunas sintaxis específicas (índice parcial, `TIMESTAMPTZ`) no se ejecutan.
-- **R3:** la autenticación y la integración no están definidas. Los endpoints quedan sin control de acceso real, por lo que no son aptos para producción.
-- **R4:** las versiones de Angular y Quarkus fijadas en los manifiestos pueden no coincidir con las del entorno corporativo.
-- **R5:** sin SGC configurado (fallback) no se validan las convenciones corporativas.
+| Riesgo | Mitigación |
+|---|---|
+| No hay .NET SDK ni Node disponibles, así que no se compila ni se ejecutan pruebas | Se marca como no verificado en el handoff |
+| El SQL de PostgreSQL solo se revisa de forma estática | Usar sintaxis estándar y documentarlo en el README |
+| SGC en fallback, sin estándares corporativos | Las decisiones quedan como hipótesis revisables |
+| Exposición de datos de tarjeta | Aplicar D6, enmascarar en la UI y no registrar el cuerpo de la notificación en logs |
+| No hay `package-lock` porque no se ejecuta `npm install` | Fijar versiones en `package.json` |
 
 ## Hipótesis
-- **H1:** "Notificación" significa alertas in-app que se consultan en Banca por Internet. No incluye push, SMS ni email.
-- **H2:** los tipos de notificación son `CONSUMO`, `VENCIMIENTO`, `BLOQUEO` y `PAGO_RECIBIDO`.
-- **H3:** las notificaciones las genera un proceso externo no definido. Esta solución solo las persiste y las expone.
-- **H4:** el stack es Angular 17+, Java 17 y Quarkus 3.x.
-- **H5:** el `tarjetaId` llega validado por una capa de seguridad externa (ver R3).
-- **H6:** la tabla `notificacion` tiene las columnas `id`, `tarjeta_id`, `ultimos4`, `tipo`, `mensaje`, `leida` y `creada_en`.
+- H1. La notificación es in-app (bandeja más preferencias), no un envío real por canal.
+- H2. Los tipos de evento se limitan a los cuatro listados.
+- H3. Se usan .NET 8 LTS y Angular 17 o superior.
+- H4. La autenticación y la fuente de eventos (core de tarjetas) están fuera de alcance.
+- H5. Todos los datos son ficticios.
 
-## Trazabilidad con la aceptación
-- **Sintaxis:** se verifican los archivos `.java`, `.ts`, `.json` y `.sql` con el validador local.
-- **Pruebas:** `NotificacionServiceTest.java` y los `*.spec.ts` del servicio y de los átomos.
-- **README:** incluye build, ejecución, variables de entorno, la integración "sin definir" y las migraciones PostgreSQL.
-- **Handoff:** resumen *candidate* que lista R1–R3 como no verificados y no afirma compilación ni producción.
+## Aceptación (complemento, sin alterar la base)
+- Cada to-do (T01–T06) tiene trazabilidad a sus artefactos.
+- El handoff es candidate, sin afirmar compilación ni producción.
