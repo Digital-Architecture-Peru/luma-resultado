@@ -1,11 +1,13 @@
-# Notificaciones de tarjetas — banca por Internet
+# Notificaciones de cuentas · Banca por Internet
 
-Aplicación frontend Angular 18 standalone para consultar notificaciones ficticias de tarjetas. Utiliza signals para el estado y una separación por dominio, aplicación, adaptador y UI (Atomic Design).
+Aplicación frontend de notificaciones bancarias ficticias, construida con Angular 18 standalone y componentes organizados con Atomic Design. Incluye avisos de saldo bajo, depósitos, retiros y seguridad; filtros de lectura, marcado como leído y descarte.
+
+> **Demo únicamente:** no se conecta a servicios financieros y no contiene datos de clientes reales.
 
 ## Requisitos
 
-- Node.js compatible con Angular 18 (Node.js 18.19.1+, 20.11.1+ o 22+).
-- npm.
+- Node.js compatible con Angular 18: `^18.19.0`, `^20.11.0` o `^22.0.0`.
+- npm (incluido con Node.js).
 
 ## Instalar, compilar y ejecutar
 
@@ -13,16 +15,17 @@ Desde la raíz del proyecto:
 
 ```sh
 npm install
+npm run build
 npm start
 ```
 
-El servidor de desarrollo Angular estará disponible normalmente en `http://localhost:4200`; se recarga al modificar fuentes. Para generar el build de producción:
+`npm run build` ejecuta el build de Angular en configuración de producción, incluido el chequeo de tipos de TypeScript. `npm start` inicia el servidor de desarrollo; abre [http://localhost:4200](http://localhost:4200). Para detenerlo, usa `Ctrl+C`.
+
+Para compilar explícitamente en modo desarrollo:
 
 ```sh
-npm run build
+npx ng build --configuration development
 ```
-
-Los artefactos se generan en `dist/tarjetas-notificaciones/`. `ng build` aplica la configuración de producción por defecto e incluye la comprobación TypeScript de Angular.
 
 ## Pruebas
 
@@ -30,22 +33,20 @@ Los artefactos se generan en `dist/tarjetas-notificaciones/`. `ng build` aplica 
 npm test
 ```
 
-El comando ejecuta Jest en modo CI, sin modo interactivo. Las pruebas cubren el store de notificaciones (carga correcta y fallida, orden, filtro y marcado como leído) y componentes de UI. Para ejecutar un subconjunto puede pasarse un patrón Jest, por ejemplo `npx jest src/app/application/notification-store.service.spec.ts --runInBand`.
+Las pruebas se ejecutan una sola vez con Vitest (no en modo watch), usando jsdom. Cubren el store de notificaciones, el componente de notificación y la página mediante pruebas unitarias y de componentes. No requieren backend ni credenciales.
 
-## Estructura principal
+## Organización
 
-- `src/app/domain/`: modelo de notificación y puerto abstracto `NotificationGateway`.
-- `src/app/application/notification-store.service.ts`: carga, filtro, conteo y acciones de lectura con signals.
-- `src/app/adapters/mock-notification.gateway.ts`: adaptador ficticio en memoria, con datos de demostración; no realiza peticiones de red.
-- `src/app/ui/`: componentes standalone organizados en atoms, molecules, organisms y pages.
-- `src/app/app.config.ts`: composición de dependencias; actualmente registra `MockNotificationGateway` para el puerto `NotificationGateway`.
+- `src/app/domain/`: modelo, tipos y puerto abstracto `NotificationRepository`.
+- `src/app/application/`: `NotificationStore`, que mantiene estado reactivo en Angular signals y aplica filtros y acciones.
+- `src/app/adapters/`: `InMemoryNotificationRepository`, con datos de ejemplo ficticios.
+- `src/app/atoms/`, `molecules/`, `organisms/`, `pages/`: interfaz agrupada por nivel de Atomic Design.
+- `src/app/app.config.ts`: composición de dependencias; enlaza el puerto al repositorio en memoria.
 
 ## Integración y persistencia
 
-La integración con servicios externos aún no está implementada. Para conectar una API, implementar `NotificationGateway` (por ahora su contrato expone `list(): Promise<CardNotification[]>`) y sustituir el proveedor de `NotificationGateway` en `src/app/app.config.ts`. El adaptador real debería traducir y validar la respuesta externa al modelo de dominio, manejar errores de transporte y configurar la URL mediante configuración de entorno de despliegue, nunca incluir credenciales en el frontend. Si se incorpora autenticación, debe delegarse en el mecanismo aprobado por la aplicación anfitriona; no almacenar secretos en el bundle.
+Actualmente no hay integración externa ni persistencia: el adaptador devuelve un conjunto fijo de datos ficticios, y los cambios (marcar como leído o descartar) viven únicamente en memoria. Al recargar la página se restablece el estado inicial.
 
-No hay base de datos ni persistencia local: los registros de muestra y los cambios de lectura viven solo en memoria. Recargar la aplicación restablece los datos y estados al conjunto ficticio inicial. Para persistencia real, el backend debe ser la fuente de verdad para las notificaciones y registrar acciones de lectura; el frontend debería actualizar el estado tras una respuesta confirmada, con política explícita de errores y reintentos. No se configura ni se presupone un servicio backend en este proyecto.
+Para integrar una API, implementa `NotificationRepository` con un adaptador basado, por ejemplo, en `HttpClient`, y sustituye el provider correspondiente en `src/app/app.config.ts`. Configura la URL del servicio mediante la configuración de despliegue apropiada; no incluyas secretos ni credenciales en el frontend. La interfaz actual del puerto solo define la lectura (`list()`); si la API debe guardar cambios de lectura o descarte, amplía el contrato y el store para representar esas operaciones, y maneja explícitamente errores y estados de carga.
 
-## Alcance
-
-Esta aplicación es una demostración de interfaz, no un canal bancario conectado. Los datos son ficticios; no usar con información financiera real.
+Para que los cambios persistan entre sesiones, la fuente de verdad debe ser un servicio/backend con almacenamiento persistente. El almacenamiento local del navegador podría servir para una demo, pero no debe considerarse persistencia segura ni autoritativa para una aplicación bancaria.
