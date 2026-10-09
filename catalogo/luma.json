@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-09T14:45:35.587Z",
+  "actualizado": "2026-10-09T15:07:06.108Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -775,6 +775,68 @@
         {
           "etapa": "Cierre",
           "segundo": 383
+        }
+      ]
+    },
+    "Consulta|Tarjetas|Full Stack|Angular|Java + Quarkus|PostgreSQL": {
+      "clave": "Consulta|Tarjetas|Full Stack|Angular|Java + Quarkus|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Consulta",
+        "domain": "Tarjetas",
+        "layer": "Full Stack",
+        "persistence": "PostgreSQL",
+        "stack": "Angular",
+        "backendStack": "Java + Quarkus"
+      },
+      "commit": "1af9e7dbfb9dfb4c849e35d56dd7f5ad9cb4643f",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/64",
+      "distTree": "0e6b22ff8ed2bd088d1ff12d38c77f0aa28b162d",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-09T15:06:43Z",
+      "duracion_s": 454,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 9e4ca440-877e-4433-aea6-cc895c90b756 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 45,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 45,
+          "detalle": "generando Angular + Java + Quarkus (capa Full Stack) en segundo plano, tarea e8186f08-b6c2-4fdc-9345-9fec028df2e1. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 222,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 426,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 426,
+          "detalle": "build correcto; pruebas unitarias correctas; [backend] maven build correcto; [backend] maven pruebas correctas (8); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 454,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 1af9e7d: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/1af9e7dbfb9dfb4c849e35d56dd7f5ad9cb4643f\nPull Request: https://github.com/Digita"
         }
       ]
     }
