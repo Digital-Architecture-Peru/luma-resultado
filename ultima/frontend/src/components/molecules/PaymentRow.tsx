@@ -1,27 +1,31 @@
-import type { Pago } from '../../types/pagos';
-import { Amount } from '../atoms/Amount';
-import { Badge } from '../atoms/Badge';
+import { StatusBadge } from '../atoms/StatusBadge';
+import { Button } from '../atoms/Button';
+import { formatAmount, formatDate } from '../../services/format';
+import type { Payment } from '../../types';
 
 interface PaymentRowProps {
-  pago: Pago;
+  payment: Payment;
+  onSelect: (id: string) => void;
 }
 
-function formatearFecha(iso: string): string {
-  return new Date(iso).toLocaleDateString('es', { dateStyle: 'medium', timeZone: 'UTC' });
-}
-
-export function PaymentRow({ pago }: PaymentRowProps) {
+export function PaymentRow({ payment, onSelect }: PaymentRowProps) {
   return (
     <tr>
-      <td>{formatearFecha(pago.fechaPago)}</td>
-      <td>{pago.beneficiario}</td>
-      <td>{pago.concepto}</td>
-      <td>{pago.cuenta}</td>
-      <td className="num">
-        <Amount valor={pago.monto} moneda={pago.moneda} />
-      </td>
+      <td>{payment.reference}</td>
+      <td>{payment.beneficiaryName}</td>
+      <td className="num">{formatAmount(payment.amount, payment.currency)}</td>
       <td>
-        <Badge estado={pago.estado} />
+        <StatusBadge status={payment.status} />
+      </td>
+      <td>{formatDate(payment.executedAt)}</td>
+      <td>
+        <Button
+          variant="secondary"
+          aria-label={`Ver detalle de ${payment.reference}`}
+          onClick={() => onSelect(payment.id)}
+        >
+          Ver detalle
+        </Button>
       </td>
     </tr>
   );

@@ -1,14 +1,15 @@
-CREATE TABLE pago (
-    id             BIGSERIAL PRIMARY KEY,
-    cuenta_id      VARCHAR(20)   NOT NULL,
-    numero_cuenta  VARCHAR(20)   NOT NULL,
-    beneficiario   VARCHAR(100)  NOT NULL,
-    concepto       VARCHAR(200)  NOT NULL,
-    monto          NUMERIC(15,2) NOT NULL CHECK (monto > 0),
-    moneda         CHAR(3)       NOT NULL,
-    estado         VARCHAR(10)   NOT NULL CHECK (estado IN ('PENDIENTE', 'PROCESADO', 'RECHAZADO')),
-    fecha_pago     TIMESTAMPTZ   NOT NULL
+CREATE TABLE payment (
+    id                         UUID          PRIMARY KEY,
+    customer_id                VARCHAR(36)   NOT NULL,
+    reference                  VARCHAR(40)   NOT NULL,
+    beneficiary_name           VARCHAR(120)  NOT NULL,
+    beneficiary_account_masked VARCHAR(20)   NOT NULL,
+    amount                     NUMERIC(15,2) NOT NULL CHECK (amount > 0),
+    currency                   CHAR(3)       NOT NULL,
+    status                     VARCHAR(16)   NOT NULL CHECK (status IN ('PENDING','COMPLETED','REJECTED')),
+    executed_at                TIMESTAMPTZ,
+    created_at                 TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_pago_cuenta_fecha ON pago (cuenta_id, fecha_pago DESC);
-CREATE INDEX idx_pago_estado ON pago (estado);
+CREATE INDEX idx_payment_customer_executed ON payment (customer_id, executed_at DESC);
+CREATE INDEX idx_payment_customer_status ON payment (customer_id, status);
