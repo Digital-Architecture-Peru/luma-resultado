@@ -1,51 +1,43 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import type { TarjetaResumen } from "../../types/tarjeta";
-import { ListaTarjetas } from "./ListaTarjetas";
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import type { Tarjeta } from '../../types/tarjeta';
+import { ListaTarjetas } from './ListaTarjetas';
 
-const tarjetas: TarjetaResumen[] = [
-  {
-    id: "1",
-    ultimos4: "4242",
-    marca: "VISA",
-    tipo: "CREDITO",
-    estado: "ACTIVA",
-    moneda: "USD",
-    saldoDisponible: "3250.75",
-    vencimiento: "2028-11-30",
-  },
-  {
-    id: "2",
-    ultimos4: "1881",
-    marca: "MASTERCARD",
-    tipo: "DEBITO",
-    estado: "BLOQUEADA",
-    moneda: "USD",
-    saldoDisponible: "10",
-    vencimiento: "2027-06-30",
-  },
-];
+const tarjeta: Tarjeta = {
+  id: '1',
+  marca: 'MASTERCARD',
+  tipo: 'DEBITO',
+  numeroEnmascarado: '**** 1111',
+  estado: 'ACTIVA',
+  limite: 0,
+  saldo: 830.1,
+  moneda: 'USD',
+  venceMesAnio: '03/27',
+};
 
-describe("ListaTarjetas", () => {
-  it("given lista vacía when renderiza then muestra mensaje vacío", () => {
-    render(<ListaTarjetas tarjetas={[]} seleccionadaId={null} onSeleccionar={vi.fn()} />);
-    expect(screen.getByText("No tienes tarjetas registradas.")).toBeInTheDocument();
+describe('ListaTarjetas', () => {
+  it('given loading when render then muestra estado de carga', () => {
+    render(<ListaTarjetas estado="loading" tarjetas={[]} error={null} onReintentar={() => {}} />);
+    expect(screen.getByRole('status').textContent).toContain('Cargando');
   });
 
-  it("given tarjetas when renderiza then muestra últimos 4 y nunca un PAN completo", () => {
-    render(<ListaTarjetas tarjetas={tarjetas} seleccionadaId={null} onSeleccionar={vi.fn()} />);
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    expect(screen.getByLabelText("Tarjeta terminada en 4242")).toBeInTheDocument();
-    expect(screen.getByText("3,250.75")).toBeInTheDocument();
+  it('given success sin tarjetas when render then muestra estado vacío', () => {
+    render(<ListaTarjetas estado="success" tarjetas={[]} error={null} onReintentar={() => {}} />);
+    expect(screen.getByRole('status').textContent).toContain('No tienes tarjetas');
   });
 
-  it("given tarjeta when clic then notifica el id", async () => {
-    const onSeleccionar = vi.fn();
-    render(<ListaTarjetas tarjetas={tarjetas} seleccionadaId="1" onSeleccionar={onSeleccionar} />);
-    const botones = screen.getAllByRole("button");
-    expect(botones[0]).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(botones[1] as HTMLElement);
-    expect(onSeleccionar).toHaveBeenCalledWith("2");
+  it('given success con tarjetas when render then lista cada tarjeta', () => {
+    render(<ListaTarjetas estado="success" tarjetas={[tarjeta]} error={null} onReintentar={() => {}} />);
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('**** 1111')).toBeTruthy();
+  });
+
+  it('given error when click reintentar then invoca el callback', () => {
+    const onReintentar = vi.fn();
+    render(<ListaTarjetas estado="error" tarjetas={[]} error="falló" onReintentar={onReintentar} />);
+
+    expect(screen.getByRole('alert').textContent).toContain('falló');
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(onReintentar).toHaveBeenCalledTimes(1);
   });
 });

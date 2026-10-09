@@ -1,56 +1,55 @@
 package com.banca.tarjetas.api;
 
-import com.banca.tarjetas.api.dto.TarjetaDetalleDto;
-import com.banca.tarjetas.api.dto.TarjetaResumenDto;
-import com.banca.tarjetas.application.ConsultaTarjetasService;
+import com.banca.tarjetas.domain.ErrorNegocio;
+import com.banca.tarjetas.service.TarjetaService;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import java.util.List;
 import java.util.UUID;
 
 /**
- * Consulta de solo lectura. X-Cliente-Id es un sustituto temporal de la identidad:
- * en producción debe derivarse del token de sesión.
+ * Consulta de tarjetas (solo lectura).
+ * La identidad llega en X-Cliente-Id: SIMULACIÓN para candidate, no apta para producción
+ * (debe reemplazarse por el token validado del gateway/OIDC).
  */
 @Path("/api/v1/tarjetas")
 @Produces(MediaType.APPLICATION_JSON)
 public class TarjetaResource {
 
-    static final String CABECERA_CLIENTE = "X-Cliente-Id";
+    private final TarjetaService servicio;
 
-    private final ConsultaTarjetasService servicio;
-
-    public TarjetaResource(ConsultaTarjetasService servicio) {
+    public TarjetaResource(TarjetaService servicio) {
         this.servicio = servicio;
     }
 
     @GET
-    public List<TarjetaResumenDto> listar(@HeaderParam(CABECERA_CLIENTE) String cliente) {
-        return servicio.listar(parsearCliente(cliente)).stream()
-                .map(TarjetaResumenDto::desde)
-                .toList();
+    public PaginaDto<TarjetaDto> listar(
+            @HeaderParam("X-Cliente-Id") String cliente,
+            @QueryParam("pagina") @DefaultValue("0") int pagina,
+            @QueryParam("tamano") @DefaultValue("20") int tamano) {
+        TarjetaService.Pagina p = servicio.listar(parsearUuid(cliente, "X-Cliente-Id"), pagina, tamano);
+        return new PaginaDto<>(p.items().stream().map(TarjetaDto::desde).toList(), p.pagina(), p.tamano(), p.total());
     }
 
     @GET
     @Path("/{id}")
-    public TarjetaDetalleDto detalle(@HeaderParam(CABECERA_CLIENTE) String cliente,
-                                     @PathParam("id") String id) {
-        UUID clienteId = parsearCliente(cliente);
-        return TarjetaDetalleDto.desde(servicio.detalle(clienteId, UUID.fromString(id)));
+    public TarjetaDto obtener(@HeaderParam("X-Cliente-Id") String cliente, @PathParam("id") String id) {
+        return TarjetaDto.desde(servicio.obtener(parsearUuid(id, "id"), parsearUuid(cliente, "X-Cliente-Id")));
     }
 
-    static UUID parsearCliente(String valor) {
+    private static UUID parsearUuid(String valor, String campo) {
         if (valor == null || valor.isBlank()) {
-            throw new ClienteInvalidoException("Falta la cabecera " + CABECERA_CLIENTE);
+            throw ErrorNegocio.solicitudInvalida(campo + " es obligatorio");
         }
         try {
-            return UUID.fromString(valor.trim());
+            return UUID.fromString(valor);
         } catch (IllegalArgumentException e) {
-            throw new ClienteInvalidoException("La cabecera " + CABECERA_CLIENTE + " no es un UUID válido");
+            throw ErrorNegocio.solicitudInvalida(campo + " no es un UUID válido");
         }
     }
 }

@@ -1,165 +1,137 @@
 :root {
   color-scheme: light dark;
-  --bg: #f4f6fa;
+  --bg: #f5f6f8;
   --surface: #ffffff;
-  --text: #1c2333;
-  --muted: #5b6478;
-  --primary: #1f4fd8;
-  --border: #d5dae5;
-  --ok: #0b6b3a;
-  --warn: #8a5a00;
-  --danger: #a31d1d;
-  --space-1: 0.25rem;
+  --text: #1c2430;
+  --muted: #5b6574;
+  --border: #d8dde5;
+  --primary: #0b5fff;
+  --primary-contrast: #ffffff;
+  --ok: #0f7a3d;
+  --alerta: #b3261e;
   --space-2: 0.5rem;
   --space-4: 1rem;
   --space-6: 1.5rem;
   --radius: 0.75rem;
-  --shadow: 0 1px 3px rgb(0 0 0 / 10%);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #131826;
-    --surface: #1c2336;
-    --text: #e7eaf3;
-    --muted: #a3acc2;
-    --primary: #7aa2ff;
-    --border: #33405c;
-    --ok: #6fdc9f;
-    --warn: #f3c26b;
-    --danger: #ff8f8f;
+    --bg: #12161c;
+    --surface: #1b212a;
+    --text: #e6e9ee;
+    --muted: #a3acb9;
+    --border: #2d3644;
+    --primary: #6b9bff;
+    --primary-contrast: #0a1020;
+    --ok: #5fd48d;
+    --alerta: #ff8a80;
   }
-}
-
-* {
-  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
-.layout {
+.pagina {
   max-inline-size: 72rem;
   margin-inline: auto;
   padding: var(--space-6) clamp(1rem, 4vw, 2rem);
 }
 
-h1 {
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  line-height: 1.2;
-}
-
 .lista-tarjetas {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: var(--space-4);
-  padding: 0;
   list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
 }
 
-.tarjeta-item {
-  display: grid;
-  gap: var(--space-2);
-  inline-size: 100%;
-  min-block-size: 2.75rem;
-  padding: var(--space-4);
-  text-align: start;
-  color: inherit;
-  font: inherit;
+.tarjeta-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  cursor: pointer;
+  padding: var(--space-4);
 }
 
-.tarjeta-item--activa {
-  border-color: var(--primary);
-  outline: 2px solid var(--primary);
+.tarjeta-card__cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.tarjeta-item:focus-visible {
-  outline: 3px solid var(--primary);
-  outline-offset: 2px;
+.tarjeta-card__cabecera h3 {
+  margin: 0;
 }
 
-.tarjeta-item__marca {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.pan,
-.monto {
+.tarjeta-card__numero {
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
 }
 
-.monto__moneda {
+.tarjeta-card__datos {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.tarjeta-card__datos dt {
   color: var(--muted);
 }
 
+.tarjeta-card__datos dd {
+  margin: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
 .badge {
-  justify-self: start;
-  padding: var(--space-1) var(--space-2);
-  font-size: 0.8rem;
-  font-weight: 600;
-  border: 1px solid currentcolor;
+  padding: 0.125rem 0.625rem;
   border-radius: 999px;
+  border: 1px solid currentcolor;
+  font-size: 0.8125rem;
 }
 
 .badge--ok {
   color: var(--ok);
 }
 
-.badge--warn {
-  color: var(--warn);
+.badge--alerta {
+  color: var(--alerta);
 }
 
-.badge--danger {
-  color: var(--danger);
-}
-
-.badge--neutral {
+.badge--neutro {
   color: var(--muted);
 }
 
-.detalle {
-  margin-block-start: var(--space-6);
-  padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
+.mensaje--error {
+  border: 1px solid var(--alerta);
   border-radius: var(--radius);
+  padding: var(--space-4);
 }
 
-.detalle dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-2) var(--space-6);
+.boton {
+  min-block-size: 2.5rem;
+  padding-inline: var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font: inherit;
+  cursor: pointer;
 }
 
-.detalle dt {
-  color: var(--muted);
-}
-
-.detalle dd {
-  margin: 0;
-}
-
-.estado-vacio {
-  color: var(--muted);
-}
-
-[role="alert"] {
-  color: var(--danger);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .tarjeta-item {
-    transition: border-color 150ms ease, box-shadow 150ms ease;
-  }
+.boton:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
 }
