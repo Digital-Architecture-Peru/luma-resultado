@@ -6,8 +6,8 @@
     "type": "Transacción",
     "domain": "Pagos",
     "layer": "Full Stack",
-    "stack": "React + TypeScript + Java + Quarkus",
-    "backendStack": "Java + Quarkus",
+    "stack": "React + TypeScript + .NET",
+    "backendStack": ".NET",
     "persistence": "PostgreSQL"
   },
   "sgc": {

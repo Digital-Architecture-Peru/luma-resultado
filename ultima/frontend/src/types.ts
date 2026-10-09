@@ -1,32 +1,28 @@
-export const CURRENCIES = ['PEN', 'USD'] as const;
-export type Currency = (typeof CURRENCIES)[number];
-
-export const MAX_AMOUNT = 50000;
-
-export interface PaymentFormValues {
-  originAccount: string;
-  beneficiary: string;
-  amount: string;
-  currency: Currency;
-  concept: string;
-}
-
-export type PaymentFormErrors = Partial<Record<keyof PaymentFormValues, string>>;
-
-export interface PaymentRequest {
-  originAccount: string;
-  beneficiary: string;
-  amount: number;
-  currency: Currency;
-  concept: string;
-}
-
-export interface PaymentResponse {
+export interface Account {
   id: string;
-  status: 'PENDIENTE' | 'CONFIRMADO' | 'RECHAZADO';
-  beneficiary: string;
+  number: string;
+  holder: string;
+  currency: string;
+  balance: number;
+}
+
+/** El monto viaja como string validado en la UI para evitar errores de punto flotante. */
+export interface PaymentRequest {
+  sourceAccountId: string;
+  beneficiaryAccount: string;
+  amount: string;
+  currency: string;
+  reference: string;
+}
+
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'REJECTED';
+
+export interface PaymentResult {
+  id: string;
+  status: PaymentStatus;
   amount: number;
-  currency: Currency;
-  concept: string;
+  currency: string;
+  beneficiaryAccount: string;
+  reference: string;
   createdAt: string;
 }

@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Quarkus
+- ¿Qué stack? React + TypeScript + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + .NET (capa Full Stack) para "Transacción" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,60 +29,84 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN (refinamiento)
+# DESIGN · Refinamiento (Pagos · Transacción)
 
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (React + TS + Vite) y `backend/` (Quarkus + Maven) | Separa toolchains y permite compilar y probar cada capa por separado. |
-| D2 | Backend en capas: `api` → `application` → `domain` ← `infrastructure` | El dominio queda sin dependencias de framework y se prueba con unitarias puras. |
-| D3 | Puerto `PaymentRepository` (interfaz) con implementación JDBC/Panache sobre PostgreSQL | Cumple "persistencia detrás de interfaces" y permite usar mocks en las unitarias. |
-| D4 | Migraciones versionadas con Flyway (`V1__schema.sql`, `V2__seed.sql`) | Esquema reproducible y auditable. Los datos semilla son ficticios. |
-| D5 | Importes en `BigDecimal` / `NUMERIC(19,2)` y moneda ISO 4217 | Evita errores de redondeo de punto flotante en dinero. |
-| D6 | Cabecera `Idempotency-Key` en `POST` con índice único | Evita pagos duplicados por doble envío. |
-| D7 | Estados `PENDIENTE → CONFIRMADO / RECHAZADO` validados en el dominio | Las transiciones explícitas se pueden comprobar con unitarias. |
-| D8 | Frontend con Atomic Design y un hook `usePayment` que aísla la llamada HTTP | Los componentes se prueban sin red. La URL base se toma de `VITE_API_URL`. |
-| D9 | Configuración solo por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) | No hay secretos en el repositorio. Se incluye `.env.example` con valores ficticios. |
+| D1 | Repositorio con `frontend/`, `backend/` y `db/` | Cada parte compila con su propia toolchain y se verifica por separado |
+| D2 | React + TS + Vite con Atomic Design (`atoms/molecules/organisms/templates/pages`); llamadas HTTP en `services/` y estado en `usePayment` | Componentes puros y fáciles de probar; la lógica queda fuera de la vista |
+| D3 | ASP.NET Core en capas Domain / Application / Infrastructure / Api | El dominio no depende de nada y se prueba con xUnit sin base de datos |
+| D4 | Npgsql + Dapper con SQL parametrizado detrás de `IPaymentRepository`; migraciones `V001__`, `V002__` | Evita la inyección SQL; las migraciones son revisables sin generar código EF |
+| D5 | Montos como `decimal` / `NUMERIC(18,2)`; en el front, string validado | Evita errores de redondeo de punto flotante |
+| D6 | Header `Idempotency-Key` + índice único | Evita el doble cargo por reintento o doble clic |
+| D7 | Integración sin definir: `IPaymentGateway` + `FakePaymentGateway` determinista | No hay llamadas a sistemas reales |
+| D8 | Configuración por variables de entorno (`ConnectionStrings__Payments`, `VITE_API_BASE_URL`) y `.env.example` sin valores reales | Sin secretos en el código |
 
 ## Contrato API (candidate)
-- `POST /api/v1/payments`: recibe `{originAccount, beneficiary, amount, currency, concept}` y responde `201` con `{id, status}`. Errores posibles: `400` (validación) y `409` (idempotencia).
-- `GET /api/v1/payments/{id}`: responde `200` o `404`.
+- `GET /api/accounts`: devuelve las cuentas ficticias del cliente.
+- `POST /api/payments` (requiere `Idempotency-Key`). Body: `{sourceAccountId, beneficiaryAccount, amount, currency, reference}`.
+  - `201 {id, status}`: pago registrado.
+  - `400`: error de validación (ProblemDetails).
+  - `409`: clave repetida con un payload distinto.
+  - Clave repetida con el mismo payload: devuelve la respuesta original.
+- `GET /api/payments/{id}`: consulta un pago.
+
+## Modelo de datos (PostgreSQL)
+- `accounts(id uuid PK, number varchar(20) UNIQUE, holder, currency char(3), balance numeric(18,2))`
+- `payments(id uuid PK, idempotency_key varchar(64) UNIQUE, source_account_id FK, beneficiary_account, amount numeric(18,2) CHECK (amount>0), currency char(3), status CHECK IN ('PENDING','COMPLETED','REJECTED'), reference varchar(140), created_at timestamptz)`
+- Índice: `payments(source_account_id, created_at DESC)`.
+- `V002__seed.sql`: datos ficticios.
+
+## Reglas de dominio
+- Monto mayor que 0 y menor o igual a un límite configurable.
+- Cuenta origen distinta de la cuenta beneficiaria.
+- Saldo suficiente en la cuenta origen.
+- La moneda del pago coincide con la de la cuenta origen.
 
 ## Estructura de módulos
 ```
-frontend/
-  src/components/{atoms,molecules,organisms,templates}/
-  src/pages/PaymentPage.tsx
-  src/hooks/usePayment.ts   src/api/paymentsClient.ts
-  src/**/*.test.tsx         (Vitest + Testing Library)
-  package.json  vite.config.ts  tsconfig.json
+frontend/src/
+  components/atoms/       Button, TextInput, AmountInput
+  components/molecules/   FormField, AccountSelector
+  components/organisms/   PaymentForm, PaymentSummary
+  components/templates/   PaymentTemplate
+  pages/                  PaymentPage
+  services/paymentsApi.ts
+  hooks/usePayment.ts
+  __tests__/
 backend/
-  src/main/java/.../payments/{api,application,domain,infrastructure}/
-  src/main/resources/application.properties
-  src/main/resources/db/migration/V1__schema.sql, V2__seed.sql
-  src/test/java/.../ (JUnit 5 + Mockito, dominio y servicio)
-  pom.xml
-README.md
+  src/Payments.Domain/          Payment, Money, reglas
+  src/Payments.Application/     PaymentService, puertos
+  src/Payments.Infrastructure/  Repositorio Dapper, FakeGateway
+  src/Payments.Api/             Endpoints, ProblemDetails
+  tests/Payments.UnitTests/
+db/migrations/                  V001__schema.sql, V002__seed.sql
 ```
 
+## Pruebas unitarias
+- **Front (Vitest + React Testing Library):**
+  - `AmountInput` rechaza formatos inválidos.
+  - `PaymentForm` bloquea el envío mientras está pendiente.
+  - `usePayment` con fetch simulado.
+- **Back (xUnit):**
+  - Reglas de `Payment.Create`.
+  - Idempotencia de `PaymentService` con un repositorio fake.
+
 ## Hipótesis
-- H1: "Transacción" significa un pago desde una cuenta del cliente a un beneficiario o servicio. No incluye transferencias interbancarias reales.
-- H2: La autenticación y la autorización quedan fuera de alcance. El cliente se simula con datos ficticios.
-- H3: No hay integración definida. La confirmación del pago la simula un adaptador local (stub).
-- H4: Las pruebas son solo unitarias. No se incluyen pruebas de integración ni e2e, ni Testcontainers.
-- H5: Se usan Quarkus 3.x y Java 17+, y Node 18+. Las versiones exactas no están verificadas.
-- H6: La validación de importe (> 0 y con límite máximo) y de moneda (lista cerrada, por ejemplo PEN/USD) es regla de dominio supuesta.
+- **H1:** "Transacción" significa un pago o transferencia de una cuenta propia a un beneficiario identificado por número de cuenta.
+- **H2:** La autenticación la resuelve el host de Banca por Internet y queda fuera de alcance. El cliente se simula con un id ficticio.
+- **H3:** Versiones .NET 8 LTS y React 18.
+- **H4:** Una moneda ISO 4217 por pago, sin conversión de divisas.
+- **H5:** El pago es síncrono con el gateway fake, sin colas ni flujo de estados asíncrono.
+- **H6:** El límite por transacción es un valor de configuración ficticio.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| No hay JDK, Maven o Node locales, así que no se compila | Se marca como no verificado en el handoff. Solo se revisa la sintaxis. |
-| El SQL de PostgreSQL no se ejecuta en SQLite | Solo revisión estática, declarada como tal. |
-| SGC en estado fallback: puede haber reglas corporativas ausentes | Las hipótesis quedan explícitas para validarlas con el negocio. |
-| Doble envío o reintentos | D6 (idempotencia) y botón deshabilitado mientras la petición está en curso. |
-| Se filtran datos sensibles en los logs | No se registran números de cuenta completos; se enmascaran. |
-
-## Trazabilidad con la aceptación
-- La sintaxis verificable corresponde a los archivos `.ts`, `.tsx`, `.java` y `.sql` de la estructura anterior.
-- Las pruebas presentes son `*.test.tsx` y `*Test.java`.
-- El README.md documenta build, ejecución, variables de entorno, integración pendiente y PostgreSQL con Flyway.
+| Sin contexto SGC (fallback): pueden faltar estándares corporativos | Marcar como pendiente de alinear |
+| Integración real sin definir | El puerto `IPaymentGateway` aísla el cambio |
+| El SQL de PostgreSQL solo se revisa de forma estática | Usar SQL estándar y marcarlo como no verificado |
+| Toolchain .NET o Node ausente | Reportar la compilación como no verificada |
+| Concurrencia sobre el saldo | Prever `SELECT … FOR UPDATE` en la transacción; queda como candidate |
+| Solo hay pruebas unitarias; no se cubre la integración con la BD | Documentarlo en el README |

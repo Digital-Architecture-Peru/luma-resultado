@@ -1,0 +1,111 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5b6676;
+  --primary: #0b5fff;
+  --primary-contrast: #ffffff;
+  --danger: #b3261e;
+  --border: #d3d9e2;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --radius: 8px;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b212a;
+    --text: #e6eaf0;
+    --muted: #9aa5b4;
+    --primary: #5b8cff;
+    --primary-contrast: #0b1220;
+    --danger: #ff8a80;
+    --border: #2f3846;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+.page {
+  max-inline-size: 32rem;
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+form,
+.summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  margin-block-end: var(--space-4);
+}
+
+.input {
+  min-block-size: 2.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.input:focus-visible,
+.btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.field__error,
+[role='alert'] {
+  color: var(--danger);
+  margin: 0;
+}
+
+.btn {
+  min-block-size: 2.75rem;
+  padding-inline: var(--space-6);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0 0 var(--space-2);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
