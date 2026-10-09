@@ -1,25 +1,23 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
-import { statusLabel } from '../domain/card-format';
-import { CardStatus } from '../domain/card.model';
+import { AccountStatus } from '../core/account.model';
 
-const ICONS: Record<CardStatus, string> = { active: '✔', blocked: '⛔', expired: '⌛' };
+const LABELS: Record<AccountStatus, string> = {
+  ACTIVA: 'Activa',
+  BLOQUEADA: 'Bloqueada',
+  INACTIVA: 'Inactiva',
+};
 
+/** Átomo: estado con texto además de color. */
 @Component({
   selector: 'app-status-badge',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="badge" [class]="'badge badge--' + status"
-    ><span aria-hidden="true">{{ icon }}</span> {{ label }}</span
-  >`,
+  template: `<span class="badge" [attr.data-status]="status">{{ label }}</span>`,
 })
 export class StatusBadgeComponent {
-  @Input({ required: true }) status!: CardStatus;
+  @Input({ required: true }) status!: AccountStatus;
 
   get label(): string {
-    return statusLabel(this.status);
-  }
-
-  get icon(): string {
-    return ICONS[this.status];
+    return LABELS[this.status];
   }
 }

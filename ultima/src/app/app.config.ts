@@ -1,8 +1,8 @@
 import { ApplicationConfig } from '@angular/core';
-import { InMemoryCardRepository } from './adapters/in-memory-card.repository';
-import { CARD_REPOSITORY } from './domain/card.repository.token';
+import { AccountRepository } from './core/account.repository';
+import { InMemoryAccountRepository } from './core/in-memory-account.repository';
 
-/** Único punto de composición: aquí se sustituye el adaptador cuando se defina la integración. */
+// Único punto de composición: cambiar el adaptador cuando la integración esté definida.
 export const appConfig: ApplicationConfig = {
-  providers: [{ provide: CARD_REPOSITORY, useFactory: () => new InMemoryCardRepository() }],
+  providers: [{ provide: AccountRepository, useClass: InMemoryAccountRepository }],
 };
