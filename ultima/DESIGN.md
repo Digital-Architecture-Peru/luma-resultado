@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + .NET
+- ¿Qué stack? Angular + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + .NET (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + Java + Spring Boot (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -34,71 +34,80 @@ Estado: fallback (SGC no configurado)
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/`, `backend/`, `db/` y un README raíz | Una sola entrega Full Stack, fácil de revisar y de construir por partes |
-| D2 | Backend .NET 8 Web API en capas Domain → Application → Infrastructure → Api | Aísla las reglas de notificación de PostgreSQL y de la integración, que no está definida |
-| D3 | Acceso a datos con Npgsql + Dapper y SQL parametrizado (`@param`) | Cumple el acceso parametrizado de T04-db y mantiene el SQL explícito y revisable |
-| D4 | Migraciones en archivos SQL versionados (`V001__`, `V002__`) | Permiten revisión estática del esquema, ya que PostgreSQL no se ejecuta en la validación |
-| D5 | Integración detrás de `ICardEventSource` e `IChannelDispatcher`, con implementaciones *fake* | La integración no está definida. Así no hay llamadas a sistemas reales |
-| D6 | Frontend con Vite + React + TS en Atomic Design y un cliente API tipado en `src/api` | Sigue el patrón pedido. Los componentes de presentación quedan sin lógica de red |
-| D7 | Pruebas unitarias con xUnit (backend) y Vitest + Testing Library (frontend) | Herramientas estándar de cada stack y sin infraestructura externa |
-| D8 | Nunca se persiste ni se muestra el PAN; solo `card_last4` y un `card_ref` opaco | Minimiza la exposición de datos de tarjeta (orientación PCI) |
+| D1 | Monorepo con `frontend/` (Angular) y `backend/` (Spring Boot, Maven) | Un build independiente por capa y un README raíz |
+| D2 | Backend en capas `api → application → domain ← infrastructure` | El dominio no depende de Spring. La persistencia y la integración quedan detrás de puertos |
+| D3 | Puerto `NotificationDispatcher` con un adaptador no-op/log | La integración está sin definir. El contrato queda listo sin llamar a sistemas reales |
+| D4 | Persistencia con `NamedParameterJdbcTemplate` y Flyway (`V1__schema.sql`, `V2__seed.sql`) | Consultas siempre parametrizadas y migraciones versionadas. El esquema es revisable sin ejecutar |
+| D5 | Frontend con componentes standalone organizados por Atomic Design | Cumple el patrón pedido y permite probar cada componente de forma aislada |
+| D6 | Tarjeta identificada por `card_ref` (token) y `last4`; nunca el PAN | Minimiza datos sensibles (enfoque PCI) |
+| D7 | Configuración por variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`) sin valores reales | Sin secretos en el repositorio |
+
+## Contrato API (v1)
+- `GET /api/v1/cards/{cardRef}/notifications?status=&page=&size=` devuelve una lista paginada.
+- `GET /api/v1/notifications/unread-count` devuelve `{ count }`.
+- `PATCH /api/v1/notifications/{id}/read` responde 204, o 404 si el id no existe.
+- Errores en formato `ProblemDetail` (RFC 7807).
+
+## Modelo de datos (PostgreSQL)
+Tabla `card_notification`:
+- `id UUID PK`
+- `customer_ref VARCHAR(40)`
+- `card_ref VARCHAR(40)`
+- `last4 CHAR(4)`
+- `type VARCHAR(30)` con CHECK: `TRANSACTION`, `PAYMENT_DUE`, `LIMIT_REACHED`, `CARD_BLOCKED`
+- `title`, `message`
+- `status` con CHECK: `UNREAD`, `READ`
+- `created_at TIMESTAMPTZ`
+- `read_at TIMESTAMPTZ NULL`
+
+Índices:
+- `(customer_ref, status, created_at DESC)`
+- `(card_ref, created_at DESC)`
+
+La semilla usa clientes y tarjetas ficticios.
 
 ## Estructura de módulos
 ```
-backend/CardNotifications.sln
-  src/CardNotifications.Domain/          Notification, NotificationType, Preference
-  src/CardNotifications.Application/     INotificationRepository, ICardEventSource,
-                                         IChannelDispatcher, NotificationService
-  src/CardNotifications.Infrastructure/  PgNotificationRepository (Dapper), Fake*
-  src/CardNotifications.Api/             Controllers, Program.cs, appsettings (sin secretos)
-  tests/CardNotifications.UnitTests/     NotificationServiceTests, PreferenceRulesTests
-frontend/
-  src/components/atoms/      Badge, Icon, Toggle, Button
-  src/components/molecules/  NotificationItem, PreferenceRow
-  src/components/organisms/  NotificationList, PreferencesPanel
-  src/components/templates/  NotificationCenterTemplate
-  src/pages/                 NotificationsPage
-  src/api/ src/hooks/        cardNotificationsClient, useNotifications
-  src/**/*.test.tsx
-db/migrations/  V001__schema.sql, V002__seed_ficticio.sql
+backend/src/main/java/.../notifications/
+  domain/          Notification, NotificationType, NotificationStatus
+  application/     NotificationService, port/NotificationRepository, port/NotificationDispatcher
+  infrastructure/  persistence/JdbcNotificationRepository, dispatch/LoggingDispatcher
+  api/             NotificationController, dto/*, ApiExceptionHandler
+backend/src/main/resources/db/migration/   V1__schema.sql, V2__seed.sql
+backend/src/test/java/...                  NotificationServiceTest, NotificationMapperTest
+
+frontend/src/app/notifications/
+  atoms/      badge, icon, button
+  molecules/  notification-item
+  organisms/  notification-list, notification-bell
+  templates/  notifications-layout
+  pages/      card-notifications-page
+  data/       notification-api.service.ts, notification.model.ts
+  *.spec.ts   junto a cada componente y servicio
 ```
-
-## Contrato API (v1)
-- `GET /api/v1/cards/notifications?status=unread|all&page=&size=`
-- `PATCH /api/v1/cards/notifications/{id}/read`
-- `POST /api/v1/cards/notifications/read-all`
-- `GET /api/v1/cards/notification-preferences`
-- `PUT /api/v1/cards/notification-preferences`
-
-## Modelo de datos
-- `card_notification`: `id uuid PK`, `customer_id`, `card_ref`, `card_last4 char(4)`, `type`, `title`, `body`, `severity`, `created_at timestamptz`, `read_at timestamptz NULL`.
-- `notification_preference`: PK (`customer_id`, `event_type`, `channel`), `enabled bool`.
-- Índices:
-  - (`customer_id`, `created_at DESC`)
-  - índice parcial de no leídas `WHERE read_at IS NULL`
-- La conexión se configura con la variable de entorno `ConnectionStrings__Notifications`.
-
-## Hipótesis
-- **H1.** Los eventos de tarjeta cubiertos son: compra aprobada, compra rechazada, bloqueo/desbloqueo, cambio de límite y vencimiento próximo.
-- **H2.** El canal real es *in-app*. Email, SMS y push solo existen como preferencia y se envían a un dispatcher fake.
-- **H3.** El `customer_id` sale de los claims del token. En la versión candidate se usa un stub de autenticación de desarrollo, marcado y desactivado fuera de `Development`.
-- **H4.** Versiones asumidas: .NET 8 y Node 20 LTS.
-- **H5.** Las fechas se guardan en UTC y se muestran en hora local del navegador.
-- **H6.** La paginación es por offset, suficiente para el volumen de demostración.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| El esquema PostgreSQL no se ejecuta, solo se revisa de forma estática | SQL estándar sin extensiones y migraciones pequeñas |
-| La toolchain `dotnet` o `npm` puede no estar disponible | Se reporta como "no verificado" en el handoff |
-| El stub de autenticación puede llegar a producción | Guardado por entorno y señalado en el README |
-| Fuga de datos de tarjeta | D8 y datos ficticios sin formato de PAN real |
-| La integración real no está definida | Contratos por interfaz, documentados en el README |
-| Accesibilidad de la lista de notificaciones | Roles ARIA y contador de no leídas con `aria-live` |
+| Sin toolchain local (JDK/Maven/Node) no hay compilación | Marcar como "no verificado" en el handoff (T06) |
+| SQL de PostgreSQL no ejecutable en SQLite | Solo revisión estática y evitar sintaxis exótica |
+| Exposición de datos de tarjeta | Usar únicamente `last4` y token; no registrar `message` en logs |
+| Integración real desconocida | Puerto más adaptador no-op; contrato documentado en el README |
+| Autenticación de Banca por Internet no definida | `customer_ref` simulado por cabecera de ejemplo, documentado como hipótesis |
+
+## Hipótesis explícitas
+- **H1.** Los tipos de notificación (D6 y modelo) son supuestos; el guion no los define.
+- **H2.** La autenticación y la sesión las provee la plataforma existente. Aquí no se implementan.
+- **H3.** Versiones objetivo: Java 17+, Spring Boot 3.x, Angular 17+ standalone. Pruebas con JUnit 5/Mockito y Jasmine/Karma por defecto.
+- **H4.** Las notificaciones son de lectura en la web, sin push en tiempo real. WebSocket/SSE queda fuera de alcance.
+- **H5.** "Unitarias" excluye las pruebas de integración contra PostgreSQL real.
 
 ## Trazabilidad con la aceptación
-- Fuentes y manifiestos (`.csproj`, `package.json`) cubren T02.
-- `*Tests.cs` y `*.test.tsx` cubren T04-tests.
-- `db/migrations` cubre T04-db.
-- `README.md` cubre T05.
-- El handoff final (T06) se cierra como *candidate*, sin afirmar compilación ni despliegue.
+| Tarea | Entregables |
+|---|---|
+| T02 | `backend/`, `frontend/` |
+| T03 | Validación de sintaxis local de `.java`, `.ts`, `.json`, `.sql` |
+| T04-tests | `*Test.java`, `*.spec.ts` |
+| T04-db | Migraciones Flyway con índices y semilla ficticia |
+| T05 | README con build, ejecución, variables de entorno, puerto de integración y persistencia |
+| T06 | Resumen *candidate* que lista lo no compilado ni ejecutado |
