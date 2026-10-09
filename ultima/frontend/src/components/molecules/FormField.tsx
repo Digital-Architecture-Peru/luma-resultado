@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
+import { Label } from '../atoms/Label';
 
 interface FormFieldProps {
   id: string;
@@ -10,10 +11,10 @@ interface FormFieldProps {
 export function FormField({ id, label, error, children }: FormFieldProps) {
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
       {error ? (
-        <p id={`${id}-error`} role="alert" className="field-error">
+        <p id={`${id}-error`} className="field__error" role="alert">
           {error}
         </p>
       ) : null}
