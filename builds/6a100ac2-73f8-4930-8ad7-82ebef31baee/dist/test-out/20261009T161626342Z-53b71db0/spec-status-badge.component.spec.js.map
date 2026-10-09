@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/atoms/status-badge.component.spec.ts"],
+  "sourcesContent": ["import { provideZonelessChangeDetection } from '@angular/core';\nimport { TestBed } from '@angular/core/testing';\nimport { beforeEach, describe, expect, it } from 'vitest';\nimport { StatusBadgeComponent } from './status-badge.component';\n\ndescribe('StatusBadgeComponent', () => {\n  beforeEach(() => {\n    TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });\n  });\n\n  it('given estado REJECTED when renderiza then muestra texto y clase', async () => {\n    const fixture = TestBed.createComponent(StatusBadgeComponent);\n    fixture.componentRef.setInput('status', 'REJECTED');\n    await fixture.whenStable();\n    const span = (fixture.nativeElement as HTMLElement).querySelector('span');\n    expect(span?.textContent).toContain('Rechazado');\n    expect(span?.classList.contains('badge-rejected')).toBe(true);\n  });\n});\n"],
+  "mappings": ";;;;;;;;;;AAEA,SAAS,YAAY,UAAU,QAAQ,UAAU;AAGjD,SAAS,wBAAwB,MAAK;AACpC,aAAW,MAAK;AACd,YAAQ,uBAAuB,EAAE,WAAW,CAAC,+BAA8B,CAAE,EAAC,CAAE;EAClF,CAAC;AAED,KAAG,mEAAmE,YAAW;AAC/E,UAAM,UAAU,QAAQ,gBAAgB,oBAAoB;AAC5D,YAAQ,aAAa,SAAS,UAAU,UAAU;AAClD,UAAM,QAAQ,WAAU;AACxB,UAAM,OAAQ,QAAQ,cAA8B,cAAc,MAAM;AACxE,WAAO,MAAM,WAAW,EAAE,UAAU,WAAW;AAC/C,WAAO,MAAM,UAAU,SAAS,gBAAgB,CAAC,EAAE,KAAK,IAAI;EAC9D,CAAC;AACH,CAAC;",
+  "names": []
+}

@@ -4,35 +4,41 @@
   "cli": { "analytics": false },
   "newProjectRoot": "projects",
   "projects": {
-    "consulta-cuentas": {
+    "consulta-pagos": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/consulta-cuentas",
-            "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": ["zone.js"],
+            "index": "src/index.html",
             "tsConfig": "tsconfig.app.json",
             "styles": ["src/styles.css"]
           },
           "configurations": {
             "production": { "outputHashing": "all" },
-            "development": { "optimization": false, "sourceMap": true }
+            "development": { "optimization": false, "extractLicenses": false, "sourceMap": true }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
+          "builder": "@angular/build:dev-server",
           "configurations": {
-            "production": { "buildTarget": "consulta-cuentas:build:production" },
-            "development": { "buildTarget": "consulta-cuentas:build:development" }
+            "production": { "buildTarget": "consulta-pagos:build:production" },
+            "development": { "buildTarget": "consulta-pagos:build:development" }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "consulta-pagos:build:development",
+            "runner": "vitest"
+          }
         }
       }
     }
