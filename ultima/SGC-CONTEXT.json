@@ -1,14 +1,13 @@
 {
   "answers": {
     "where": "Banca por Internet",
-    "pattern": "Component-based (Atomic Design)",
-    "tests": "Unitarias",
     "type": "Consulta",
     "domain": "Tarjetas",
-    "layer": "Full Stack",
-    "persistence": "PostgreSQL",
-    "stack": "Angular + .NET",
-    "backendStack": ".NET"
+    "layer": "Frontend",
+    "pattern": "Component-based (Atomic Design)",
+    "stack": "React + TypeScript",
+    "persistence": "No requiere",
+    "tests": "Unitarias"
   },
   "sgc": {
     "status": "fallback",

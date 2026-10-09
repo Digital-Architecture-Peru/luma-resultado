@@ -1,37 +1,24 @@
-# Consulta de Tarjetas · Banca por Internet (candidate)
+# Microapp 09909f77-b401-4c6b-8cbe-1bc26fb82f9e
 
-Full Stack: **Angular 17** (Atomic Design) + **.NET 8** (Api/Application/Domain/Infrastructure) + **PostgreSQL**. Datos ficticios, sin secretos.
+Candidate generada por Microapp Builder y validada en navegador local; no es producción.
 
-## Estructura
-- `backend/` API de solo lectura: `GET /api/v1/cards`, `GET /api/v1/cards/{id}`, `GET /api/v1/cards/{id}/movements?page&size`, `GET /health`.
-- `db/migrations/` `V001` esquema, `V002` índices, `V003` seed ficticio (cliente demo `11111111-1111-1111-1111-111111111111`).
-- `frontend/src/app/` `atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/`, `core/`.
+Nueva capacidad (guion Luma)
+- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
+- ¿Qué tipo de capacidad? Consulta
+- ¿Sobre qué dominio? Tarjetas
+- ¿Qué necesitas construir? Frontend
+- Patrones disponibles Component-based (Atomic Design)
+- ¿Qué stack? React + TypeScript
+- ¿Persistencia? No requiere
+- ¿Qué pruebas? Unitarias
 
-## Seguridad
-- El cliente sale del claim `customer_id`, nunca de la URL. En `Development` se acepta el header `X-Demo-Customer-Id` (stub; el proxy de `ng serve` lo inyecta). Fuera de Development sin claim → 401.
-- Solo se guarda `last4`; el API devuelve `**** 1234`.
+Construye una microapp React interactiva y accesible que represente esta capacidad con datos ficticios en memoria. Lista de todos que debes ejecutar en orden:
+- [T01-read-context] Leer context-package.json, SGC-CONTEXT.json y los requisitos (acepta: Requisitos y restricciones citados en el resumen final)
+- [T02-ui] Implementar la interfaz de Banca por Internet para "Consulta" sobre Tarjetas en src/App.tsx y src/styles.css (acepta: src/App.tsx y src/styles.css modificados)
+- [T03-interaction] Implementar el botón y texto esperado del criterio de aceptación (acepta: Interacción real validada en navegador)
+- [T04-build] Compilar sin errores de tipos ni de build (acepta: tsc y vite build correctos)
+- [T05-tests] Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff (acepta: handoff-result.json con validaciones)
+- [T06-docs] Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia No requiere (acepta: README del resultado publicado)
+- [T07-handoff] Cerrar con resumen candidate sin afirmar producción (acepta: handoff-result.json válido)
 
-## Configuración (variables de entorno)
-- `ConnectionStrings__Cards` (p. ej. `Host=localhost;Database=cards;Username=cards_app;Password=<DB_PASSWORD>`), `Cors__AllowedOrigins` (por defecto `http://localhost:4200`), `ASPNETCORE_ENVIRONMENT=Development`, `DB_PASSWORD` para docker-compose.
-- Frontend: base `/api/v1` (token `API_BASE_URL`); en desarrollo `frontend/proxy.conf.json` apunta a `http://localhost:5080`.
-
-## Ejecutar
-```
-export DB_PASSWORD=...            # elija una
-docker compose up -d              # PostgreSQL + migraciones/seed
-cd backend && dotnet run --project src/Cards.Api --urls http://localhost:5080
-cd frontend && npm install && npm start
-```
-
-## Build y pruebas
-```
-cd backend && dotnet build && dotnet test      # xUnit con repositorio fake
-cd frontend && npm install && npm run build && npm test   # Jest (jest-preset-angular), sin navegador
-```
-
-## Integración y persistencia
-- Integración con el core de tarjetas: **sin definir**; solo existe el puerto `ICardQueryRepository` y su implementación Npgsql (SQL parametrizado).
-- Persistencia PostgreSQL: montos `numeric(18,2)`, fechas `timestamptz` (UTC).
-
-## Estado
-Candidate: no se ejecutó build ni pruebas ni el SQL contra PostgreSQL.
+SGC: fallback (SGC no configurado)

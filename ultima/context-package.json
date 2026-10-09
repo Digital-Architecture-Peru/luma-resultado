@@ -1,0 +1,110 @@
+{
+  "mode": "create",
+  "generation": "4d3a5982-8fdc-41fe-9bc2-3a782212cb0d",
+  "planRevision": 1,
+  "approvals": [],
+  "inputs": [],
+  "screenMap": [],
+  "requirements": "user: Construye Consulta de Tarjetas para Banca por Internet. Capa: Frontend. Tecnología: React + TypeScript. Patrón: Component-based (Atomic Design). Persistencia: No requiere. Pruebas: Unitarias.\n\nDISEÑO (solution-designer):\n# DESIGN\n\n## Hechos (respuestas del guion)\n- ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet\n- ¿Qué tipo de capacidad? Consulta\n- ¿Sobre qué dominio? Tarjetas\n- ¿Qué necesitas construir? Frontend\n- Patrones disponibles Component-based (Atomic Design)\n- ¿Qué stack? React + TypeScript\n- ¿Persistencia? No requiere\n- ¿Qué pruebas? Unitarias\n\n## Contexto SGC\nEstado: fallback (SGC no configurado)\n\n## Solución\n- Microapp React/TypeScript para \"Consulta\" sobre Tarjetas en Banca por Internet, capa Frontend.\n- Datos ficticios en memoria; sin red, BD ni dependencias nuevas.\n- Pantalla principal con el botón \"Probar capacidad\" visible al cargar; al pulsarlo muestra \"Capacidad simulada\" en un elemento role=status.\n- Accesible (etiquetas, foco, contraste) y responsive.\n\n## Hipótesis\n- Stack (React + TypeScript), patrón (Component-based (Atomic Design)), integración (sin definir) y persistencia (No requiere) se documentan; React/TypeScript se valida con build y navegador.\n\n## Aceptación\n- tsc y build correctos, interacción real en navegador y smoke HTTP 200 del preview.\n",
+  "asIs": [],
+  "toBe": {
+    "architecture": "Typed React in-memory screen, bundled MCP App; no external backend",
+    "redesign": true,
+    "matrix": []
+  },
+  "allowedPaths": [
+    "src/App.tsx",
+    "src/styles.css"
+  ],
+  "budgetMs": 240000,
+  "sourceInventory": [],
+  "instructionManifest": {
+    "mode": "create",
+    "framework": null,
+    "activation": "explicit-adapter-embedding",
+    "nativeDiscovery": false,
+    "delegatedAgents": false,
+    "resources": [
+      {
+        "path": ".github/agents/microapp-orchestrator.agent.md",
+        "hash": "c2f9093aaf47ffae1b0c02f6192d77b6c56b2c00acffb881f1a9d2bbf5c100f7"
+      },
+      {
+        "path": ".github/agents/context-manager.agent.md",
+        "hash": "67625c99cc5d8d36bce365e8dd40e0aa9c14cfdfc2468ca033b5e38b504a7780"
+      },
+      {
+        "path": ".github/agents/solution-designer.agent.md",
+        "hash": "4a53a24003a21e27d2c6a7121c3089ed2041a91ae0783d454508aad9f347c6f8"
+      },
+      {
+        "path": ".github/agents/builder.agent.md",
+        "hash": "657aec3ce422c4a82230f773a556c09c526200908f0eb35c85456c82a78612b1"
+      },
+      {
+        "path": ".github/agents/tester.agent.md",
+        "hash": "4faa4c391d943de3f408ed859f650dceaf90e1f16b9ba22a3cbc960f83337d0f"
+      },
+      {
+        "path": ".github/agents/devops-deploy.agent.md",
+        "hash": "dbffe440fa1e2eea25fe14dc0b6bd030de9cbbb0f0f103cf03ab991f1683a390"
+      },
+      {
+        "path": ".github/skills/react-microapp-build/SKILL.md",
+        "hash": "056995517061b07e72297200e875f293f69b7640136ff62d82e6629fa5b0dffd"
+      },
+      {
+        "path": ".github/skills/modern-ui-ux/SKILL.md",
+        "hash": "f8d7a04c5ab56a74f878c4cd8dfa2e75346accbc13eee656f24f2bc121da0779"
+      },
+      {
+        "path": ".github/skills/modern-ui-styles/SKILL.md",
+        "hash": "625716280cfc8f9b69ba3518032cd1dd78dc591af4054347e7a6f8fa13f01ed7"
+      },
+      {
+        "path": ".github/skills/clean-code-practices/SKILL.md",
+        "hash": "a12ccb9f6580bed74ee6a07e6f6b6ac06f742f76231705cb4a4ef4da4b90362b"
+      },
+      {
+        "path": ".github/skills/solid-principles/SKILL.md",
+        "hash": "0294af9ca4c68af3787f4da41ca0d647f522d5d8b51991594493362ac70827eb"
+      },
+      {
+        "path": ".github/skills/design-patterns-applied/SKILL.md",
+        "hash": "7ab86c550e9fee01b402750941accb7e129cc602a541813615706f4d2194c915"
+      },
+      {
+        "path": ".github/skills/test-and-smoke/SKILL.md",
+        "hash": "296986056ad00ac6ef73ca88690a5f73bf0e6f4d45d5379ab39e3e6b8ce6e616"
+      },
+      {
+        "path": ".github/skills/solution-design/SKILL.md",
+        "hash": "b2b2a08b2456d4be1b7bbb524480b0afa20feaf74cb97a8d746b3d5b402e8f7a"
+      },
+      {
+        "path": ".github/skills/stack-agnostic-blueprint/SKILL.md",
+        "hash": "185483967f7ebceb0e50ee93ff53018fafd084075cff3cb59620ddca02d2e5ce"
+      }
+    ]
+  },
+  "executionPolicy": "local-bounded",
+  "authorization": {
+    "id": "local-bounded-create-angular-migrate-20261004",
+    "origin": "explicit-user-message",
+    "authorizedAt": "2026-10-04T13:42:24.582-05:00",
+    "userText": "Quitar aprobación humana para estos flujos locales autorizados por mensaje actual sin fabricate human approvals ni global approveAll: policy optin local bounded creation+migration inputs validated, mantener prohibiciones external secret/deploy BD.",
+    "paths": [
+      "src/App.tsx",
+      "src/styles.css"
+    ],
+    "scope": "Explicit local opt-in: new React in-memory screen or validated Angular/AngularJS source migration to one React screen. No source execution, secrets, external integrations, database, shell, new generated dependencies, deploy or delegation.",
+    "maxTextBytes": 80000,
+    "maxFileBytes": 40000,
+    "humanDecisions": false,
+    "hash": "58b9845440f725c050065f6130f25f14704f06014cd8eca2d2136b67cb956e35",
+    "generation": "4d3a5982-8fdc-41fe-9bc2-3a782212cb0d",
+    "mode": "create",
+    "inputHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "framework": null
+  }
+}
