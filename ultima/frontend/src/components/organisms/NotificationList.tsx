@@ -1,48 +1,35 @@
-import type { CardNotification } from "../../api/types";
-import type { RemoteState } from "../../hooks/useCardNotifications";
-import { NotificationItem } from "../molecules/NotificationItem";
+import type { CardNotification } from '../../api/types';
+import { Button } from '../atoms/Button';
+import { NotificationItem } from '../molecules/NotificationItem';
 
 interface NotificationListProps {
-  items: RemoteState<CardNotification[]>;
-  pendingId: string | null;
-  emptyMessage: string;
+  items: CardNotification[];
+  unread: number;
   onMarkRead: (id: string) => void;
-  onRetry: () => void;
+  onMarkAllRead: () => void;
 }
 
-/** Organismo: lista de notificaciones con estados de carga, error y vacío. */
-export function NotificationList({ items, pendingId, emptyMessage, onMarkRead, onRetry }: NotificationListProps) {
-  if (items.status === "loading") {
-    return (
-      <p role="status" className="state state--loading">
-        Cargando notificaciones…
-      </p>
-    );
-  }
-  if (items.status === "error") {
-    return (
-      <div role="alert" className="state state--error">
-        <p>{items.message}</p>
-        <button type="button" className="button button--secondary" onClick={onRetry}>
-          Reintentar
-        </button>
-      </div>
-    );
-  }
-  if (items.data.length === 0) {
-    return <p className="state state--empty">{emptyMessage}</p>;
-  }
+export function NotificationList({ items, unread, onMarkRead, onMarkAllRead }: NotificationListProps) {
   return (
-    <ul className="notification-list">
-      {items.data.map((notification) => (
-        <li key={notification.id}>
-          <NotificationItem
-            notification={notification}
-            busy={pendingId === notification.id}
-            onMarkRead={onMarkRead}
-          />
-        </li>
-      ))}
-    </ul>
+    <section aria-labelledby="notifications-heading" className="card">
+      <div className="card__header">
+        <h2 id="notifications-heading">Mis notificaciones</h2>
+        <p role="status" aria-live="polite" className="unread-count">
+          {unread === 0 ? 'Todo al día' : `${unread} sin leer`}
+        </p>
+        <Button variant="secondary" disabled={unread === 0} onClick={onMarkAllRead}>
+          Marcar todas como leídas
+        </Button>
+      </div>
+      {items.length === 0 ? (
+        <p className="empty">No tienes notificaciones.</p>
+      ) : (
+        <ul className="notification-list">
+          {items.map((item) => (
+            <NotificationItem key={item.id} notification={item} onMarkRead={onMarkRead} />
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

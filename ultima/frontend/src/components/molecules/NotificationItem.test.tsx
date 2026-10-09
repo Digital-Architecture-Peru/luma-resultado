@@ -1,59 +1,42 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import type { CardNotification } from "../../api/types";
-import { NotificationItem } from "./NotificationItem";
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import type { CardNotification } from '../../api/types';
+import { NotificationItem } from './NotificationItem';
 
-function sample(overrides: Partial<CardNotification> = {}): CardNotification {
-  return {
-    id: "n-1",
-    cardId: "c-1",
-    cardLast4: "4242",
-    type: "PURCHASE",
-    title: "Compra aprobada",
-    message: "Compra en COMERCIO DEMO.",
-    amount: 150,
-    currency: "PEN",
-    read: false,
-    readAt: null,
-    createdAt: "2026-10-09T10:00:00Z",
-    ...overrides,
-  };
-}
+const base: CardNotification = {
+  id: 'n-1',
+  cardLast4: '1234',
+  type: 'PurchaseApproved',
+  title: 'Compra aprobada',
+  body: 'Se aprobó una compra con la tarjeta terminada en 1234.',
+  severity: 'Info',
+  createdAt: '2026-10-09T12:00:00Z',
+  readAt: null,
+};
 
-describe("NotificationItem", () => {
-  it("given an unread notification when rendered then shows title, amount and unread state", () => {
-    render(<NotificationItem notification={sample()} onMarkRead={() => {}} />);
+describe('NotificationItem', () => {
+  it('given an unread notification, when rendered, then shows masked card and mark-as-read button', () => {
+    render(<ul><NotificationItem notification={base} onMarkRead={vi.fn()} /></ul>);
 
-    expect(screen.getByRole("heading", { name: "Compra aprobada" })).toBeInTheDocument();
-    expect(screen.getByText("No leída")).toBeInTheDocument();
-    expect(screen.getByText(/150[.,]00/)).toBeInTheDocument();
+    expect(screen.getByText('•••• 1234')).toBeInTheDocument();
+    expect(screen.getByText('Informativa')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Marcar como leída' })).toBeInTheDocument();
   });
 
-  it("given an unread notification when marking as read then calls the handler with its id", async () => {
+  it('given an unread notification, when the button is clicked, then calls onMarkRead with its id', async () => {
     const onMarkRead = vi.fn();
-    render(<NotificationItem notification={sample()} onMarkRead={onMarkRead} />);
+    render(<ul><NotificationItem notification={base} onMarkRead={onMarkRead} /></ul>);
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "Marcar como leída" }));
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar como leída' }));
 
-    expect(onMarkRead).toHaveBeenCalledWith("n-1");
+    expect(onMarkRead).toHaveBeenCalledTimes(1);
+    expect(onMarkRead).toHaveBeenCalledWith('n-1');
   });
 
-  it("given a read notification when rendered then offers no mark-as-read action", () => {
-    render(
-      <NotificationItem
-        notification={sample({ read: true, readAt: "2026-10-09T11:00:00Z" })}
-        onMarkRead={() => {}}
-      />,
-    );
+  it('given a read notification, when rendered, then has no mark-as-read button', () => {
+    render(<ul><NotificationItem notification={{ ...base, readAt: '2026-10-09T13:00:00Z' }} onMarkRead={vi.fn()} /></ul>);
 
-    expect(screen.queryByRole("button", { name: "Marcar como leída" })).not.toBeInTheDocument();
-    expect(screen.queryByText("No leída")).not.toBeInTheDocument();
-  });
-
-  it("given a notification without amount when rendered then omits the amount", () => {
-    render(<NotificationItem notification={sample({ amount: null })} onMarkRead={() => {}} />);
-
-    expect(screen.queryByText(/S\//)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Marcar como leída' })).not.toBeInTheDocument();
   });
 });

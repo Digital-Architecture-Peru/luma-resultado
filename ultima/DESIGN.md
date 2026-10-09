@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Quarkus
+- ¿Qué stack? React + TypeScript + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + .NET (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,98 +29,76 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento
-
-> Complementa el diseño base y respeta sus criterios de aceptación. El SGC está en *fallback*, así que todo lo que no aparece en el guion se marca como hipótesis (H).
+# DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| AD1 | Monorepo con `backend/` (Quarkus 3, Maven, Java 17) y `frontend/` (React 18 + TS, Vite) | Cada parte usa su toolchain y se puede verificar por separado (Maven / npm). |
-| AD2 | Backend en capas: `resource` → `service` → `port` (interfaz) → `adapter` (JDBC/Panache) | El servicio se prueba con dobles, sin necesidad de una base de datos. |
-| AD3 | API REST `/api/v1`: `GET /cards/{cardId}/notifications?unread&page&size`, `PATCH /notifications/{id}/read`, `GET`/`PUT /cards/{cardId}/notification-preferences` | Contrato mínimo para un centro de notificaciones (H1). |
-| AD4 | Flyway con `V1__schema.sql` (DDL e índices) y `V2__seed.sql` (datos ficticios) | Migraciones versionadas y reproducibles. |
-| AD5 | Solo se guardan `card_last4` y `card_id` (UUID); nunca el PAN | Reduce la exposición a datos sensibles (PCI). |
-| AD6 | Consultas con parámetros (`:cardId`, `?`), sin concatenar SQL | Previene inyección SQL. |
-| AD7 | Front con Atomic Design: `atoms/molecules/organisms/templates/pages`; cliente API tipado; URL en `VITE_API_BASE_URL` | Sigue el patrón pedido y permite configurar por entorno. |
-| AD8 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`); `.env.example` sin valores reales | Sin secretos en el repositorio. |
-| AD9 | Pruebas unitarias: JUnit 5 + Mockito (servicio y mapeos) y Vitest + Testing Library (átomos y moléculas). Sin `@QuarkusTest` | Las pruebas no requieren PostgreSQL ni contenedores. |
+| D1 | Monorepo con `frontend/`, `backend/`, `db/` y un README raíz | Una sola entrega Full Stack, fácil de revisar y de construir por partes |
+| D2 | Backend .NET 8 Web API en capas Domain → Application → Infrastructure → Api | Aísla las reglas de notificación de PostgreSQL y de la integración, que no está definida |
+| D3 | Acceso a datos con Npgsql + Dapper y SQL parametrizado (`@param`) | Cumple el acceso parametrizado de T04-db y mantiene el SQL explícito y revisable |
+| D4 | Migraciones en archivos SQL versionados (`V001__`, `V002__`) | Permiten revisión estática del esquema, ya que PostgreSQL no se ejecuta en la validación |
+| D5 | Integración detrás de `ICardEventSource` e `IChannelDispatcher`, con implementaciones *fake* | La integración no está definida. Así no hay llamadas a sistemas reales |
+| D6 | Frontend con Vite + React + TS en Atomic Design y un cliente API tipado en `src/api` | Sigue el patrón pedido. Los componentes de presentación quedan sin lógica de red |
+| D7 | Pruebas unitarias con xUnit (backend) y Vitest + Testing Library (frontend) | Herramientas estándar de cada stack y sin infraestructura externa |
+| D8 | Nunca se persiste ni se muestra el PAN; solo `card_last4` y un `card_ref` opaco | Minimiza la exposición de datos de tarjeta (orientación PCI) |
 
 ## Estructura de módulos
-
 ```
-backend/
-  pom.xml
-  src/main/java/com/bank/cards/notifications/
-    domain/      CardNotification, NotificationType, Preference
-    port/        NotificationRepository, CardOwnershipPort
-    service/     NotificationService
-    adapter/     JdbcNotificationRepository, StubCardOwnership
-    api/         NotificationResource, dto/, ErrorMapper
-  src/main/resources/application.properties
-  src/main/resources/db/migration/V1__schema.sql, V2__seed.sql
-  src/test/java/.../NotificationServiceTest.java
+backend/CardNotifications.sln
+  src/CardNotifications.Domain/          Notification, NotificationType, Preference
+  src/CardNotifications.Application/     INotificationRepository, ICardEventSource,
+                                         IChannelDispatcher, NotificationService
+  src/CardNotifications.Infrastructure/  PgNotificationRepository (Dapper), Fake*
+  src/CardNotifications.Api/             Controllers, Program.cs, appsettings (sin secretos)
+  tests/CardNotifications.UnitTests/     NotificationServiceTests, PreferenceRulesTests
 frontend/
-  package.json, tsconfig.json, vite.config.ts
-  src/components/atoms/        Badge, Icon, Toggle
-  src/components/molecules/    NotificationItem, PreferenceRow
-  src/components/organisms/    NotificationList, PreferencesPanel
-  src/components/templates/    CardNotificationsLayout
-  src/pages/                   CardNotificationsPage
-  src/api/                     notificationsClient.ts, types.ts
+  src/components/atoms/      Badge, Icon, Toggle, Button
+  src/components/molecules/  NotificationItem, PreferenceRow
+  src/components/organisms/  NotificationList, PreferencesPanel
+  src/components/templates/  NotificationCenterTemplate
+  src/pages/                 NotificationsPage
+  src/api/ src/hooks/        cardNotificationsClient, useNotifications
   src/**/*.test.tsx
-README.md
+db/migrations/  V001__schema.sql, V002__seed_ficticio.sql
 ```
 
-## Modelo de datos (PostgreSQL)
+## Contrato API (v1)
+- `GET /api/v1/cards/notifications?status=unread|all&page=&size=`
+- `PATCH /api/v1/cards/notifications/{id}/read`
+- `POST /api/v1/cards/notifications/read-all`
+- `GET /api/v1/cards/notification-preferences`
+- `PUT /api/v1/cards/notification-preferences`
 
-**`card_notification`**
-- `id` UUID, clave primaria
-- `card_id` UUID
-- `card_last4` CHAR(4)
-- `type` VARCHAR, con CHECK sobre: `PURCHASE`, `PAYMENT_DUE`, `CARD_BLOCKED`, `LIMIT_REACHED`
-- `title`
-- `message`
-- `amount` NUMERIC(14,2), nulo permitido
-- `read_at` TIMESTAMPTZ, nulo permitido
-- `created_at` TIMESTAMPTZ
-
-Índices:
-- `(card_id, created_at DESC)`
-- índice parcial `WHERE read_at IS NULL`
-
-**`notification_preference`**
-- `card_id`
-- `type`
-- `enabled`
-- Clave primaria compuesta `(card_id, type)`
+## Modelo de datos
+- `card_notification`: `id uuid PK`, `customer_id`, `card_ref`, `card_last4 char(4)`, `type`, `title`, `body`, `severity`, `created_at timestamptz`, `read_at timestamptz NULL`.
+- `notification_preference`: PK (`customer_id`, `event_type`, `channel`), `enabled bool`.
+- Índices:
+  - (`customer_id`, `created_at DESC`)
+  - índice parcial de no leídas `WHERE read_at IS NULL`
+- La conexión se configura con la variable de entorno `ConnectionStrings__Notifications`.
 
 ## Hipótesis
-
-- **H1:** "Notificación" significa un centro de notificaciones en la app (lista, marcar como leída, preferencias). Quedan fuera el envío por push, SMS o email.
-- **H2:** La autenticación y la identidad del cliente vienen de Banca por Internet (fuera de alcance). La propiedad de la tarjeta se valida con `CardOwnershipPort`, que por ahora es un stub.
-- **H3:** La integración con el core de tarjetas o el motor de eventos está sin definir. Los eventos se simulan con datos semilla.
-- **H4:** Se usa paginación por offset (`page`/`size`) con un máximo de `size=50`.
-- **H5:** Montos en una sola moneda (PEN) y textos en español, sin internacionalización (i18n).
-- **H6:** La compilación y las pruebas solo se marcan como verificadas si Maven o npm están instalados localmente. El SQL de PostgreSQL solo recibe revisión estática.
+- **H1.** Los eventos de tarjeta cubiertos son: compra aprobada, compra rechazada, bloqueo/desbloqueo, cambio de límite y vencimiento próximo.
+- **H2.** El canal real es *in-app*. Email, SMS y push solo existen como preferencia y se envían a un dispatcher fake.
+- **H3.** El `customer_id` sale de los claims del token. En la versión candidate se usa un stub de autenticación de desarrollo, marcado y desactivado fuera de `Development`.
+- **H4.** Versiones asumidas: .NET 8 y Node 20 LTS.
+- **H5.** Las fechas se guardan en UTC y se muestran en hora local del navegador.
+- **H6.** La paginación es por offset, suficiente para el volumen de demostración.
 
 ## Riesgos
-
 | Riesgo | Mitigación |
 |---|---|
-| Fuga de datos de tarjeta en logs o respuestas | Solo `last4` en DTOs; no registrar el cuerpo de las peticiones |
-| Acceso a notificaciones de otra tarjeta (IDOR) | Verificar la propiedad en el servicio antes de cada consulta o cambio |
-| SQL específico de PostgreSQL no ejecutado | Revisión estática; el README documenta cómo correr Flyway |
-| Las versiones de Quarkus o React no coinciden con el estándar del banco (SGC ausente) | Versiones fijadas en los manifiestos y documentadas como candidate |
-| Crecimiento de la tabla | Índice compuesto; retención y archivado como trabajo futuro |
+| El esquema PostgreSQL no se ejecuta, solo se revisa de forma estática | SQL estándar sin extensiones y migraciones pequeñas |
+| La toolchain `dotnet` o `npm` puede no estar disponible | Se reporta como "no verificado" en el handoff |
+| El stub de autenticación puede llegar a producción | Guardado por entorno y señalado en el README |
+| Fuga de datos de tarjeta | D8 y datos ficticios sin formato de PAN real |
+| La integración real no está definida | Contratos por interfaz, documentados en el README |
+| Accesibilidad de la lista de notificaciones | Roles ARIA y contador de no leídas con `aria-live` |
 
-## Trazabilidad a la aceptación
-
-| Criterio | Cómo se cubre |
-|---|---|
-| Sintaxis | Archivos `.java`, `.ts`, `.tsx` y `.sql` verificables con el validador local |
-| Pruebas | `NotificationServiceTest`, `NotificationItem.test.tsx`, `Toggle.test.tsx` |
-| README | Build, ejecución, variables de entorno, migraciones e integración pendiente (H3) |
-
-**Estado:** candidate. No se afirma que compile ni que esté listo para producción.
+## Trazabilidad con la aceptación
+- Fuentes y manifiestos (`.csproj`, `package.json`) cubren T02.
+- `*Tests.cs` y `*.test.tsx` cubren T04-tests.
+- `db/migrations` cubre T04-db.
+- `README.md` cubre T05.
+- El handoff final (T06) se cierra como *candidate*, sin afirmar compilación ni despliegue.

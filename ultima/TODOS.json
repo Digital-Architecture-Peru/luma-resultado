@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-source",
-    "title": "Implementar la capa Full Stack en React + TypeScript + Java + Quarkus para \"Notificación\" sobre Tarjetas con patrón Component-based (Atomic Design)",
+    "title": "Implementar la capa Full Stack en React + TypeScript + .NET para \"Notificación\" sobre Tarjetas con patrón Component-based (Atomic Design)",
     "dependsOn": [
       "T01-read-context"
     ],

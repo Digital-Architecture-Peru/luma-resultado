@@ -1,15 +1,12 @@
-# Solo para desarrollo local. Las credenciales se toman del entorno (ver backend/.env.example).
 services:
-  postgres:
-    image: postgres:16-alpine
+  db:
+    image: postgres:16
     environment:
-      POSTGRES_DB: cards_notifications
-      POSTGRES_USER: ${QUARKUS_DATASOURCE_USERNAME}
-      POSTGRES_PASSWORD: ${QUARKUS_DATASOURCE_PASSWORD}
+      POSTGRES_DB: card_notifications
+      POSTGRES_USER: cardnotif
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?define DB_PASSWORD en el entorno}
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
+      # Los .sql se ejecutan en orden alfabético solo en la primera inicialización.
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro

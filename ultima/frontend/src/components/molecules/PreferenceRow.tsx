@@ -1,27 +1,36 @@
-import type { NotificationType } from "../../api/types";
-import { TYPE_META } from "../../domain/notificationMeta";
-import { Toggle } from "../atoms/Toggle";
+import type { Channel, NotificationType, Preference } from '../../api/types';
+import {
+  CHANNEL_LABELS,
+  CHANNEL_ORDER,
+  EVENT_LABELS,
+  isLocked,
+} from '../../model/notifications';
+import { Toggle } from '../atoms/Toggle';
 
 interface PreferenceRowProps {
-  type: NotificationType;
-  enabled: boolean;
-  disabled?: boolean;
-  onChange: (type: NotificationType, enabled: boolean) => void;
+  eventType: NotificationType;
+  preferences: Preference[];
+  onToggle: (eventType: NotificationType, channel: Channel, enabled: boolean) => void;
 }
 
-/** Molécula: una preferencia (interruptor + descripción del tipo de aviso). */
-export function PreferenceRow({ type, enabled, disabled = false, onChange }: PreferenceRowProps) {
-  const meta = TYPE_META[type];
+export function PreferenceRow({ eventType, preferences, onToggle }: PreferenceRowProps) {
+  const eventLabel = EVENT_LABELS[eventType];
   return (
-    <div className="preference-row">
-      <Toggle
-        id={`pref-${type}`}
-        label={meta.label}
-        checked={enabled}
-        disabled={disabled}
-        onChange={(checked) => onChange(type, checked)}
-      />
-      <p className="preference-row__description">{meta.description}</p>
-    </div>
+    <fieldset className="preference-row">
+      <legend>{eventLabel}</legend>
+      {CHANNEL_ORDER.map((channel) => {
+        const current = preferences.find((p) => p.eventType === eventType && p.channel === channel);
+        return (
+          <Toggle
+            key={channel}
+            label={`${eventLabel} por ${CHANNEL_LABELS[channel]}`}
+            visibleText={CHANNEL_LABELS[channel]}
+            checked={current?.enabled ?? false}
+            disabled={isLocked(eventType, channel)}
+            onChange={(enabled) => onToggle(eventType, channel, enabled)}
+          />
+        );
+      })}
+    </fieldset>
   );
 }
