@@ -1,39 +1,35 @@
-import { formatDate, formatMoney } from '../../domain/amount';
-import type { Transaction } from '../../types';
-import { Badge } from '../atoms/Badge';
+import type { CardTransaction } from '../../services/api';
+import type { RemoteStatus } from '../../hooks/useCardTransaction';
+import { StatusMessage } from '../atoms/StatusMessage';
+import { TransactionRow } from '../molecules/TransactionRow';
 
-interface TransactionListProps {
-  transactions: Transaction[];
+interface Props {
+  transactions: CardTransaction[];
+  status: RemoteStatus;
 }
 
-/** Organismo: tabla de movimientos de la tarjeta. */
-export function TransactionList({ transactions }: TransactionListProps) {
+export function TransactionList({ transactions, status }: Props) {
+  if (status === 'loading' && transactions.length === 0) {
+    return <StatusMessage kind="info">Cargando movimientos…</StatusMessage>;
+  }
   if (transactions.length === 0) {
-    return <p className="muted">Esta tarjeta aún no tiene movimientos.</p>;
+    return <StatusMessage kind="info">Aún no hay movimientos.</StatusMessage>;
   }
   return (
-    <table className="table">
-      <caption className="sr-only">Movimientos de la tarjeta</caption>
+    <table>
+      <caption>Últimos movimientos</caption>
       <thead>
         <tr>
           <th scope="col">Fecha</th>
           <th scope="col">Tipo</th>
-          <th scope="col" className="num">
-            Monto
-          </th>
+          <th scope="col">Descripción</th>
+          <th scope="col" className="num">Monto</th>
+          <th scope="col">Estado</th>
         </tr>
       </thead>
       <tbody>
-        {transactions.map((t) => (
-          <tr key={t.id}>
-            <td>{formatDate(t.createdAt)}</td>
-            <td>
-              <Badge tone={t.type === 'PAYMENT' ? 'success' : 'neutral'}>
-                {t.type === 'PAYMENT' ? 'Pago' : 'Compra'}
-              </Badge>
-            </td>
-            <td className="num">{formatMoney(t.amount)}</td>
-          </tr>
+        {transactions.map((tx) => (
+          <TransactionRow key={tx.id} tx={tx} />
         ))}
       </tbody>
     </table>

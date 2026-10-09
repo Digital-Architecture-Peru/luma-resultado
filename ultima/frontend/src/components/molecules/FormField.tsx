@@ -1,23 +1,17 @@
 import type { ReactNode } from 'react';
 
-interface FormFieldProps {
+interface Props {
   id: string;
   label: string;
-  error?: string | null;
   children: ReactNode;
 }
 
-/** Molécula: etiqueta + control + mensaje de error asociado. */
-export function FormField({ id, label, error, children }: FormFieldProps) {
+/** Molécula: etiqueta asociada a un control (input o select). */
+export function FormField({ id, label, children }: Props) {
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
       {children}
-      {error ? (
-        <p id={`${id}-error`} className="field__error" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }

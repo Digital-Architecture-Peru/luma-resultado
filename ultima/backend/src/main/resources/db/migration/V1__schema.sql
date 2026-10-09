@@ -1,31 +1,23 @@
 CREATE TABLE card (
-    id           VARCHAR(36)   PRIMARY KEY,
-    customer_id  VARCHAR(36)   NOT NULL,
-    last4        CHAR(4)       NOT NULL,
-    brand        VARCHAR(20)   NOT NULL,
-    credit_limit NUMERIC(15,2) NOT NULL CHECK (credit_limit >= 0),
-    balance      NUMERIC(15,2) NOT NULL CHECK (balance >= 0),
-    version      BIGINT        NOT NULL DEFAULT 0
-);
-
-CREATE TABLE account (
-    id          VARCHAR(36)   PRIMARY KEY,
-    customer_id VARCHAR(36)   NOT NULL,
-    alias       VARCHAR(60)   NOT NULL,
-    balance     NUMERIC(15,2) NOT NULL CHECK (balance >= 0),
-    version     BIGINT        NOT NULL DEFAULT 0
+    id                UUID PRIMARY KEY,
+    masked_pan        VARCHAR(19)   NOT NULL,
+    holder_alias      VARCHAR(60)   NOT NULL,
+    status            VARCHAR(10)   NOT NULL CHECK (status IN ('ACTIVE', 'BLOCKED', 'EXPIRED')),
+    credit_limit      NUMERIC(15,2) NOT NULL CHECK (credit_limit >= 0),
+    available_balance NUMERIC(15,2) NOT NULL CHECK (available_balance >= 0),
+    version           BIGINT        NOT NULL DEFAULT 0
 );
 
 CREATE TABLE card_transaction (
-    id              VARCHAR(36)   PRIMARY KEY,
-    card_id         VARCHAR(36)   NOT NULL REFERENCES card (id),
-    type            VARCHAR(20)   NOT NULL CHECK (type IN ('PURCHASE', 'PAYMENT')),
+    id              UUID PRIMARY KEY,
+    card_id         UUID          NOT NULL REFERENCES card (id),
+    type            VARCHAR(10)   NOT NULL CHECK (type IN ('PURCHASE', 'PAYMENT', 'REFUND')),
     amount          NUMERIC(15,2) NOT NULL CHECK (amount > 0),
-    status          VARCHAR(20)   NOT NULL CHECK (status IN ('POSTED', 'REJECTED')),
-    idempotency_key VARCHAR(64)   UNIQUE,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
+    currency        CHAR(3)       NOT NULL,
+    description     VARCHAR(120),
+    status          VARCHAR(10)   NOT NULL CHECK (status IN ('APPROVED', 'DECLINED')),
+    idempotency_key VARCHAR(64)   NOT NULL UNIQUE,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_tx_card_created ON card_transaction (card_id, created_at DESC);
-CREATE INDEX idx_card_customer ON card (customer_id);
-CREATE INDEX idx_account_customer ON account (customer_id);
+CREATE INDEX idx_card_transaction_card_created ON card_transaction (card_id, created_at DESC);
