@@ -1,36 +1,29 @@
-import type { Account, RemoteState } from "../../types/account";
-import { formatDate } from "../../utils/format";
-import { Amount } from "../atoms/Amount";
-import { Badge } from "../atoms/Badge";
-import { StatusMessage } from "../molecules/StatusMessage";
+import { TYPE_LABELS, type Account } from "../../domain/account";
+import { MoneyText } from "../atoms/MoneyText";
+import { StatusBadge } from "../atoms/StatusBadge";
 
-export function AccountDetail({ state }: { state: RemoteState<Account> }) {
-  if (state.status === "idle") {
-    return <StatusMessage kind="empty" message="Selecciona una cuenta para ver el detalle" />;
+export function AccountDetail({ account }: { account: Account | null }) {
+  if (!account) {
+    return <p className="empty">Seleccione una cuenta para ver su detalle.</p>;
   }
-  if (state.status === "loading") {
-    return <StatusMessage kind="loading" />;
-  }
-  if (state.status === "error") {
-    return <StatusMessage kind="error" message={state.message} />;
-  }
-  const account = state.data;
   return (
-    <section className="account-detail" aria-label="Detalle de cuenta">
-      <h2>Cuenta {account.maskedNumber}</h2>
+    <section aria-label="Detalle de cuenta" className="detail">
+      <h2>
+        {TYPE_LABELS[account.type]} {account.maskedNumber}
+      </h2>
       <dl>
-        <dt>Saldo disponible</dt>
+        <dt>Saldo</dt>
         <dd>
-          <Amount value={account.balance} currency={account.currency} />
+          <MoneyText amount={account.balance} currency={account.currency} />
+        </dd>
+        <dt>Estado</dt>
+        <dd>
+          <StatusBadge status={account.status} />
         </dd>
         <dt>Moneda</dt>
         <dd>{account.currency}</dd>
-        <dt>Estado</dt>
-        <dd>
-          <Badge status={account.status} />
-        </dd>
-        <dt>Fecha de apertura</dt>
-        <dd>{formatDate(account.openedAt)}</dd>
+        <dt>Última actualización</dt>
+        <dd>{new Date(account.updatedAt).toLocaleString("es-PE")}</dd>
       </dl>
     </section>
   );
