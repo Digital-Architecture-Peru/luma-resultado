@@ -6,8 +6,8 @@
     "type": "Notificación",
     "domain": "Cuentas",
     "layer": "Full Stack",
-    "stack": "React + TypeScript + .NET",
-    "backendStack": ".NET",
+    "stack": "Angular + Java + Spring Boot",
+    "backendStack": "Java + Spring Boot",
     "persistence": "PostgreSQL"
   },
   "sgc": {

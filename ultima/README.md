@@ -1,89 +1,101 @@
-# Notificaciones de cuenta
+# Notificaciones de cuentas
 
-Aplicación de demostración full stack para avisos in-app sobre eventos de cuenta. El frontend está hecho con React + TypeScript y Vite; la API usa .NET 8 con arquitectura por capas y PostgreSQL como persistencia.
+Aplicación de demostración para consultar notificaciones de cuentas y administrar preferencias. Stack: Angular 17, Java 17 / Spring Boot 3.3 y PostgreSQL. Los datos de seed son ficticios. **No es apta para producción**: no implementa autenticación ni autorización; la cuenta fija `10001234` del frontend es solo para demostración.
 
 ## Requisitos
 
-- .NET SDK 8
-- Node.js compatible con Vite 5 y npm
-- PostgreSQL 13 o posterior
-- `psql` para aplicar los scripts SQL
+- Node.js y npm compatibles con Angular CLI 17.
+- JDK 17 y Maven 3.6.3 o posterior.
+- PostgreSQL accesible desde el backend.
 
-## Configuración y base de datos
+## Configurar PostgreSQL
 
-Crea una base de datos vacía y configura una cadena de conexión Npgsql. No guardes credenciales en el repositorio. Por ejemplo, en bash:
+Crea una base de datos `notificaciones` y un usuario de desarrollo `notif_app` con permisos para crear tablas y escribir datos. Por ejemplo, desde una sesión administrativa de PostgreSQL:
 
-```sh
-export ConnectionStrings__Notifications='Host=localhost;Port=5432;Database=notifications;Username=TU_USUARIO;Password=TU_CLAVE'
-export ASPNETCORE_URLS='http://localhost:5080'
-export Cors__AllowedOrigins='http://localhost:5173'
+```sql
+CREATE USER notif_app WITH PASSWORD 'elige-una-clave-local';
+CREATE DATABASE notificaciones OWNER notif_app;
 ```
 
-Aplica los scripts desde la raíz del repositorio, en este orden:
+La clave del ejemplo es local: no la guardes en el repositorio. El backend lee configuración por entorno:
 
-```sh
-psql "$DATABASE_URL" -f db/migrations/V001__schema.sql
-psql "$DATABASE_URL" -f db/migrations/V002__seed.sql
-```
+| Variable | Predeterminado | Descripción |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/notificaciones` | URL JDBC |
+| `DB_USER` | `notif_app` | Usuario PostgreSQL |
+| `DB_PASSWORD` | vacío | Contraseña PostgreSQL |
+| `PORT` | `8080` | Puerto HTTP del backend |
+| `CORS_ORIGIN` | `http://localhost:4200` | Origen permitido por CORS |
+| `LOG_LEVEL` | `INFO` | Nivel de logging raíz |
 
-`DATABASE_URL` es la variable de conexión que consume `psql`; la aplicación recibe su conexión mediante `ConnectionStrings__Notifications`. Ajusta ambas según el entorno. V001 crea las tablas e índices; V002 añade notificaciones y preferencias ficticias para `CUST-0001` y la cuenta `10020030041234`. Los scripts usan `IF NOT EXISTS`/`ON CONFLICT` para los objetos y filas sembrados, pero no constituyen un gestor de migraciones ni resuelven cambios futuros de esquema.
+Configura `DB_PASSWORD` en el entorno local antes de iniciar la aplicación. No se requiere configurar credenciales para las pruebas unitarias indicadas abajo.
 
-## Backend (.NET)
+## Ejecutar en desarrollo
 
-Desde la raíz:
+Inicia primero el backend; requiere que PostgreSQL esté en ejecución:
 
 ```sh
 cd backend
-dotnet restore Notifications.sln
-dotnet build Notifications.sln
-dotnet test Notifications.sln
-dotnet run --project src/Notifications.Api/Notifications.Api.csproj
+# Define DB_PASSWORD y, si corresponde, DB_URL / DB_USER en el entorno.
+mvn spring-boot:run
 ```
 
-La API escucha en `http://localhost:5080` con la configuración anterior. La cadena `ConnectionStrings__Notifications` es obligatoria; el proceso falla al iniciar si falta. `Cors__AllowedOrigins` admite orígenes separados por coma y por defecto es `http://localhost:5173`.
-
-Endpoints:
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/health` | Comprobación básica de proceso (no comprueba conexión a PostgreSQL). |
-| GET | `/api/accounts/{accountId}/notifications?unreadOnly=true` | Lista hasta 100 notificaciones; `unreadOnly` es opcional y por defecto falso. |
-| PATCH | `/api/notifications/{id}/read` | Marca como leída una notificación del cliente. |
-| GET | `/api/accounts/{accountId}/notification-preferences` | Consulta preferencias; tipos no almacenados aparecen habilitados. |
-| PUT | `/api/accounts/{accountId}/notification-preferences` | Guarda una lista JSON de `{ "type": "DEPOSIT", "enabled": true }`. |
-
-Todas las rutas `/api` requieren `X-Demo-Customer`, por ejemplo `CUST-0001`. Esta cabecera es una identidad de demostración, no autenticación: no publiques ni expongas el servicio como si fuera seguro para usuarios reales. Las entradas inválidas se expresan como problem details; los tipos de notificación admitidos son `DEPOSIT`, `WITHDRAWAL`, `LOW_BALANCE` y `STATEMENT`.
-
-## Frontend (React + TypeScript)
-
-En otra terminal, desde la raíz:
+En otra terminal inicia Angular:
 
 ```sh
 cd frontend
 npm install
-npm run build
-npm test
-npm run dev
+npm start
 ```
 
-Vite sirve la aplicación en `http://localhost:5173`. La compilación incluye comprobación de tipos (`tsc --noEmit`) y generación de bundle. Las pruebas se ejecutan sin modo interactivo con Vitest.
+Abre <http://localhost:4200>. El servidor de desarrollo Angular usa `proxy.conf.json` para reenviar `/api` a `http://localhost:8080`, evitando configurar una URL distinta en el cliente.
 
-Configuración opcional en `frontend/.env.local`:
+## Compilar y probar
 
-```dotenv
-VITE_API_BASE_URL=http://localhost:5080
-VITE_DEMO_CUSTOMER_ID=CUST-0001
-VITE_ACCOUNT_ID=10020030041234
+Backend, desde `backend/`:
+
+```sh
+mvn test
+mvn package
 ```
 
-La aplicación también define esos valores predeterminados en el código. `VITE_API_BASE_URL` apunta a la API; el origen del frontend debe estar permitido en `Cors__AllowedOrigins`. Reinicia Vite después de modificar variables `VITE_*`.
+Frontend, desde `frontend/`:
 
-## Integración y persistencia
+```sh
+npm install
+npm test       # Jest en modo CI, no interactivo
+npm run build  # Angular CLI y comprobación de tipos
+```
 
-El cliente `frontend/src/api/notificationsApi.ts` consume la API por HTTP y envía `X-Demo-Customer`. El backend valida las solicitudes en el servicio de aplicación y usa `INotificationRepository` como frontera de persistencia; la implementación PostgreSQL usa Npgsql y Dapper con consultas parametrizadas. Las consultas y actualizaciones de notificaciones filtran por cliente, y la operación de preferencias está respaldada por una transacción.
+Las pruebas backend son pruebas unitarias de servicios y dominio; no necesitan PostgreSQL. Las pruebas frontend usan Jest. Para probar la aplicación integrada sí hacen falta PostgreSQL, el backend y el servidor Angular. No se afirma aquí que los comandos hayan sido ejecutados en este entorno.
 
-No hay integración configurada con un sistema productor de eventos: los registros visibles se originan en el seed o se agregan directamente a la base de datos. Tampoco hay envío de email/SMS, autenticación real, ni pruebas de integración contra PostgreSQL. Las pruebas existentes del backend son unitarias con repositorio en memoria; las del frontend usan una API simulada. Antes de un despliegue real, sustituye la identidad demo por autenticación/autorización y define cómo se ingieren los eventos.
+## API
 
-## Limitaciones
+La API tiene prefijo `/api/v1`:
 
-Proyecto de demostración/candidate, no apto para producción sin controles adicionales. `/health` solo informa que la aplicación responde y no verifica dependencias. Las migraciones SQL son scripts manuales; respalda la base de datos antes de aplicarlos en entornos con datos.
+- `GET /accounts/{accountId}/notifications?status=ALL|UNREAD&page=0&size=20` — lista notificaciones. `page` empieza en cero; `size` permitido de 1 a 100.
+- `PATCH /notifications/{id}/read` — marca como leída; `{id}` es UUID.
+- `GET /accounts/{accountId}/notification-preferences` — consulta preferencias.
+- `PUT /accounts/{accountId}/notification-preferences` — actualiza preferencias. Ejemplo de JSON:
+
+```json
+{
+  "lowBalanceThreshold": 100.00,
+  "depositEnabled": true,
+  "withdrawalEnabled": true
+}
+```
+
+Los identificadores de cuenta aceptan entre 4 y 20 caracteres alfanuméricos. Los errores controlados se devuelven como `application/problem+json`. Las cuentas se presentan enmascaradas en las respuestas de notificación.
+
+Para probar con los datos iniciales, utiliza la cuenta `10001234`. El seed también incluye la cuenta ficticia `20005678`.
+
+## Persistencia e integración
+
+Spring JDBC accede a PostgreSQL mediante `NamedParameterJdbcTemplate`, detrás de los puertos de repositorio del dominio. Flyway aplica al arrancar las migraciones versionadas en `backend/src/main/resources/db/migration`: `V1` crea `account_notification` y `notification_preference` e índices asociados; `V2` añade datos ficticios. Flyway registra las migraciones aplicadas y no vuelve a insertar el seed en cada inicio normal. Los cambios de esquema deben añadirse como nuevas migraciones, no editando migraciones ya aplicadas.
+
+La integración con el origen de eventos de banca y con un canal real de entrega aún no está definida. `NotificationService.register` es el punto de entrada previsto para eventos; el adaptador `LoggingDispatcher` solo registra y no envía notificaciones. La conexión a dichos sistemas requiere definir contratos, configuración y tratamiento de fallos antes de desplegar.
+
+## Pendientes de seguridad para producción
+
+Integrar identidad/autorización de la banca en lugar de confiar en la cuenta fija de demostración. Además, la operación `PATCH /notifications/{id}/read` no recibe ni valida la pertenencia a una cuenta autenticada: debe incorporarse esa comprobación antes de exponerla a usuarios reales. Configurar credenciales seguras y CORS según cada entorno, y definir el proveedor real de eventos y despacho.

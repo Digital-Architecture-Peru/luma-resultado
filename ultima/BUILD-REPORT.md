@@ -1,52 +1,68 @@
-# Build 9dc79479-b64c-4b9e-b113-bbf7eec2aabc
+# Build 4235d49d-8d6d-424c-bee5-e9bc4e2225c7
 
-Stack: React + TypeScript + .NET · capa Full Stack
+Stack: Angular + Java + Spring Boot · capa Full Stack
 
 Candidate generada por Microapp Builder; no es producción.
 
-36 archivos; sintaxis verificada en 17/17; sin validador local: 19; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (5); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática. (candidate).
+52 archivos; sintaxis verificada en 22/22; sin validador local: 30; pruebas incluidas; README incluido. Verificado de verdad: build correcto; pruebas unitarias correctas (11); [backend] maven build correcto; [backend] maven pruebas correctas (16); dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática. (candidate).
 
-Verificación: OK · build · pruebas unitarias (5) · dist/ incluido
-Detalle de verificación: build correcto; pruebas unitarias correctas (5); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática
-Correcciones aplicadas: 0
+Verificación: OK · build · pruebas unitarias (27) · dist/ incluido
+Detalle de verificación: build correcto; pruebas unitarias correctas (11); [backend] maven build correcto; [backend] maven pruebas correctas (16); dist/ generado · esquema PostgreSQL NO ejecutado contra un motor real (sin motor local); solo revisado de forma estática
+Correcciones aplicadas: 1
 
 Recursos incrustados en el builder (hash SHA-256):
 - .github/agents/builder.agent.md 657aec3ce422
 - .github/skills/stack-agnostic-blueprint/SKILL.md 185483967f7e
 
-- backend/Notifications.sln: sin verificar (sin validador local)
-- backend/src/Notifications.Api/appsettings.json: sintaxis OK (JSON.parse)
-- backend/src/Notifications.Api/Controllers/NotificationsController.cs: sin verificar (sin validador local)
-- backend/src/Notifications.Api/Notifications.Api.csproj: sin verificar (sin validador local)
-- backend/src/Notifications.Api/Program.cs: sin verificar (sin validador local)
-- backend/src/Notifications.Application/Notifications.Application.csproj: sin verificar (sin validador local)
-- backend/src/Notifications.Application/NotificationService.cs: sin verificar (sin validador local)
-- backend/src/Notifications.Domain/Notification.cs: sin verificar (sin validador local)
-- backend/src/Notifications.Domain/Notifications.Domain.csproj: sin verificar (sin validador local)
-- backend/src/Notifications.Infrastructure/Notifications.Infrastructure.csproj: sin verificar (sin validador local)
-- backend/src/Notifications.Infrastructure/NpgsqlNotificationRepository.cs: sin verificar (sin validador local)
-- backend/src/Notifications.Infrastructure/ServiceCollectionExtensions.cs: sin verificar (sin validador local)
-- backend/tests/Notifications.UnitTests/InMemoryNotificationRepository.cs: sin verificar (sin validador local)
-- backend/tests/Notifications.UnitTests/Notifications.UnitTests.csproj: sin verificar (sin validador local)
-- backend/tests/Notifications.UnitTests/NotificationServiceTests.cs: sin verificar (sin validador local)
-- db/migrations/V001__schema.sql: sin verificar (sin validador local)
-- db/migrations/V002__seed.sql: sin verificar (sin validador local)
-- frontend/index.html: sin verificar (sin validador local)
+- backend/pom.xml: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/api/CorsConfig.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/api/dto/NotificationResponse.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/api/dto/PreferenceRequest.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/api/dto/PreferenceResponse.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/api/NotificationController.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/api/ProblemHandler.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/application/NotFoundException.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/application/NotificationService.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/application/PreferenceService.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/AccountMask.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/Notification.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/NotificationType.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/ports/NotificationDispatcher.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/ports/NotificationRepository.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/ports/PreferenceRepository.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/domain/Preference.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/infrastructure/dispatch/LoggingDispatcher.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/infrastructure/persistence/JdbcNotificationRepository.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/infrastructure/persistence/JdbcPreferenceRepository.java: sin verificar (sin validador local)
+- backend/src/main/java/com/example/cuentas/notificaciones/NotificacionesApplication.java: sin verificar (sin validador local)
+- backend/src/main/resources/application.yml: sin verificar (sin validador local)
+- backend/src/main/resources/db/migration/V1__schema.sql: sin verificar (sin validador local)
+- backend/src/main/resources/db/migration/V2__seed_ficticio.sql: sin verificar (sin validador local)
+- backend/src/test/java/com/example/cuentas/notificaciones/application/NotificationServiceTest.java: sin verificar (sin validador local)
+- backend/src/test/java/com/example/cuentas/notificaciones/application/PreferenceServiceTest.java: sin verificar (sin validador local)
+- backend/src/test/java/com/example/cuentas/notificaciones/domain/DomainTest.java: sin verificar (sin validador local)
+- frontend/angular.json: sintaxis OK (JSON.parse)
 - frontend/package.json: sintaxis OK (JSON.parse)
-- frontend/src/api/notificationsApi.ts: sintaxis OK (typescript.transpileModule)
-- frontend/src/api/types.ts: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/atoms/Badge.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/atoms/Button.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/molecules/NotificationItem.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/organisms/NotificationBell.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/organisms/NotificationList.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/components/templates/NotificationsLayout.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/lib/format.ts: sintaxis OK (typescript.transpileModule)
-- frontend/src/main.tsx: sintaxis OK (typescript.transpileModule)
-- frontend/src/pages/NotificationsPage.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/proxy.conf.json: sintaxis OK (JSON.parse)
+- frontend/setup-jest.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/app.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/atoms/toggle.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/atoms/type-badge.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/models/notification.model.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/molecules/notification-item.component.spec.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/molecules/notification-item.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/organisms/notification-list.component.spec.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/organisms/notification-list.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/organisms/preferences-panel.component.spec.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/organisms/preferences-panel.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/pages/notifications-page.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/services/notification-api.service.spec.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/services/notification-api.service.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/app/notifications/templates/notifications-layout.component.ts: sintaxis OK (typescript.transpileModule)
+- frontend/src/index.html: sin verificar (sin validador local)
+- frontend/src/main.ts: sintaxis OK (typescript.transpileModule)
 - frontend/src/styles.css: sin verificar (sin validador local)
-- frontend/src/vite-env.d.ts: sintaxis OK (typescript.createSourceFile)
-- frontend/src/__tests__/notifications.test.tsx: sintaxis OK (typescript.transpileModule)
+- frontend/tsconfig.app.json: sintaxis OK (JSON.parse)
 - frontend/tsconfig.json: sintaxis OK (JSON.parse)
-- frontend/vite.config.ts: sintaxis OK (typescript.transpileModule)
+- frontend/tsconfig.spec.json: sintaxis OK (JSON.parse)
 - README.md: sin verificar (sin validador local)
