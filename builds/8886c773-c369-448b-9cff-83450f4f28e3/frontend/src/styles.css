@@ -1,0 +1,74 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5b6676;
+  --primary: #1857c4;
+  --primary-contrast: #ffffff;
+  --border: #d5dbe4;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11161d;
+    --surface: #1a212b;
+    --text: #e6eaf0;
+    --muted: #9aa5b5;
+    --primary: #6ea2ff;
+    --primary-contrast: #0b1220;
+    --border: #2d3745;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; }
+h1, h2, h3 { line-height: 1.2; text-wrap: balance; margin: 0 0 var(--space-2); }
+h3 { font-size: 1rem; }
+
+.layout { max-inline-size: 72rem; margin-inline: auto; padding: var(--space-6) clamp(1rem, 4vw, 2rem); }
+.layout__grid { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+
+.notification-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.notification {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+}
+.notification--unread { border-inline-start: 4px solid var(--primary); }
+.notification__head { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 0.85rem; color: var(--muted); }
+.muted { color: var(--muted); font-size: 0.85rem; }
+
+.badge { padding: 2px var(--space-2); border-radius: 999px; border: 1px solid var(--border); font-weight: 600; color: var(--text); }
+
+.btn {
+  min-block-size: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+.btn--primary { background: var(--primary); color: var(--primary-contrast); }
+.btn--ghost { background: transparent; color: var(--primary); }
+.btn:focus-visible, input:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+.preference-row { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-bottom: 1px solid var(--border); }
+.toggle { display: flex; gap: var(--space-2); align-items: center; min-block-size: 40px; }
+.field { display: grid; gap: var(--space-1); }
+.field input { min-block-size: 40px; padding-inline: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}
