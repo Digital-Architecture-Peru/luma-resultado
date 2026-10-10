@@ -1,6 +1,0 @@
-package com.banca.pagos.notification.service;
-
-import java.util.List;
-
-public record PageResult<T>(List<T> items, long total) {
-}

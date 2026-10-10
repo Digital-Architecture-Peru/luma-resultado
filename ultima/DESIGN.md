@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + Java + Quarkus
+- ¿Qué stack? Angular + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + Java + Quarkus (capa Full Stack) para "Notificación" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en Angular + .NET (capa Full Stack) para "Notificación" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,96 +29,73 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN: refinamiento
-
-> Complementa la plantilla base sin reemplazarla. Mantiene sus criterios de aceptación: sintaxis válida en lo verificable, pruebas y README presentes, y publicación con commit.
-
-## Alcance funcional (hipótesis H1)
-Notificaciones **in-app** sobre eventos de pago del cliente en Banca por Internet:
-- `PAGO_EXITOSO`, `PAGO_RECHAZADO` y `PAGO_PROGRAMADO_PROXIMO`.
-- Operaciones: listar, filtrar por no leídas y marcar como leída.
-- Email y SMS quedan fuera. Se dejan detrás del puerto `NotificationChannel` con una implementación fake.
+# DESIGN · Refinamiento
 
 ## Decisiones de arquitectura
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo `frontend/` + `backend/` + `README.md` | Un solo handoff, con build independiente por capa |
-| D2 | Backend hexagonal-lite: `resource → service → port → adapter` | La integración está sin definir; los puertos permiten sustituirla sin tocar el dominio |
-| D3 | Persistencia con Hibernate ORM Panache, solo con parámetros nombrados | Acceso parametrizado, sin concatenar SQL |
-| D4 | Migraciones Flyway `V1__schema.sql` y `V2__seed_ficticio.sql` | Esquema versionado, revisable de forma estática |
-| D5 | Importes en `NUMERIC(15,2)` / `BigDecimal` y moneda en ISO-4217 | Evita errores de redondeo en el dominio de pagos |
-| D6 | Idempotencia con `UNIQUE(payment_reference, type)` | Evita notificaciones duplicadas si el evento se reintenta |
-| D7 | Polling cada 30 s desde Angular, con SSE como evolución | Menor complejidad; no requiere infraestructura adicional |
-| D8 | Enmascarado de cuenta (`****1234`) al construir el mensaje | Minimiza datos personales en la tabla y en la UI |
-| D9 | Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`, `API_BASE_URL`) | Sin secretos en el repositorio |
+| D1 | Backend .NET 8 Web API en capas: `Domain` → `Application` → `Infrastructure` → `Api` | Permite probar la lógica con unitarias sin BD; la persistencia queda detrás de interfaces |
+| D2 | Persistencia con Npgsql + SQL explícito (Dapper) y migraciones `V00N__*.sql` | Esquema versionado y revisable de forma estática; consultas con parámetros, sin concatenar SQL |
+| D3 | Abstracción `INotificationChannel`; solo se implementa `InAppChannel` | La integración está sin definir; email, SMS y push quedan como extensión |
+| D4 | Idempotencia con `UNIQUE(customer_id, payment_event_id)` | Un evento de pago no genera notificaciones duplicadas |
+| D5 | Angular standalone con signals y Atomic Design (atoms/molecules/organisms/templates/pages) | Cumple el patrón pedido y facilita reutilizar y probar componentes aislados |
+| D6 | Refresco por polling con intervalo configurable | Más simple que SignalR o SSE para una candidate |
+| D7 | Configuración por variables de entorno (`ConnectionStrings__Notifications`, `API_BASE_URL`) | Sin secretos en el repositorio |
 
 ## Contrato API (v1)
-- `GET /api/v1/payment-notifications?status=UNREAD&page=0&size=20` devuelve `200 {items[], total}`.
-- `PATCH /api/v1/payment-notifications/{id}/read` devuelve `204`, o `404` si el id no existe.
-- `POST /api/v1/payment-notifications` es interno y simula el evento de pago. Devuelve `201`, o `409` si es un duplicado.
-- El cliente se identifica con la cabecera `X-Customer-Id` (ficticia, ver H3). Los errores siguen el formato `{code, message}`.
+- `GET /api/v1/notifications?status=UNREAD|READ&page=&size=`
+- `GET /api/v1/notifications/unread-count`
+- `PATCH /api/v1/notifications/{id}/read`
+- `POST /api/v1/payment-events`: ingesta simulada (tipos `PAYMENT_COMPLETED`, `PAYMENT_REJECTED`, `PAYMENT_SCHEDULED`)
 
 ## Modelo de datos (PostgreSQL)
-Tabla `payment_notification` con estos campos:
-- `id UUID PK`
-- `customer_id VARCHAR(36)`
-- `payment_reference VARCHAR(40)`
-- `type` y `status`, ambos con `CHECK`
-- `title`, `message`
-- `amount NUMERIC(15,2)`, `currency CHAR(3)`
-- `created_at TIMESTAMPTZ`, `read_at TIMESTAMPTZ NULL`
-
-Índices:
-- `idx_pn_customer_status_created (customer_id, status, created_at DESC)`
-- `uq_pn_ref_type`
+Tabla `notification`:
+- Columnas: `id uuid PK`, `customer_id`, `payment_event_id`, `type`, `status`, `title`, `message`, `amount numeric(18,2)`, `currency char(3)`, `masked_account`, `created_at`, `read_at`.
+- Restricciones: `CHECK` sobre `type` y `status`.
+- Índice `(customer_id, status, created_at DESC)`.
+- Seed `V002__seed.sql` con datos ficticios (cuentas enmascaradas `****1234`).
 
 ## Estructura de módulos
 ```
-frontend/src/app/
-  atoms/       badge, icon, amount-text
-  molecules/   notification-item
-  organisms/   notification-list, notification-bell
-  templates/   notifications-layout
-  pages/       notifications-page
-  core/        models/, services/payment-notification.service.ts
-backend/src/main/java/.../notification/
-  api/         PaymentNotificationResource, dto/
-  domain/      PaymentNotification, NotificationType, NotificationStatus
-  service/     PaymentNotificationService
-  port/        NotificationRepository, NotificationChannel
-  adapter/     PanacheNotificationRepository, FakeChannel
-backend/src/main/resources/db/migration/   V1__, V2__
-backend/src/test/java/...                  ServiceTest, MaskingTest
-frontend/src/**/*.spec.ts                  átomos, organismos, servicio
+backend/
+  Notifications.sln
+  src/Notifications.Domain/            # Notification, NotificationType, reglas
+  src/Notifications.Application/       # NotificationService, INotificationRepository, INotificationChannel
+  src/Notifications.Infrastructure/    # PgNotificationRepository, InAppChannel
+  src/Notifications.Api/               # Controllers, Program.cs, appsettings sin secretos
+  db/migrations/V001__init.sql, V002__seed.sql
+  tests/Notifications.UnitTests/       # xUnit + fakes
+frontend/
+  package.json, angular.json
+  src/app/notifications/
+    atoms/ (badge, icon, button)
+    molecules/ (notification-item)
+    organisms/ (notification-panel)
+    templates/ (notifications-layout)
+    pages/ (notifications-page)
+    data/ (notification.service.ts, models.ts)
+  *.spec.ts junto a cada componente y servicio
+README.md
 ```
 
-## Pruebas unitarias
-- **Backend:** JUnit 5 y Mockito sobre el servicio (marcar como leída, duplicado, enmascarado). No usa la base de datos real.
-- **Frontend:** specs de Jasmine sobre `notification-item` y sobre el servicio con `HttpTestingController`.
-- Las pruebas de integración y de Testcontainers quedan fuera de alcance.
-
 ## Hipótesis
-- **H1.** El alcance se limita a notificaciones in-app sobre los tres tipos de evento listados.
-- **H2.** Versiones supuestas: Angular 17+ con componentes standalone, Java 17 y Quarkus 3.x. El SGC está en fallback, así que no hay estándar corporativo confirmado.
-- **H3.** La autenticación queda fuera de alcance. `X-Customer-Id` sustituye al token real.
-- **H4.** El origen de los eventos de pago está sin definir y se simula con `POST`.
-- **H5.** Los textos están solo en español.
+- **H1**: la autenticación está fuera de alcance. `customer_id` llega por la cabecera `X-Customer-Id` (marcador ficticio) y debe sustituirse por un claim del token.
+- **H2**: las notificaciones son solo in-app. No se cubren canales externos ni preferencias de usuario.
+- **H3**: se usan .NET 8 LTS y Angular 17+. Si la toolchain no existe localmente, el build queda marcado como no verificado.
+- **H4**: la revisión del SQL PostgreSQL es solo estática; no hay motor en memoria.
+- **H5**: no hay requisitos de retención. Se propone 90 días como referencia, sin job de purga implementado.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| Sin Maven o npm locales, el código no se compila | Se marca como **no verificado** en el handoff |
-| El SQL de PostgreSQL no se ejecuta, solo se revisa de forma estática | Usar sintaxis estándar y migraciones pequeñas |
-| Exposición de datos personales en los mensajes | Enmascarado en el servicio, cubierto por una prueba unitaria |
-| Atomic Design sobredimensionado para la capacidad | Limitarlo a 3–4 átomos, sin componentes vacíos |
-| Carga por polling | Paginación, índice compuesto y evolución a SSE |
-| CORS entre front y back | Configurar `quarkus.http.cors` por variable de entorno |
+| H1 en producción expone datos de otros clientes | Documentarlo en README como bloqueante de producción |
+| Exposición de PII financiera | Enmascarar cuentas y no registrar en logs montos con identificador |
+| Carga por polling | Intervalo configurable y endpoint ligero `unread-count` |
+| Accesibilidad de alertas | `aria-live="polite"` en el panel y contraste AA en el badge |
+| Compilación no verificada | Resumen final como candidate con lista de lo no verificado |
 
-## Trazabilidad
-| Tarea | Cobertura en este diseño |
-|---|---|
-| T02 | Estructura de módulos |
-| T04-tests | Pruebas unitarias |
-| T04-db | Modelo de datos y D3/D4 |
-| T05 | README: build, ejecución, variables, integración sin definir y PostgreSQL |
-| T06 | Lista de lo no verificado: compilación, ejecución del SQL y contrato real de integración |
+## Trazabilidad con la aceptación
+- **T02**: fuentes de backend y frontend del árbol anterior.
+- **T04-tests**: proyectos xUnit y archivos `*.spec.ts`.
+- **T04-db**: migraciones e índice.
+- **T05**: README con build, variables de entorno, integración sin definir y persistencia PostgreSQL.
