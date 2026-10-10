@@ -1,15 +1,21 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { NotificationsPage } from './pages/NotificationsPage';
-import './styles.css';
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { createNotificationsClient } from "./api/notificationsClient";
+import { PaymentsPage } from "./pages/PaymentsPage";
+import "./styles.css";
 
-const container = document.getElementById('root');
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+// Cliente ficticio: sustituto temporal de la autenticación real (H2).
+const customerId = import.meta.env.VITE_CUSTOMER_ID ?? "cust-demo-001";
+const api = createNotificationsClient(apiUrl, customerId);
+
+const container = document.getElementById("root");
 if (!container) {
-  throw new Error('No se encontró el elemento #root');
+  throw new Error("No se encontró el elemento #root");
 }
 
 createRoot(container).render(
   <StrictMode>
-    <NotificationsPage />
+    <PaymentsPage api={api} />
   </StrictMode>,
 );

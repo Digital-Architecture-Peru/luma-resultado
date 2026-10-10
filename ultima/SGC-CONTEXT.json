@@ -6,8 +6,8 @@
     "type": "Notificación",
     "domain": "Pagos",
     "layer": "Full Stack",
-    "stack": "React + TypeScript + Java + Spring Boot",
-    "backendStack": "Java + Spring Boot",
+    "stack": "React + TypeScript + Java + Quarkus",
+    "backendStack": "Java + Quarkus",
     "persistence": "PostgreSQL"
   },
   "sgc": {
