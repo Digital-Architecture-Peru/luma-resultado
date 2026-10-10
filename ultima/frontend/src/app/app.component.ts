@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
-import { NotificationsPageComponent } from './ui/pages/notifications-page/notifications-page.component';
+import { NotificationsPageComponent } from './notifications/pages/notifications-page.component';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   imports: [NotificationsPageComponent],
-  template: `<app-notifications-page />`,
+  template: '<app-notifications-page />'
 })
 export class AppComponent {}
