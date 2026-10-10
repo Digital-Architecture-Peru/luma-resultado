@@ -1,51 +1,54 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { NotificationsApi } from '../services/notificationsApi';
-import type { PaymentNotification } from '../types/notification';
+import { useCallback, useEffect, useState } from "react";
+import type { NotificationDto, NotificationsApi } from "../api/types";
 
-export type LoadState = 'loading' | 'success' | 'error';
+export type LoadStatus = "idle" | "loading" | "success" | "error";
+
+export const POLL_INTERVAL_MS = 30_000;
 
 export interface UseNotifications {
-  items: PaymentNotification[];
-  state: LoadState;
+  items: NotificationDto[];
   unreadCount: number;
-  markAsRead: (id: number) => Promise<void>;
+  status: LoadStatus;
+  markRead: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
-export function useNotifications(api: NotificationsApi, pollMs: number): UseNotifications {
-  const [items, setItems] = useState<PaymentNotification[]>([]);
-  const [state, setState] = useState<LoadState>('loading');
+/** Consulta periódica (polling) de notificaciones no leídas; ver AD4. */
+export function useNotifications(api: NotificationsApi, intervalMs: number = POLL_INTERVAL_MS): UseNotifications {
+  const [items, setItems] = useState<NotificationDto[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [status, setStatus] = useState<LoadStatus>("idle");
 
   const refresh = useCallback(async () => {
+    setStatus((current) => (current === "success" ? current : "loading"));
     try {
-      setItems(await api.list());
-      setState('success');
+      const [list, count] = await Promise.all([api.list("unread"), api.unreadCount()]);
+      setItems(list);
+      setUnreadCount(count);
+      setStatus("success");
     } catch {
-      setState('error');
+      setStatus("error");
     }
   }, [api]);
 
-  useEffect(() => {
-    void refresh();
-    if (pollMs <= 0) {
-      return undefined;
-    }
-    const timer = setInterval(() => void refresh(), pollMs);
-    return () => clearInterval(timer);
-  }, [refresh, pollMs]);
-
-  const markAsRead = useCallback(
-    async (id: number) => {
+  const markRead = useCallback(
+    async (id: string) => {
       try {
-        const updated = await api.markAsRead(id);
-        setItems((current) => current.map((n) => (n.id === id ? updated : n)));
+        await api.markRead(id);
+        setItems((current) => current.filter((n) => n.id !== id));
+        setUnreadCount((current) => Math.max(0, current - 1));
       } catch {
-        setState('error');
+        setStatus("error");
       }
     },
     [api],
   );
 
-  const unreadCount = items.filter((n) => n.status === 'UNREAD').length;
-  return { items, state, unreadCount, markAsRead, refresh };
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => void refresh(), intervalMs);
+    return () => clearInterval(timer);
+  }, [refresh, intervalMs]);
+
+  return { items, unreadCount, status, markRead, refresh };
 }
