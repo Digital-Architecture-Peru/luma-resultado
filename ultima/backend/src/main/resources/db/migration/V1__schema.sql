@@ -1,26 +1,33 @@
-CREATE TABLE account_notification (
-    id          UUID PRIMARY KEY,
-    account_id  VARCHAR(20)  NOT NULL,
-    type        VARCHAR(30)  NOT NULL
-                CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'LOW_BALANCE')),
-    message     VARCHAR(255) NOT NULL,
-    amount      NUMERIC(15, 2),
-    read_at     TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+-- Esquema de notificaciones de cuentas (PostgreSQL).
+CREATE TABLE account (
+    id            VARCHAR(40) PRIMARY KEY,
+    masked_number VARCHAR(12) NOT NULL CHECK (masked_number ~ '^\*{4}[0-9]{4}$')
 );
 
-CREATE INDEX idx_account_notification_account_created
-    ON account_notification (account_id, created_at DESC);
+CREATE TABLE notification (
+    id         UUID PRIMARY KEY,
+    account_id VARCHAR(40)    NOT NULL REFERENCES account (id),
+    type       VARCHAR(20)    NOT NULL CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'LOW_BALANCE')),
+    title      VARCHAR(120)   NOT NULL,
+    body       VARCHAR(500)   NOT NULL,
+    amount     NUMERIC(18, 2),
+    currency   CHAR(3),
+    created_at TIMESTAMPTZ    NOT NULL,
+    read_at    TIMESTAMPTZ,
+    CHECK ((amount IS NULL) = (currency IS NULL))
+);
 
-CREATE INDEX idx_account_notification_unread
-    ON account_notification (account_id, created_at DESC)
+CREATE INDEX idx_notification_account_created
+    ON notification (account_id, created_at DESC);
+
+CREATE INDEX idx_notification_unread
+    ON notification (account_id, created_at DESC)
     WHERE read_at IS NULL;
 
 CREATE TABLE notification_preference (
-    account_id             VARCHAR(20) PRIMARY KEY,
-    low_balance_threshold  NUMERIC(15, 2) NOT NULL DEFAULT 100.00
-                           CHECK (low_balance_threshold >= 0),
-    deposit_enabled        BOOLEAN     NOT NULL DEFAULT TRUE,
-    withdrawal_enabled     BOOLEAN     NOT NULL DEFAULT TRUE,
-    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+    account_id VARCHAR(40)   NOT NULL REFERENCES account (id),
+    type       VARCHAR(20)   NOT NULL CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'LOW_BALANCE')),
+    enabled    BOOLEAN       NOT NULL DEFAULT TRUE,
+    threshold  NUMERIC(18, 2) CHECK (threshold IS NULL OR threshold >= 0),
+    PRIMARY KEY (account_id, type)
 );
