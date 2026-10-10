@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-10T00:28:18.140Z",
+  "actualizado": "2026-10-10T00:37:39.006Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -4006,6 +4006,73 @@
           "etapa": "Cierre",
           "segundo": 374,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 9c41cc7: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/9c41cc79fe13f2812cd6781776158b0c10240806\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Notificación|Cuentas|Full Stack|Angular|Java + Spring Boot|PostgreSQL": {
+      "clave": "Notificación|Cuentas|Full Stack|Angular|Java + Spring Boot|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Notificación",
+        "domain": "Cuentas",
+        "layer": "Full Stack",
+        "stack": "Angular",
+        "backendStack": "Java + Spring Boot",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "503e259c05f9b799d7285f5f95c3fb0a55fdb040",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/122",
+      "distTree": "6dc411c3c6ffc5987a48da96b9c6c6c423d2274a",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-10T00:37:23Z",
+      "duracion_s": 525,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 8aa7957b-4602-4833-bd1b-998b4e828616 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 39,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 39,
+          "detalle": "generando Angular + Java + Spring Boot (capa Full Stack) en segundo plano, tarea 4235d49d-8d6d-424c-bee5-e9bc4e2225c7. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 282,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 291,
+          "detalle": "falló install: [frontend] npm install falló npm error code ERESOLVE npm error ERESOLVE unable to resolve dependency tree npm error npm error While resolving: cuentas-notificaciones-web@0.1.0 npm error Found: @angular/common@17.3.12 npm erro"
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 496,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 496,
+          "detalle": "build correcto; pruebas unitarias correctas (11); [backend] maven build correcto; [backend] maven pruebas correctas (16); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 525,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 503e259: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/503e259c05f9b799d7285f5f95c3fb0a55fdb040\nPull Request: https://github.com/Digita"
         }
       ]
     }
