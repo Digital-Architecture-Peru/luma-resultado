@@ -1,54 +1,57 @@
-import { useCallback, useEffect, useState } from "react";
-import type { NotificationDto, NotificationsApi } from "../api/types";
+import { useCallback, useEffect, useState } from 'react';
+import type { NotificationsApi } from '../services/notificationsApi';
+import type { NotificationFilter, PaymentNotification } from '../types/notification';
 
-export type LoadStatus = "idle" | "loading" | "success" | "error";
+export type LoadStatus = 'loading' | 'success' | 'error';
 
-export const POLL_INTERVAL_MS = 30_000;
-
-export interface UseNotifications {
-  items: NotificationDto[];
-  unreadCount: number;
+export interface NotificationsState {
+  items: PaymentNotification[];
+  unread: number;
+  filter: NotificationFilter;
   status: LoadStatus;
-  markRead: (id: string) => Promise<void>;
-  refresh: () => Promise<void>;
+  setFilter: (filter: NotificationFilter) => void;
+  markAsRead: (id: string) => Promise<void>;
+  reload: () => void;
 }
 
-/** Consulta periódica (polling) de notificaciones no leídas; ver AD4. */
-export function useNotifications(api: NotificationsApi, intervalMs: number = POLL_INTERVAL_MS): UseNotifications {
-  const [items, setItems] = useState<NotificationDto[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [status, setStatus] = useState<LoadStatus>("idle");
-
-  const refresh = useCallback(async () => {
-    setStatus((current) => (current === "success" ? current : "loading"));
-    try {
-      const [list, count] = await Promise.all([api.list("unread"), api.unreadCount()]);
-      setItems(list);
-      setUnreadCount(count);
-      setStatus("success");
-    } catch {
-      setStatus("error");
-    }
-  }, [api]);
-
-  const markRead = useCallback(
-    async (id: string) => {
-      try {
-        await api.markRead(id);
-        setItems((current) => current.filter((n) => n.id !== id));
-        setUnreadCount((current) => Math.max(0, current - 1));
-      } catch {
-        setStatus("error");
-      }
-    },
-    [api],
-  );
+export function useNotifications(api: NotificationsApi): NotificationsState {
+  const [items, setItems] = useState<PaymentNotification[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [filter, setFilter] = useState<NotificationFilter>('unread');
+  const [status, setStatus] = useState<LoadStatus>('loading');
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    void refresh();
-    const timer = setInterval(() => void refresh(), intervalMs);
-    return () => clearInterval(timer);
-  }, [refresh, intervalMs]);
+    let cancelled = false;
+    setStatus('loading');
+    Promise.all([api.list(filter), api.unreadCount()])
+      .then(([page, count]) => {
+        if (cancelled) return;
+        setItems(page.items);
+        setUnread(count);
+        setStatus('success');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, filter, version]);
 
-  return { items, unreadCount, status, markRead, refresh };
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
+
+  const markAsRead = useCallback(
+    async (id: string) => {
+      try {
+        await api.markAsRead(id);
+        reload();
+      } catch {
+        setStatus('error');
+      }
+    },
+    [api, reload],
+  );
+
+  return { items, unread, filter, status, setFilter, markAsRead, reload };
 }
