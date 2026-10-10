@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-10T00:58:22.051Z",
+  "actualizado": "2026-10-10T01:04:58.844Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -4212,6 +4212,68 @@
           "etapa": "Cierre",
           "segundo": 554,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit adb9117: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/adb91176b6ee83a6fda3e2cd1b1132e638589f99\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Notificación|Pagos|Full Stack|React + TypeScript|Java + Spring Boot|PostgreSQL": {
+      "clave": "Notificación|Pagos|Full Stack|React + TypeScript|Java + Spring Boot|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Notificación",
+        "domain": "Pagos",
+        "layer": "Full Stack",
+        "stack": "React + TypeScript",
+        "backendStack": "Java + Spring Boot",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "224cb1e0cbc8e0cc38c733ca01a9bc4c1b5ad49f",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/125",
+      "distTree": "02e1dff8dccc7e8c0043850b13856182dfb96bbc",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-10T01:04:43Z",
+      "duracion_s": 361,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 68f6ed25-8683-410d-be10-29cfdf7af841 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 39,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 39,
+          "detalle": "generando React + TypeScript + Java + Spring Boot (capa Full Stack) en segundo plano, tarea c9c44e7b-320e-4e26-9b76-df2d63d94333. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 206,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 329,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 329,
+          "detalle": "build correcto; pruebas unitarias correctas (7); [backend] maven build correcto; [backend] maven pruebas correctas (7); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 361,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 224cb1e: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/224cb1e0cbc8e0cc38c733ca01a9bc4c1b5ad49f\nPull Request: https://github.com/Digita"
         }
       ]
     }
