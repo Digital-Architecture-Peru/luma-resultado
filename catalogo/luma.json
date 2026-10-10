@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-10T00:37:39.006Z",
+  "actualizado": "2026-10-10T00:48:26.092Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -4073,6 +4073,73 @@
           "etapa": "Cierre",
           "segundo": 525,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 503e259: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/503e259c05f9b799d7285f5f95c3fb0a55fdb040\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Notificación|Cuentas|Full Stack|Angular|Java + Quarkus|PostgreSQL": {
+      "clave": "Notificación|Cuentas|Full Stack|Angular|Java + Quarkus|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Notificación",
+        "domain": "Cuentas",
+        "layer": "Full Stack",
+        "stack": "Angular",
+        "backendStack": "Java + Quarkus",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "572b82db936b4502b22d68a6412a6e025daf55b4",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/123",
+      "distTree": "74ed7a0270ae2c171436a129fab0b4c48d620a85",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-10T00:48:06Z",
+      "duracion_s": 608,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo e57b0e7c-c82c-4c84-98db-1298f51399b1 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 45,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 45,
+          "detalle": "generando Angular + Java + Quarkus (capa Full Stack) en segundo plano, tarea 4f3d6983-6717-4cb6-9c61-2a688048b8be. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 332,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 455,
+          "detalle": "falló build: [backend] [backend] maven: mvn -B -ntp falló [INFO] Scanning for projects... [INFO] [INFO] ------------------< com.banca:notificaciones-cuentas >------------------ [INFO] Building notificaciones-cuentas 0.1.0-SNAPSHOT [INFO] fr"
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 579,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 579,
+          "detalle": "build correcto; pruebas unitarias correctas (7); [backend] maven build correcto; [backend] maven pruebas correctas (14); dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 608,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 572b82d: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/572b82db936b4502b22d68a6412a6e025daf55b4\nPull Request: https://github.com/Digita"
         }
       ]
     }
