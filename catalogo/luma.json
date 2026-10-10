@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-10T00:48:26.092Z",
+  "actualizado": "2026-10-10T00:58:22.051Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -4140,6 +4140,78 @@
           "etapa": "Cierre",
           "segundo": 608,
           "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit 572b82d: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/572b82db936b4502b22d68a6412a6e025daf55b4\nPull Request: https://github.com/Digita"
+        }
+      ]
+    },
+    "Notificación|Cuentas|Full Stack|Angular|.NET|PostgreSQL": {
+      "clave": "Notificación|Cuentas|Full Stack|Angular|.NET|PostgreSQL",
+      "answers": {
+        "where": "Banca por Internet",
+        "pattern": "Component-based (Atomic Design)",
+        "tests": "Unitarias",
+        "type": "Notificación",
+        "domain": "Cuentas",
+        "layer": "Full Stack",
+        "stack": "Angular",
+        "backendStack": ".NET",
+        "persistence": "PostgreSQL"
+      },
+      "commit": "adb91176b6ee83a6fda3e2cd1b1132e638589f99",
+      "pr": "https://github.com/Digital-Architecture-Peru/luma-resultado/pull/124",
+      "distTree": "61503c76bdce57f7c9cec9c3bb6ca48d2cbe2ee1",
+      "distRuta": "ultima/frontend/dist",
+      "fecha": "2026-10-10T00:57:58Z",
+      "duracion_s": 554,
+      "etapas": [
+        {
+          "etapa": "Preflight",
+          "segundo": 0,
+          "detalle": "✔ construccion: ping ok (luma · entrada de construcción) · ✔ mcp: 17 herramientas agent_* · ✔ gh: gh autenticado. Trabajo 8f4a9fb7-7896-40d5-ba5d-b42f857d3bf1 registrado en /api/construccion."
+        },
+        {
+          "etapa": "Contexto",
+          "segundo": 0,
+          "detalle": "consultando el contexto…"
+        },
+        {
+          "etapa": "Diseño",
+          "segundo": 40,
+          "detalle": "solución, hipótesis y criterios de aceptación definidos (DESIGN.md)."
+        },
+        {
+          "etapa": "Build",
+          "segundo": 40,
+          "detalle": "generando Angular + .NET (capa Full Stack) en segundo plano, tarea 4cd070cc-551b-4fe2-bb6e-ba17dbcfadb8. Te aviso al terminar."
+        },
+        {
+          "etapa": "Test",
+          "segundo": 212,
+          "detalle": "verificando sintaxis, compilación y pruebas unitarias; si fallan, el builder corrige y se repite (máx. 3 correcciones)."
+        },
+        {
+          "etapa": "Corrección 1/3",
+          "segundo": 340,
+          "detalle": "falló test: [frontend] npm test falló > notifications-frontend@0.1.0 test > jest --ci No tests found, exiting with code 1 Run with `--passWithNoTests` to exit with code 0 In C:\\Users\\josec\\OneDrive\\Documentos\\prueba_vb6\\proyecto vb6\\microap"
+        },
+        {
+          "etapa": "Corrección 2/3",
+          "segundo": 436,
+          "detalle": "falló build: [backend] [backend] dotnet: dotnet build --nologo falló Determinando los proyectos que se van a restaurar... Se ha restaurado C:\\Users\\josec\\OneDrive\\Documentos\\prueba_vb6\\proyecto vb6\\microapp-builder-url\\.local\\workspaces\\sta"
+        },
+        {
+          "etapa": "Despliegue",
+          "segundo": 523,
+          "detalle": "publicando en GitHub (rama + Pull Request)…"
+        },
+        {
+          "etapa": "Compilación y pruebas ya verificadas en la etapa 4",
+          "segundo": 523,
+          "detalle": "build correcto; pruebas unitarias correctas (9); [backend] dotnet build correcto; [backend] dotnet pruebas correctas; dist/ generado"
+        },
+        {
+          "etapa": "Cierre",
+          "segundo": 554,
+          "detalle": "Terminó. Repo: https://github.com/Digital-Architecture-Peru/luma-resultado · commit adb9117: https://github.com/Digital-Architecture-Peru/luma-resultado/commit/adb91176b6ee83a6fda3e2cd1b1132e638589f99\nPull Request: https://github.com/Digita"
         }
       ]
     }
