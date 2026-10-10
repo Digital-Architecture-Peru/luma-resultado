@@ -1,15 +1,17 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { NotificationsPage } from "./pages/NotificationsPage";
-import "./styles.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { NotificationsPage } from './pages/NotificationsPage';
+import './styles.css';
 
-const root = document.getElementById("root");
-if (!root) {
-  throw new Error("No se encontró el elemento #root");
+const accountId = import.meta.env.VITE_ACCOUNT_ID ?? '10020030041234';
+
+const container = document.getElementById('root');
+if (!container) {
+  throw new Error('No se encontró el elemento #root');
 }
 
-createRoot(root).render(
+createRoot(container).render(
   <StrictMode>
-    <NotificationsPage accountId={import.meta.env.VITE_ACCOUNT_ID ?? "acc-001"} />
+    <NotificationsPage accountId={accountId} />
   </StrictMode>,
 );

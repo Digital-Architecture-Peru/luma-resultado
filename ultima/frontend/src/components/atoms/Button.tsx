@@ -1,11 +1,23 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ReactNode } from 'react';
 
-type Variant = "primary" | "ghost";
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
+interface ButtonProps {
+  onClick: () => void;
+  children: ReactNode;
+  variant?: 'primary' | 'ghost';
+  disabled?: boolean;
+  pressed?: boolean;
 }
 
-export function Button({ variant = "primary", className, type = "button", ...rest }: ButtonProps) {
-  return <button type={type} className={`btn btn--${variant} ${className ?? ""}`.trim()} {...rest} />;
+export function Button({ onClick, children, variant = 'primary', disabled = false, pressed }: ButtonProps) {
+  return (
+    <button
+      type="button"
+      className={`btn btn--${variant}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={pressed}
+    >
+      {children}
+    </button>
+  );
 }

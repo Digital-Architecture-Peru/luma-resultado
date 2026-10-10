@@ -1,6 +1,7 @@
-import type { AccountNotification } from "../../types/notifications";
-import { Badge } from "../atoms/Badge";
-import { Button } from "../atoms/Button";
+import type { AccountNotification } from '../../api/types';
+import { formatDate, typeInfo } from '../../lib/format';
+import { Badge } from '../atoms/Badge';
+import { Button } from '../atoms/Button';
 
 interface NotificationItemProps {
   notification: AccountNotification;
@@ -8,23 +9,22 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onMarkRead }: NotificationItemProps) {
-  const unread = notification.status === "UNREAD";
+  const info = typeInfo(notification.type);
   return (
-    <li className={`notification ${unread ? "notification--unread" : ""}`.trim()}>
+    <li className={`notification ${notification.isRead ? 'notification--read' : 'notification--unread'}`}>
       <div className="notification__head">
-        <Badge type={notification.type} />
-        <time dateTime={notification.createdAt}>
-          {new Date(notification.createdAt).toLocaleString("es")}
-        </time>
+        <Badge tone={info.tone}>{info.label}</Badge>
+        <span className="notification__account">Cuenta {notification.accountMasked}</span>
+        <time dateTime={notification.createdAt}>{formatDate(notification.createdAt)}</time>
       </div>
-      <h3>{notification.title}</h3>
+      <h3 className="notification__title">{notification.title}</h3>
       <p>{notification.message}</p>
-      {unread ? (
+      {notification.isRead ? (
+        <span className="notification__state">Leída</span>
+      ) : (
         <Button variant="ghost" onClick={() => onMarkRead(notification.id)}>
           Marcar como leída
         </Button>
-      ) : (
-        <span className="muted">Leída</span>
       )}
     </li>
   );

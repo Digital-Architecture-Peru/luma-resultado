@@ -1,29 +1,21 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 interface NotificationsLayoutProps {
   title: string;
+  bell: ReactNode;
   toolbar: ReactNode;
-  main: ReactNode;
-  aside: ReactNode;
+  children: ReactNode;
 }
 
-export function NotificationsLayout({ title, toolbar, main, aside }: NotificationsLayoutProps) {
+export function NotificationsLayout({ title, bell, toolbar, children }: NotificationsLayoutProps) {
   return (
-    <div className="layout">
-      <header>
+    <main className="layout">
+      <header className="layout__header">
         <h1>{title}</h1>
-        {toolbar}
+        {bell}
       </header>
-      <main className="layout__grid">
-        <section aria-labelledby="list-title">
-          <h2 id="list-title">Notificaciones</h2>
-          {main}
-        </section>
-        <aside aria-labelledby="prefs-title">
-          <h2 id="prefs-title">Preferencias</h2>
-          {aside}
-        </aside>
-      </main>
-    </div>
+      <div className="layout__toolbar">{toolbar}</div>
+      <section aria-label="Listado de notificaciones">{children}</section>
+    </main>
   );
 }
