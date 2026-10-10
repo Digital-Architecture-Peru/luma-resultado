@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Quarkus
+- ¿Qué stack? React + TypeScript + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Notificación" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + .NET (capa Full Stack) para "Notificación" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,82 +29,77 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento (Notificación de Pagos · Banca por Internet)
+# DESIGN (refinamiento)
 
 ## Decisiones de arquitectura
-| ID | Decisión | Justificación |
+| # | Decisión | Justificación |
 |---|---|---|
-| AD1 | Backend Quarkus en capas: `resource → service → port (NotificationRepository) → adapter JDBC` | La integración está sin definir. La interfaz permite pruebas unitarias sin base de datos y cambiar el adaptador más adelante. |
-| AD2 | Adaptador JDBC (Agroal) con `PreparedStatement` | El acceso queda parametrizado de forma explícita y no depende de ORM. |
-| AD3 | Migraciones Flyway: `V1__schema.sql` y `V2__seed_ficticio.sql` | Esquema versionado y reproducible. Los datos de ejemplo quedan separados del esquema. |
-| AD4 | Notificación in-app con consulta periódica (polling) cada 30 s desde el front | Es la opción más simple y verificable. SSE o WebSocket quedan como evolución. |
-| AD5 | Front con Atomic Design: atoms, molecules, organisms, templates y pages, más un cliente API tipado | Sigue el patrón pedido. La UI y el acceso a datos quedan aislados para poder probarlos. |
-| AD6 | Idempotencia por `UNIQUE(payment_id, type)` | Evita notificaciones duplicadas si el mismo evento de pago llega dos veces. |
-| AD7 | Minimización de datos: solo los últimos 4 dígitos de la cuenta, sin datos sensibles | Reduce la exposición de datos en el contexto bancario. |
+| D1 | Monorepo con `frontend/` (React + TS + Vite) y `backend/` (.NET Web API) | Build y pruebas independientes por capa, con un único README |
+| D2 | Backend por capas: `Api` → `Application` → `Domain`, más `Infrastructure` detrás de interfaces | La integración no está definida, así que se aísla tras `INotificationSource` y `INotificationRepository` |
+| D3 | Acceso a datos con Npgsql + Dapper y SQL parametrizado | Usa SQL explícito y revisable de forma estática, sin depender de migraciones generadas por un ORM |
+| D4 | Migraciones SQL versionadas en `db/migrations/V001__*.sql` | Coincide con el criterio de T04-db; PostgreSQL solo admite revisión estática |
+| D5 | Canal único: bandeja in-app (no leídas, marcar como leída) | Email y SMS requieren integraciones no definidas |
+| D6 | UI con Atomic Design: atoms → molecules → organisms → templates → pages | Patrón elegido en el guion; los componentes se prueban de forma aislada |
+| D7 | Pruebas unitarias: xUnit (Domain/Application) y Vitest + Testing Library (componentes) | Corresponde a "Unitarias" en ambas capas |
 
 ## Contrato API (v1)
-- `GET /api/v1/notifications?status=unread|all&limit=20` devuelve `NotificationDto[]`.
-- `GET /api/v1/notifications/unread-count` devuelve `{ count }`.
-- `PATCH /api/v1/notifications/{id}/read` responde 204, o 404 si la notificación no pertenece al cliente.
-- `POST /api/v1/notifications` es un endpoint interno que simula un evento de pago. Responde 201, o 409 si es duplicado.
-- Cliente identificado por la cabecera `X-Customer-Id` con un valor ficticio (ver H2).
+- `GET /api/v1/notifications?status=unread|all&page=&size=`
+- `GET /api/v1/notifications/unread-count`
+- `PATCH /api/v1/notifications/{id}/read`
+- Errores en formato `ProblemDetails`. Los montos son decimales y van con `currency` ISO-4217.
 
-## Modelo de datos (PostgreSQL)
-Tabla `notification` con estas columnas:
-- `id UUID PK`
-- `customer_id VARCHAR(36)`
-- `payment_id VARCHAR(64)`
-- `type VARCHAR(32) CHECK IN ('PAYMENT_SUCCEEDED','PAYMENT_FAILED','PAYMENT_SCHEDULED')`
-- `title`, `message`
-- `amount NUMERIC(15,2)`
-- `currency CHAR(3)`
-- `account_last4 CHAR(4)`
-- `created_at TIMESTAMPTZ`
-- `read_at TIMESTAMPTZ NULL`
-
-Índices:
-- `(customer_id, created_at DESC)`
-- Índice parcial `WHERE read_at IS NULL`
+## Modelo de datos
+- Tabla `payment_notifications`:
+  - `id uuid PK`
+  - `customer_id`
+  - `payment_ref`, enmascarada (`****1234`)
+  - `type`, con CHECK: `PAYMENT_DONE | PAYMENT_REJECTED | PAYMENT_DUE`
+  - `title`, `body`
+  - `amount numeric(18,2)`, `currency char(3)`
+  - `created_at timestamptz`, `read_at timestamptz NULL`
+- Índices:
+  - `(customer_id, created_at DESC)`
+  - Índice parcial `(customer_id) WHERE read_at IS NULL`
+- Seed con clientes y pagos ficticios.
 
 ## Estructura de módulos
 ```
-backend/  (Maven, Quarkus)
-  pom.xml
-  src/main/java/.../notification/{api,service,domain,port,adapter/jdbc}
-  src/main/resources/{application.properties,db/migration/V1__,V2__}
-  src/test/java/.../NotificationServiceTest.java   (JUnit 5 + Mockito)
-frontend/ (Vite, React, TS)
-  package.json
-  src/{atoms,molecules,organisms,templates,pages,api,hooks}
-  src/**/*.test.tsx   (Vitest + Testing Library)
+backend/
+  src/Payments.Notifications.Api/            Controllers, Program.cs
+  src/Payments.Notifications.Application/    casos de uso, DTOs
+  src/Payments.Notifications.Domain/         entidad, enum tipo, reglas
+  src/Payments.Notifications.Infrastructure/  repositorio Dapper, fuente fake
+  tests/Payments.Notifications.UnitTests/
+db/migrations/  V001__schema.sql  V002__seed.sql
+frontend/src/
+  components/atoms/ (Badge, Icon, Button)
+  components/molecules/ (NotificationItem, AmountText)
+  components/organisms/ (NotificationList, NotificationBell)
+  components/templates/ (NotificationsTemplate)
+  pages/NotificationsPage.tsx
+  services/notificationsApi.ts (+ mock)
+  types/notification.ts
 README.md
 ```
-Componentes clave del front:
-- Atoms: `Badge`, `Icon`, `Button`
-- Molecules: `NotificationItem`
-- Organisms: `NotificationBell`, `NotificationList`
-- Hook: `useNotifications`
 
 ## Hipótesis
-- **H1:** Canal solo in-app. Email, SMS y push quedan fuera de alcance.
-- **H2:** La autenticación real (OIDC) está fuera de alcance. `X-Customer-Id` es un sustituto temporal.
-- **H3:** El origen de los eventos de pago está sin definir. Se simula con el `POST` interno y con datos de ejemplo.
-- **H4:** Idioma es-ES y moneda en formato ISO 4217. Las fechas se guardan en UTC y se muestran en hora local.
-- **H5:** Configuración por variables de entorno (`QUARKUS_DATASOURCE_*`, `VITE_API_URL`), sin secretos en el repositorio.
+- H1: Se usan .NET 8 y Node 20 LTS. No están confirmadas.
+- H2: La autenticación queda fuera de alcance. En desarrollo, el cliente se identifica con el header ficticio `X-Customer-Id`. En producción debe derivarse del token.
+- H3: Los eventos de pago llegan por una integración por definir. Mientras tanto, se simulan con `FakeNotificationSource`.
+- H4: Las fechas se guardan en UTC y se muestran en la zona del navegador.
+- H5: La configuración, incluida la cadena de conexión, se lee de variables de entorno. No hay secretos en el repositorio.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| IDOR: marcar como leída una notificación de otro cliente | Todas las consultas filtran por `customer_id`. Hay una prueba unitaria que lo cubre. |
-| Sin toolchain local (Maven/npm) | Se marca como no verificado y se entrega como candidate. |
-| SQL específico de PostgreSQL (índice parcial, TIMESTAMPTZ) | Solo revisión estática, porque SQLite no es equivalente. |
-| Carga por polling con muchos usuarios | Uso de `unread-count` ligero. Evolución prevista a SSE. |
-| Montos con coma flotante | `BigDecimal` en Java y `NUMERIC` en la base de datos. En el front, formato con `Intl.NumberFormat`. |
+| No se puede ejecutar PostgreSQL en la verificación | Revisión estática del SQL; resultado marcado como no verificado |
+| Puede faltar la toolchain .NET o npm | Se reporta como no verificado en el handoff |
+| Exposición de datos de pago | Referencia enmascarada, sin PAN ni datos personales reales |
+| Contrato de integración desconocido | Interfaz estable y adaptador reemplazable |
+| Accesibilidad de la bandeja | Roles ARIA, `aria-live` en el contador y foco visible |
 
 ## Trazabilidad con la aceptación
-- **Sintaxis:** se revisan los archivos `.java`, `.ts`, `.tsx` y `.sql` con los validadores disponibles.
-- **Pruebas presentes:**
-  - `NotificationServiceTest`: listar, marcar como leída, rechazar el acceso de otro cliente y detectar duplicados.
-  - `NotificationItem.test.tsx` y `NotificationBell.test.tsx`: render, contador y clic para marcar como leída.
-- **README:** incluye build y ejecución, variables de entorno, migraciones e integración pendiente.
-- **Publicación:** con commit. La compilación y la ejecución en producción no se afirman.
+- La sintaxis se verifica sobre `.ts/.tsx/.cs/.sql` con validadores locales.
+- Las pruebas residen en `backend/tests` y en `frontend/src/**/*.test.tsx`.
+- El README documenta build, ejecución, la integración pendiente y PostgreSQL.
+- La publicación se hace con commit y estado candidate.
