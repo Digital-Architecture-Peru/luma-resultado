@@ -1,6 +1,12 @@
-import type { NotificationType } from "../../types/notifications";
-import { TYPE_LABELS } from "../../types/notifications";
+import type { ReactNode } from 'react';
 
-export function Badge({ type }: { type: NotificationType }) {
-  return <span className={`badge badge--${type.toLowerCase()}`}>{TYPE_LABELS[type]}</span>;
+export type BadgeTone = 'neutral' | 'info' | 'warning' | 'success';
+
+interface BadgeProps {
+  tone?: BadgeTone;
+  children: ReactNode;
+}
+
+export function Badge({ tone = 'neutral', children }: BadgeProps) {
+  return <span className={`badge badge--${tone}`}>{children}</span>;
 }

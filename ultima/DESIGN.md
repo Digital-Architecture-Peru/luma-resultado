@@ -6,7 +6,7 @@
 - ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? React + TypeScript + Java + Quarkus
+- ¿Qué stack? React + TypeScript + .NET
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en React + TypeScript + Java + Quarkus (capa Full Stack) para "Notificación" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + .NET (capa Full Stack) para "Notificación" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en React + TypeScript + Java + Quarkus y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -34,62 +34,57 @@ Estado: fallback (SGC no configurado)
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (React+TS, Vite) y `backend/` (Quarkus, Maven) | Un solo entregable Full Stack; cada parte se construye con su toolchain |
-| D2 | Backend en hexagonal ligero: `domain` → `application` → `infrastructure` | Permite pruebas unitarias sin BD y deja la integración sin definir tras un puerto |
-| D3 | Puerto `NotificationChannel` con un adaptador `InAppChannel` (persistido) y un stub para canales externos | La integración no está definida; no se hacen llamadas reales |
-| D4 | Persistencia con Flyway (`V1__schema.sql`, `V2__seed_ficticio.sql`) y repositorio con consultas parametrizadas (Panache o `PreparedStatement`) | Esquema versionado y sin concatenación de SQL |
-| D5 | Frontend con Atomic Design estricto; los átomos no acceden a datos | El usuario eligió ese patrón; facilita reutilizar componentes en Banca por Internet |
-| D6 | API REST versionada `/api/v1` con DTOs separados de las entidades | Contrato estable entre front y back |
-| D7 | Configuración por `application.properties` con `${ENV}` y `.env.example` sin valores reales | Sin secretos |
+| D1 | Backend .NET 8 Web API en capas: `Domain`, `Application`, `Infrastructure`, `Api` | Aísla las reglas de notificación para probarlas sin BD ni HTTP |
+| D2 | Acceso a PostgreSQL con Npgsql + Dapper detrás de `INotificationRepository`; solo SQL parametrizado (`@param`) | Cumple el acceso parametrizado y mantiene el SQL revisable de forma estática |
+| D3 | Migraciones SQL versionadas en `db/migrations/V001__*.sql` y seed ficticio aparte (`V002__seed.sql`) | Separa el esquema de los datos y permite revisar cada cambio por versión |
+| D4 | API REST mínima: `GET /api/accounts/{accountId}/notifications?unreadOnly=`, `PATCH /api/notifications/{id}/read`, `GET`/`PUT /api/accounts/{accountId}/notification-preferences` | Cubre lectura, marcado y preferencias sin integraciones externas |
+| D5 | Front React + TS (Vite) con Atomic Design: atoms → molecules → organisms → templates → pages | Corresponde al patrón elegido y permite probar componentes de forma aislada |
+| D6 | Cliente HTTP tipado (`notificationsApi.ts`) con DTO compartidos por contrato, no por código | Mantiene independientes los stacks de front y back |
+| D7 | Configuración solo por entorno: `ConnectionStrings__Notifications`, `VITE_API_BASE_URL` | No se guardan secretos en el repositorio |
+| D8 | Números de cuenta enmascarados (`****1234`) en el DTO y en la UI | Minimiza la exposición de datos en el canal de Banca por Internet |
 
-**Contrato propuesto**
-- `GET /api/v1/accounts/{accountId}/notifications?status=UNREAD&page=0&size=20`
-- `PATCH /api/v1/notifications/{id}/read`
-- `GET|PUT /api/v1/accounts/{accountId}/notification-preferences`
-
-**Modelo de datos (PostgreSQL)**
-- `notification(id uuid PK, account_id, type, title, message, status, created_at, read_at)`, con índice `(account_id, status, created_at DESC)`.
-- `notification_preference(account_id, type, channel, enabled, threshold_amount numeric(15,2))`, con PK compuesta `(account_id, type, channel)`.
-- `type` acepta los valores CREDIT, DEBIT y LOW_BALANCE mediante `CHECK`.
+## Modelo de datos (PostgreSQL)
+- `account_notification`: `id uuid PK`, `account_id varchar(20)`, `customer_id varchar(20)`, `type varchar(30)` con CHECK (`DEPOSIT`, `WITHDRAWAL`, `LOW_BALANCE`, `STATEMENT`), `title`, `message`, `created_at timestamptz`, `read_at timestamptz NULL`.
+- `notification_preference`: PK (`account_id`, `type`), `enabled boolean`.
+- Índices: `(account_id, created_at DESC)` y un índice parcial `WHERE read_at IS NULL`.
 
 ## Estructura de módulos
 ```
-backend/src/main/java/.../notifications/
-  domain/        Notification, NotificationType, Preference
-  application/   ListNotifications, MarkAsRead, UpdatePreferences, ports/
-  infrastructure/rest/ persistence/ channel/
-backend/src/main/resources/db/migration/
-backend/src/test/java/...   JUnit 5 + Mockito
+backend/
+  src/Notifications.Domain/        entidades, enums, reglas
+  src/Notifications.Application/   servicios, DTO, interfaces
+  src/Notifications.Infrastructure/ repositorio Npgsql+Dapper
+  src/Notifications.Api/           controllers, Program.cs
+  tests/Notifications.UnitTests/   xUnit + repositorio en memoria
+db/migrations/                     V001__schema.sql, V002__seed.sql
 frontend/src/
-  components/atoms/      Badge, Button, Toggle, Icon
-  components/molecules/  NotificationItem, PreferenceRow
-  components/organisms/  NotificationList, PreferencesForm
-  components/templates/  NotificationsLayout
-  pages/                 NotificationsPage
-  services/ hooks/ types/
-frontend/src/**/*.test.tsx  Vitest + Testing Library
+  components/atoms/                Badge, Icon, Button
+  components/molecules/            NotificationItem
+  components/organisms/            NotificationList, NotificationBell
+  components/templates/            NotificationsLayout
+  pages/                           NotificationsPage
+  api/                             notificationsApi.ts, types.ts
+  __tests__/                       Vitest + Testing Library
+README.md
 ```
 
-## Hipótesis (no confirmadas)
-- H1: "Notificación" se entiende como alertas in-app de movimientos y saldo bajo, más preferencias por cuenta.
-- H2: La autenticación la resuelve el gateway de Banca por Internet. Aquí se simula con un `customerId` en una cabecera stub.
-- H3: Los canales externos (SMS, email, push) quedan fuera de alcance; solo existe su interfaz.
-- H4: Las pruebas unitarias no levantan PostgreSQL. Los repositorios se prueban con mocks y el SQL se revisa solo de forma estática.
-- H5: Se usa Quarkus 3.x con Java 17+, React 18 y Node 18+.
-- H6: Los números de cuenta se muestran enmascarados (`****1234`) y todos los datos son ficticios.
+## Hipótesis
+- H1: "Notificación" significa avisos in-app sobre eventos de cuenta (movimientos, saldo bajo, estado de cuenta). No incluye envío por SMS ni por email.
+- H2: La autenticación queda fuera de alcance. El `customerId` llega en una cabecera simulada (`X-Demo-Customer`) y debe reemplazarse antes de cualquier uso real.
+- H3: El origen de los eventos no está definido. Las notificaciones provienen solo del seed ficticio.
+- H4: Se usa PostgreSQL 13 o superior porque `gen_random_uuid()` no requiere extensión.
+- H5: El stack de pruebas es xUnit para .NET y Vitest para React. Ambos son pruebas unitarias, sin integración contra la BD.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| IDOR: leer notificaciones de otra cuenta | Validar la propiedad de `accountId` en el caso de uso, con una prueba que lo cubra |
-| Datos sensibles en el texto de la notificación | Enmascarar los datos y no registrar montos ni cuentas en los logs |
-| Maven o npm ausentes en el entorno | Marcar la compilación como no verificada en el handoff |
-| Divergencia entre el dialecto SQL y la revisión estática | Usar SQL estándar de PostgreSQL y documentarlo en el README |
-| Volumen de notificaciones | Paginación obligatoria e índice compuesto |
-| Accesibilidad | `aria-live` en la lista y controles etiquetados |
+| No hay toolchain `dotnet`/`npm` disponible y nada se compila | Se marca como no verificado en el handoff |
+| El SQL de PostgreSQL solo admite revisión estática | Se usa sintaxis estándar y se documenta cómo ejecutar las migraciones |
+| Acceso a notificaciones de otra cuenta (IDOR) | El repositorio filtra por `account_id` y `customer_id`; se deja pendiente en H2 |
+| PII en el texto del mensaje | Las plantillas usan la cuenta enmascarada y no incluyen montos completos con nombre |
+| Ambigüedad de zona horaria | Se usa `timestamptz` en UTC y el formateo se hace en el front |
 
-## Aceptación complementaria
-Estos criterios no sustituyen los de la plantilla base.
-- Existe al menos una prueba por caso de uso y por organismo.
-- `MarkAsRead` sobre una notificación ajena lanza un error de dominio.
-- El README describe cómo construir el front y el back, las variables de entorno, las migraciones y la sección "No verificado".
+## Criterios complementarios
+Estos criterios se suman a los de la plantilla sin contradecirlos:
+- Marcar una notificación como leída actualiza `read_at` y reduce el contador del `NotificationBell`. Esto se verifica con una prueba unitaria en cada stack.
+- Una notificación cuyo tipo está deshabilitado en las preferencias no aparece en el listado. Esto se verifica con una prueba unitaria del servicio.
