@@ -3,10 +3,10 @@
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Notificación
-- ¿Sobre qué dominio? Cuentas
+- ¿Sobre qué dominio? Pagos
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + .NET
+- ¿Qué stack? React + TypeScript + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + .NET (capa Full Stack) para "Notificación" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + Java + Spring Boot (capa Full Stack) para "Notificación" sobre Pagos en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,81 +29,76 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN · Refinamiento
+# DESIGN · Refinamiento: Notificación de Pagos (Full Stack)
 
 ## Decisiones de arquitectura
-| # | Decisión | Justificación |
+| ID | Decisión | Justificación |
 |---|---|---|
-| D1 | La capacidad es un centro de notificaciones *in-app* de Cuentas: listar, contar no leídas y marcar como leída | Es el alcance mínimo verificable con integración sin definir. No requiere canales externos. |
-| D2 | Backend .NET 8 Web API en capas: Domain, Application, Infrastructure y Api | Aísla la lógica de negocio para probarla de forma unitaria sin base de datos. |
-| D3 | Acceso a datos con Npgsql y Dapper detrás de `INotificationRepository`, solo con SQL parametrizado (`@param`) | El SQL queda explícito y se puede revisar de forma estática. Evita inyección SQL. Permite un repositorio *fake* en las pruebas. |
-| D4 | Migraciones versionadas en archivos `.sql` (`V001__`, `V002__seed`) | Permiten la revisión estática del esquema PostgreSQL sin motor disponible. |
-| D5 | Frontend Angular con componentes *standalone* y Atomic Design (atoms, molecules, organisms, templates, pages) | Cumple el patrón pedido y favorece la reutilización y las pruebas aisladas. |
-| D6 | `apiBaseUrl` en `environment.ts` y cadena de conexión por variable de entorno (`NOTIF_DB_CONNECTION`) | Ningún secreto queda en el repositorio. |
-| D7 | Contrato REST versionado `/api/v1` | Facilita la evolución sin romper a los consumidores. |
-
-## Contrato API
-- `GET /api/v1/accounts/{accountId}/notifications?status=unread|all&page=1&pageSize=20` devuelve `200 {items, total}`.
-- `GET /api/v1/accounts/{accountId}/notifications/unread-count` devuelve `200 {count}`.
-- `PATCH /api/v1/notifications/{id}/read` devuelve `204`. Responde `404` si la notificación no existe o no pertenece al cliente.
-
-## Modelo de datos
-Tabla `account_notification`:
-- `id uuid PK`
-- `customer_id`
-- `account_id`
-- `type` (`DEPOSIT`, `WITHDRAWAL`, `LOW_BALANCE`)
-- `title`
-- `message`
-- `created_at timestamptz`
-- `read_at timestamptz NULL`
-
-Índices:
-- `(customer_id, account_id, created_at DESC)`
-- Índice parcial `WHERE read_at IS NULL`
-
-El *seed* usa datos ficticios con cuentas enmascaradas (`****1234`).
+| AD1 | Repositorio con `backend/` (Maven, `pom.xml`) y `frontend/` (Vite, `package.json`) | Cada capa tiene su propio build y sus pruebas, sin acoplar toolchains |
+| AD2 | Backend en capas con puertos: `domain`, `application`, `port`, `adapter` | La integración está sin definir. `NotificationChannel` es un puerto con un adaptador fake (log) que se reemplaza sin tocar el dominio |
+| AD3 | Persistencia con `NamedParameterJdbcTemplate` y migraciones Flyway versionadas | Las consultas son parametrizadas y el SQL es explícito, lo que facilita la revisión estática |
+| AD4 | API REST `/api/v1/notifications`: `GET` (filtro `status`), `PATCH /{id}/read`, `POST` (simula evento de pago) | Es el contrato mínimo para listar, marcar como leída y generar la notificación |
+| AD5 | Frontend en Atomic Design: atoms, molecules, organisms, templates, pages | Patrón pedido en el guion; las piezas se reutilizan y se prueban de forma aislada |
+| AD6 | Importes en `BigDecimal` / `NUMERIC(15,2)` + `currency CHAR(3)`; cuenta enmascarada (últimos 4 dígitos) | Evita errores de precisión y no expone datos sensibles |
+| AD7 | Configuración por entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `VITE_API_BASE_URL`) sin valores por defecto sensibles | Sin secretos en el repositorio |
+| AD8 | Idempotencia con `UNIQUE (payment_reference, type)` | Evita notificaciones duplicadas si el evento se recibe dos veces |
 
 ## Estructura de módulos
 ```
-backend/
-  Notifications.sln
-  src/Notifications.Domain/          (Notification, NotificationType)
-  src/Notifications.Application/     (INotificationRepository, NotificationService, DTOs)
-  src/Notifications.Infrastructure/  (PgNotificationRepository)
-  src/Notifications.Api/             (Program.cs, NotificationsController)
-  tests/Notifications.UnitTests/     (xUnit, FakeRepository)
-db/migrations/
-  V001__create_account_notification.sql
-  V002__seed_fictitious.sql
-frontend/
-  src/app/notifications/
-    atoms/      (badge, icon-type)
-    molecules/  (notification-item)
-    organisms/  (notification-list)
-    templates/
-    pages/      (notifications-page)
-    data/       (notification.service.ts, models)
-    *.spec.ts
+backend/src/main/java/com/example/notifications/
+  domain/        Notification, NotificationType, NotificationStatus
+  application/   NotificationService
+  port/          NotificationRepository, NotificationChannel
+  adapter/       JdbcNotificationRepository, LogNotificationChannel, NotificationController
+backend/src/main/resources/db/migration/
+  V1__schema.sql
+  V2__seed_ficticio.sql
+backend/src/test/java/...  NotificationServiceTest (JUnit 5 + Mockito)
+frontend/src/
+  components/
+    atoms/      Badge, Icon, Button
+    molecules/  NotificationItem
+    organisms/  NotificationList, NotificationBell
+    templates/  NotificationsPanelTemplate
+  pages/        NotificationsPage
+  services/     notificationsApi.ts
+  hooks/        useNotifications.ts
+  types/
+frontend/src/**/*.test.tsx  (Vitest + Testing Library)
 README.md
 ```
 
-## Pruebas unitarias
-- **.NET:** marcar como leída, idempotencia, rechazo por pertenencia, paginación y conteo.
-- **Angular:** `notification.service` con `HttpTestingController`, `badge` y `notification-item`.
+## Modelo de datos (PostgreSQL)
+Tabla `payment_notification` con las columnas:
+- `id`, `customer_id`, `payment_reference`
+- `type` (`PAYMENT_SUCCESS` | `PAYMENT_FAILED` | `PAYMENT_SCHEDULED`)
+- `amount`, `currency`, `masked_account`
+- `status` (`UNREAD` | `READ`)
+- `created_at`, `read_at`
+
+Índices:
+- `(customer_id, created_at DESC)`
+- Índice parcial sobre `customer_id` con `WHERE status = 'UNREAD'`
 
 ## Hipótesis
-- H1: .NET 8 y Angular 17 o superior. No se confirmaron versiones.
-- H2: la identidad del cliente viene de un *claim* simulado (`X-Customer-Id` en desarrollo). La autenticación real queda fuera de alcance.
-- H3: no hay *push* en tiempo real (SignalR). La UI refresca de forma manual o al cargar la página.
-- H4: la generación de notificaciones desde el core bancario no está definida. Solo existe el *seed*.
-- H5: las fechas se guardan en UTC y se muestran en hora local en la UI.
+- **H1:** el canal es solo in-app. Email, SMS y push quedan fuera y se cubren con el puerto `NotificationChannel`.
+- **H2:** el `customerId` llega por header simulado. La autenticación real queda fuera de alcance y se documenta como pendiente.
+- **H3:** el frontend actualiza por polling configurable. WebSocket o SSE se pospone.
+- **H4:** versiones: Java 17, Spring Boot 3.x, Node 18+, React 18.
+- **H5:** textos en español y datos 100 % ficticios. No se asume país ni moneda real.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| IDOR: acceso a notificaciones de otro cliente | Filtrar siempre por `customer_id` en el SQL. Cubierto con una prueba. |
-| Exposición de PII en los mensajes | Enmascarar los números de cuenta. No mostrar saldos completos en el texto. |
-| Toolchain `dotnet` o `npm` ausente | La compilación y las pruebas quedan marcadas como **no verificadas**. |
-| PostgreSQL disponible solo en revisión estática | Usar SQL estándar. El README documenta cómo ejecutar las migraciones. |
-| Crecimiento de la tabla | Paginación obligatoria e índices compuestos. La retención se define en el futuro. |
+| El esquema PostgreSQL no se ejecuta, solo se revisa de forma estática | SQL estándar sin extensiones; queda marcado como no verificado |
+| Puede faltar Maven o npm en el entorno | Lo que no tenga toolchain se reporta como no verificado en el handoff |
+| No hay pruebas de integración con BD (solo unitarias) | Repositorio detrás de un puerto, mockeado en los tests; Testcontainers como siguiente paso |
+| SGC en fallback: estándares corporativos no validados | Se declara en el README y en el resumen |
+| Seguridad y autorización sin definir | Anotar en el README; no exponer el endpoint `POST` fuera de entornos de prueba |
+
+## Trazabilidad con la aceptación
+- Sintaxis: T03.
+- Pruebas: `NotificationServiceTest` y tests de los componentes `.tsx` (T04).
+- Esquema y datos ficticios: V1 y V2 (T04-db).
+- README con build, ejecución, integración y persistencia (T05).
+- Resumen candidate con lo no verificado (T06).
