@@ -1,53 +1,50 @@
-# Notificaciones de Pagos — Banca por Internet (candidate)
+# Notificaciones de Pagos – Banca por Internet (candidate)
 
-Full Stack: **Angular 17** (`frontend/`, Atomic Design) + **Java 17 / Spring Boot 3.3** (`backend/`, capas domain/application/adapters) + **PostgreSQL** (migraciones Flyway). Todos los datos son ficticios.
+Capacidad de notificaciones in-app sobre eventos de pago: `PAGO_EXITOSO`, `PAGO_RECHAZADO` y `PAGO_PROGRAMADO_PROXIMO`.
+Angular 17 (Atomic Design) + Java 17 + Quarkus 3.15 + PostgreSQL. Todos los datos son ficticios.
 
-## Requisitos
-Java 17, Maven 3.9+, Node 18.19+/20, Chrome (para las pruebas Karma) y PostgreSQL.
-
-## Configuración (variables de entorno, sin valores por defecto)
-Ver `backend/.env.example`: `DB_URL`, `DB_USER`, `DB_PASSWORD` (obligatorias), `SERVER_PORT`, `LOG_LEVEL`. No se versionan secretos.
+## Estructura
+- `backend/`: Quarkus. `api → service → port → adapter` (Panache con parámetros nombrados). Migraciones Flyway en `src/main/resources/db/migration` (`V1__schema.sql`, `V2__seed_ficticio.sql`).
+- `frontend/`: Angular standalone. `atoms/`, `molecules/`, `organisms/`, `templates/`, `pages/`, `core/`.
 
 ## Backend
 ```
 cd backend
-mvn test                # pruebas unitarias (no requieren base de datos)
+mvn test         # pruebas unitarias (JUnit 5, sin base de datos)
 mvn package
-DB_URL=... DB_USER=... DB_PASSWORD=... mvn spring-boot:run
+mvn quarkus:dev
 ```
-Flyway aplica `V1__schema.sql` (tablas, `UNIQUE(payment_id, event_type)` para idempotencia, índices) y `V2__seed_ficticio.sql` (datos de ejemplo de `CUST-0001`/`CUST-0002`).
+Variables de entorno (sin secretos en el repo):
+| Variable | Uso |
+|---|---|
+| `QUARKUS_DATASOURCE_JDBC_URL` | por defecto `jdbc:postgresql://localhost:5432/notifications` |
+| `QUARKUS_DATASOURCE_USERNAME` / `QUARKUS_DATASOURCE_PASSWORD` | credenciales de PostgreSQL |
+| `CORS_ORIGINS` | por defecto `http://localhost:4200` |
+| `PORT`, `LOG_LEVEL` | puerto y nivel de log |
+
+Flyway aplica el esquema y el seed al arrancar. Salud: `/q/health`.
+
+## API v1
+- `GET /api/v1/payment-notifications?status=UNREAD&page=0&size=20` → `200 {items[], total}`
+- `PATCH /api/v1/payment-notifications/{id}/read` → `204` o `404`
+- `POST /api/v1/payment-notifications` (interno, simula el evento) → `201` o `409` si el par `(paymentReference, type)` ya existe
+- Cabecera `X-Customer-Id` obligatoria (sustituye a la autenticación real, fuera de alcance). Errores: `{code, message}`.
 
 ## Frontend
 ```
 cd frontend
 npm install
+npm test         # Jest (jest-preset-angular), una sola pasada
 npm run build
-npm test                # Jasmine/Karma, ChromeHeadless, una sola pasada
-npm start               # http://localhost:4200, proxy /api -> localhost:8080
+npm start        # http://localhost:4200, proxy /api → http://localhost:8080
 ```
+Consulta periódica cada 30 s (evolución posible: SSE).
 
-## API
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/v1/payment-notifications?page=0&size=20` | Bandeja paginada (size 1..100) |
-| PATCH | `/api/v1/payment-notifications/{id}/read` | Marca como leída (idempotente) |
-| GET/PUT | `/api/v1/notification-preferences` | Matriz evento × canal (por defecto habilitado); PUT `{"preferences":[...]}` |
-| POST | `/internal/payment-events` | Simula un evento de pago: 201 creada, 204 duplicada/deshabilitada |
+## Integración (sin definir)
+El origen real de los eventos de pago no está definido: se simula con el `POST`. El envío por otros canales (email/SMS) queda tras el puerto `NotificationChannel`, con la implementación `FakeChannel`.
 
-Todas requieren la cabecera `X-Customer-Id`. Errores en `application/problem+json`. La cuenta se expone enmascarada (`****1234`).
+## Persistencia (PostgreSQL)
+Tabla `payment_notification`: importes `NUMERIC(15,2)`, `UNIQUE(payment_reference, type)` para idempotencia e índice `(customer_id, status, created_at DESC)`. El número de cuenta se enmascara (`****1234`) y no se guarda.
 
-Ejemplo:
-```
-curl -X POST localhost:8080/internal/payment-events -H 'Content-Type: application/json' \
- -d '{"customerId":"CUST-0001","paymentId":"PAY-9","eventType":"PAGO_EXITOSO","amount":10.5,"currency":"USD","accountNumber":"00112233441234"}'
-```
-
-## Integración (sin definir) y límites
-- No hay broker ni proveedor de email/SMS: el puerto `NotificationSender` tiene un adaptador simulado (`LogNotificationSender`). La bandeja in-app es el canal real.
-- El front consulta por polling cada 30 s (`POLL_INTERVAL_MS`); SSE sería la evolución.
-- **Autenticación fuera de alcance**: `X-Customer-Id` es ficticio y **no apto para producción**.
-- Si el canal IN_APP está deshabilitado no se persiste la notificación, por lo que la idempotencia no aplica a ese caso.
-- Una carrera entre dos eventos idénticos simultáneos la frena la restricción UNIQUE (la segunda transacción falla con 500).
-
-## Estado de verificación
-Código generado sin ejecutar: no se afirma que compile ni que las pruebas pasen.
+## No verificado
+Compilación y pruebas (Maven y npm no ejecutados), ejecución del SQL contra PostgreSQL, arranque de Quarkus y contrato real de integración.
