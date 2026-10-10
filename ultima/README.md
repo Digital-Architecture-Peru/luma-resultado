@@ -1,46 +1,38 @@
 # Notificaciones de cuentas
 
-Aplicación de demostración para consultar notificaciones de cuentas y administrar preferencias. Stack: Angular 17, Java 17 / Spring Boot 3.3 y PostgreSQL. Los datos de seed son ficticios. **No es apta para producción**: no implementa autenticación ni autorización; la cuenta fija `10001234` del frontend es solo para demostración.
+Aplicación de ejemplo de banca por Internet: Angular 20, Java 17+ con Quarkus 3.15 y PostgreSQL. Los registros incluidos son ficticios. La interfaz usa Atomic Design (atoms, molecules, organisms, templates y pages).
 
 ## Requisitos
 
-- Node.js y npm compatibles con Angular CLI 17.
-- JDK 17 y Maven 3.6.3 o posterior.
-- PostgreSQL accesible desde el backend.
+- Node.js compatible con Angular 20 y npm.
+- JDK 17+ y Maven 3.9+.
+- PostgreSQL 16 (o compatible) accesible desde el backend.
 
-## Configurar PostgreSQL
+## Arranque local
 
-Crea una base de datos `notificaciones` y un usuario de desarrollo `notif_app` con permisos para crear tablas y escribir datos. Por ejemplo, desde una sesión administrativa de PostgreSQL:
+En una terminal, inicia PostgreSQL. Ejemplo con Docker (solo para desarrollo):
 
-```sql
-CREATE USER notif_app WITH PASSWORD 'elige-una-clave-local';
-CREATE DATABASE notificaciones OWNER notif_app;
+```sh
+docker run --rm --name notificaciones-db \
+  -e POSTGRES_DB=notificaciones \
+  -e POSTGRES_USER=notificaciones \
+  -e POSTGRES_PASSWORD=notificaciones-dev \
+  -p 5432:5432 postgres:16
 ```
 
-La clave del ejemplo es local: no la guardes en el repositorio. El backend lee configuración por entorno:
-
-| Variable | Predeterminado | Descripción |
-|---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/notificaciones` | URL JDBC |
-| `DB_USER` | `notif_app` | Usuario PostgreSQL |
-| `DB_PASSWORD` | vacío | Contraseña PostgreSQL |
-| `PORT` | `8080` | Puerto HTTP del backend |
-| `CORS_ORIGIN` | `http://localhost:4200` | Origen permitido por CORS |
-| `LOG_LEVEL` | `INFO` | Nivel de logging raíz |
-
-Configura `DB_PASSWORD` en el entorno local antes de iniciar la aplicación. No se requiere configurar credenciales para las pruebas unitarias indicadas abajo.
-
-## Ejecutar en desarrollo
-
-Inicia primero el backend; requiere que PostgreSQL esté en ejecución:
+En otra terminal, configura la conexión y arranca Quarkus en modo desarrollo:
 
 ```sh
 cd backend
-# Define DB_PASSWORD y, si corresponde, DB_URL / DB_USER en el entorno.
-mvn spring-boot:run
+export DB_URL=jdbc:postgresql://localhost:5432/notificaciones
+export DB_USER=notificaciones
+export DB_PASSWORD=notificaciones-dev
+mvn quarkus:dev
 ```
 
-En otra terminal inicia Angular:
+En Windows PowerShell usa `$env:DB_URL=...` en lugar de `export`. Quarkus escucha por defecto en `http://localhost:8080`. Al inicio Flyway aplica las migraciones pendientes. Comprueba el estado en `http://localhost:8080/q/health`.
+
+En otra terminal, inicia Angular:
 
 ```sh
 cd frontend
@@ -48,7 +40,7 @@ npm install
 npm start
 ```
 
-Abre <http://localhost:4200>. El servidor de desarrollo Angular usa `proxy.conf.json` para reenviar `/api` a `http://localhost:8080`, evitando configurar una URL distinta en el cliente.
+Abre `http://localhost:4200`. La URL base de la API se configura en `frontend/src/environments/environment.ts` (`apiBaseUrl`, predeterminada a `http://localhost:8080`). CORS permite por defecto el origen local `http://localhost:4200`.
 
 ## Compilar y probar
 
@@ -59,43 +51,43 @@ mvn test
 mvn package
 ```
 
+Las pruebas `NotificationServiceTest` son unitarias y no requieren PostgreSQL. Para ejecutar la aplicación empacada, con PostgreSQL activo y las variables de conexión configuradas:
+
+```sh
+java -jar target/quarkus-app/quarkus-run.jar
+```
+
 Frontend, desde `frontend/`:
 
 ```sh
-npm install
-npm test       # Jest en modo CI, no interactivo
-npm run build  # Angular CLI y comprobación de tipos
+npm test
+npm run build
 ```
 
-Las pruebas backend son pruebas unitarias de servicios y dominio; no necesitan PostgreSQL. Las pruebas frontend usan Jest. Para probar la aplicación integrada sí hacen falta PostgreSQL, el backend y el servidor Angular. No se afirma aquí que los comandos hayan sido ejecutados en este entorno.
+`npm test` ejecuta las pruebas Angular/Vitest sin modo interactivo (`ng test --watch=false`). `npm run build` genera la salida de producción bajo `dist/`.
 
-## API
+## Persistencia
 
-La API tiene prefijo `/api/v1`:
+Quarkus usa Hibernate ORM y el driver JDBC de PostgreSQL; la generación automática del esquema está deshabilitada. Flyway ejecuta al arrancar las migraciones de `backend/src/main/resources/db/migration/`:
 
-- `GET /accounts/{accountId}/notifications?status=ALL|UNREAD&page=0&size=20` — lista notificaciones. `page` empieza en cero; `size` permitido de 1 a 100.
-- `PATCH /notifications/{id}/read` — marca como leída; `{id}` es UUID.
-- `GET /accounts/{accountId}/notification-preferences` — consulta preferencias.
-- `PUT /accounts/{accountId}/notification-preferences` — actualiza preferencias. Ejemplo de JSON:
+- `V1__schema.sql`: crea `account`, `notification` y `notification_preference`, restricciones e índices para listar notificaciones por cuenta/fecha y filtrar no leídas.
+- `V2__seed_ficticio.sql`: agrega cuentas y notificaciones demostrativas ficticias (ACC-001 y ACC-002), además de preferencias. Para una base local nueva se aplican automáticamente; no es necesario cargar el seed manualmente. Flyway no vuelve a aplicar versiones ya registradas.
 
-```json
-{
-  "lowBalanceThreshold": 100.00,
-  "depositEnabled": true,
-  "withdrawalEnabled": true
-}
-```
+La base de datos y sus migraciones son la persistencia de la aplicación; los repositorios JPA encapsulan las consultas. Configure `DB_URL`, `DB_USER` y `DB_PASSWORD` en el entorno y no almacene credenciales reales en el código ni en el repositorio. Valores configurables y predeterminados: `DB_URL=jdbc:postgresql://localhost:5432/notificaciones`, `DB_USER=notificaciones`, `DB_PASSWORD` vacío, `PORT=8080`, `CORS_ORIGINS=http://localhost:4200`, `LOG_LEVEL=INFO`. Use una contraseña segura fuera del entorno local.
 
-Los identificadores de cuenta aceptan entre 4 y 20 caracteres alfanuméricos. Los errores controlados se devuelven como `application/problem+json`. Las cuentas se presentan enmascaradas en las respuestas de notificación.
+## API e integración
 
-Para probar con los datos iniciales, utiliza la cuenta `10001234`. El seed también incluye la cuenta ficticia `20005678`.
+El frontend consume la API REST JSON del backend en `/api/v1`:
 
-## Persistencia e integración
+- `GET /accounts/{accountId}/notifications?unread=false&page=0&size=20`: lista paginada; `unread=true` filtra pendientes.
+- `PATCH /notifications/{id}/read`: marca como leída.
+- `GET /accounts/{accountId}/notification-preferences`: obtiene preferencias.
+- `PUT /accounts/{accountId}/notification-preferences`: actualiza preferencias enviando una lista JSON.
 
-Spring JDBC accede a PostgreSQL mediante `NamedParameterJdbcTemplate`, detrás de los puertos de repositorio del dominio. Flyway aplica al arrancar las migraciones versionadas en `backend/src/main/resources/db/migration`: `V1` crea `account_notification` y `notification_preference` e índices asociados; `V2` añade datos ficticios. Flyway registra las migraciones aplicadas y no vuelve a insertar el seed en cada inicio normal. Los cambios de esquema deben añadirse como nuevas migraciones, no editando migraciones ya aplicadas.
+Los errores de dominio se traducen a respuestas JSON con `code` y `message`; pueden incluir 400, 404 y 409 según el caso. El cliente usa `NotificationService` y el origen configurable en `environment.ts`. Para probar los registros seed, usa `ACC-001` o `ACC-002` como cuenta.
 
-La integración con el origen de eventos de banca y con un canal real de entrega aún no está definida. `NotificationService.register` es el punto de entrada previsto para eventos; el adaptador `LoggingDispatcher` solo registra y no envía notificaciones. La conexión a dichos sistemas requiere definir contratos, configuración y tratamiento de fallos antes de desplegar.
+`NotificationChannel` abstrae el canal de entrega y actualmente solo existe `InAppChannel`. No se integran proveedores de email/SMS/push ni un core bancario/event bus; los ejemplos proceden del seed. No hay endpoint público para generar notificaciones.
 
-## Pendientes de seguridad para producción
+## Límites conocidos
 
-Integrar identidad/autorización de la banca en lugar de confiar en la cuenta fija de demostración. Además, la operación `PATCH /notifications/{id}/read` no recibe ni valida la pertenencia a una cuenta autenticada: debe incorporarse esa comprobación antes de exponerla a usuarios reales. Configurar credenciales seguras y CORS según cada entorno, y definir el proveedor real de eventos y despacho.
+La API de demostración no implementa autenticación/autorización ni comprueba que una cuenta pertenezca al usuario solicitante: no exponerla en producción sin incorporar identidad y autorización (mitigar IDOR). No hay configuración de despliegue productivo ni pruebas de integración con una instancia real de PostgreSQL en este repositorio.
