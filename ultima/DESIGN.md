@@ -3,10 +3,10 @@
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
 - ¿Qué tipo de capacidad? Notificación
-- ¿Sobre qué dominio? Tarjetas
+- ¿Sobre qué dominio? Cuentas
 - ¿Qué necesitas construir? Full Stack
 - Patrones disponibles Component-based (Atomic Design)
-- ¿Qué stack? Angular + .NET
+- ¿Qué stack? React + TypeScript + Java + Spring Boot
 - ¿Persistencia? PostgreSQL
 - ¿Qué pruebas? Unitarias
 
@@ -14,13 +14,13 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Solución en Angular + .NET (capa Full Stack) para "Notificación" sobre Tarjetas en Banca por Internet, patrón Component-based (Atomic Design).
+- Solución en React + TypeScript + Java + Spring Boot (capa Full Stack) para "Notificación" sobre Cuentas en Banca por Internet, patrón Component-based (Atomic Design).
 - Estructura idiomática del stack: fuentes, manifiesto de build/dependencias, pruebas y README con cómo compilar y ejecutar.
 - Integración sin definir y persistencia PostgreSQL detrás de interfaces; configuración por variables de entorno, sin secretos.
 - Datos de ejemplo ficticios; sin llamadas a sistemas reales.
 
 ## Hipótesis
-- El código se genera en Angular + .NET y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
+- El código se genera en React + TypeScript + Java + Spring Boot y se verifica con la toolchain local cuando está instalada (npm, Maven, Gradle, Go, Cargo, .NET, pytest); lo que no tenga toolchain queda marcado como no verificado.
 - Integración (sin definir), persistencia (PostgreSQL) y pruebas (Unitarias) se implementan como candidate; los esquemas SQLite se ejecutan en memoria y los demás motores solo se revisan de forma estática.
 
 ## Aceptación
@@ -29,71 +29,69 @@ Estado: fallback (SGC no configurado)
 
 ## Refinamiento del diseño (claude-opus-5.5)
 
-# DESIGN (refinamiento)
+# DESIGN — Refinamiento
 
 ## Decisiones de arquitectura
 | # | Decisión | Justificación |
 |---|---|---|
-| D1 | Monorepo con `frontend/` (Angular) y `backend/` (.NET) | Cada capa conserva su manifiesto y su toolchain, y se verifica por separado. |
-| D2 | Backend en capas: Api → Application → Domain ← Infrastructure | Aísla PostgreSQL detrás de interfaces, como pide la plantilla. Permite pruebas unitarias sin base de datos. |
-| D3 | Persistencia con Npgsql y SQL parametrizado (sin EF) | Menos dependencias, consultas explícitas y migraciones legibles en revisión estática. |
-| D4 | Migraciones como SQL versionado (`V001__init.sql`, `V002__seed.sql`) | Son auditables y no dependen de la toolchain .NET para revisarse. |
-| D5 | Front con componentes standalone organizados por Atomic Design | Responde al patrón pedido y permite reutilizar átomos en Banca por Internet. |
-| D6 | La tarjeta se identifica con un token ficticio y los últimos 4 dígitos, nunca con el PAN | Minimiza el alcance PCI. |
-| D7 | La configuración se lee de variables de entorno (`NOTIF_DB_CONNECTION`, `API_BASE_URL`) | Evita secretos en el repositorio. |
+| D1 | Backend en capas *hexagonal-lite*: `api` → `application` → `domain`, con puertos hacia `infrastructure` | Aísla la integración (sin definir) y la persistencia detrás de interfaces. Permite pruebas unitarias con mocks y sin BD. |
+| D2 | Acceso a datos con `NamedParameterJdbcTemplate` y SQL explícito | Acceso parametrizado verificable a simple vista y sin la "magia" de JPA. |
+| D3 | Migraciones versionadas con Flyway (`V1__esquema.sql`, `V2__datos_ficticios.sql`) | Cumple T04-db y permite revisar el esquema de forma estática. |
+| D4 | Entrega por canal mediante el puerto `CanalNotificacionPort`, implementado por `CanalLogFake` | No hay integración definida. El adaptador ficticio solo registra la notificación enmascarada. |
+| D5 | API REST versionada `/api/v1` con errores `ProblemDetail` (RFC 7807) | Ofrece un contrato estable y errores uniformes para el front. |
+| D6 | Front con Vite, React, TS y Atomic Design. La lógica vive en hooks y servicios, nunca en átomos | Los componentes quedan puros y testeables con Vitest y Testing Library. |
+| D7 | Montos con `BigDecimal` y `NUMERIC(18,2)`. Fechas en `TIMESTAMPTZ` | Evita errores de precisión y de zona horaria. |
 
-## Contrato API (v1)
-- `GET /api/v1/tarjetas/{tarjetaRef}/notificaciones?leida=&page=&size=`
-- `PATCH /api/v1/notificaciones/{id}/lectura`: idempotente.
-- `GET` y `PUT /api/v1/tarjetas/{tarjetaRef}/preferencias`
-- Los errores siguen el formato `ProblemDetails` (RFC 7807).
+## Contrato API (candidate)
+- `GET /api/v1/cuentas/{cuentaId}/notificaciones?leida=&page=&size=` devuelve una lista paginada.
+- `PATCH /api/v1/notificaciones/{id}/lectura` marca la notificación como leída.
+- `GET|PUT /api/v1/cuentas/{cuentaId}/preferencias-notificacion` consulta o actualiza tipo, canal, estado activo y umbral.
 
 ## Modelo de datos (PostgreSQL)
-- **`notificacion`**: `id uuid PK`, `cliente_id`, `tarjeta_ref`, `ultimos4 char(4)`, `tipo` (CHECK: COMPRA, LIMITE, VENCIMIENTO, PAGO), `titulo`, `mensaje`, `monto numeric(18,2)`, `moneda char(3)`, `leida bool`, `creada_en timestamptz`.
-  - Índice: `(cliente_id, tarjeta_ref, leida, creada_en DESC)`.
-- **`preferencia_notificacion`**: PK `(cliente_id, tarjeta_ref, tipo, canal)`, `habilitada`, `umbral_monto`.
+- **`notificacion`**: `id UUID PK`, `cuenta_id`, `tipo CHECK IN ('ABONO','CARGO','SALDO_BAJO')`, `mensaje`, `monto`, `leida`, `creada_en`.
+  - Índice `(cuenta_id, leida, creada_en DESC)`.
+- **`preferencia_notificacion`**: PK `(cuenta_id, tipo, canal)`, `canal CHECK IN ('EMAIL','SMS','APP')`, `activo`, `umbral_monto`.
+- Los datos son ficticios y las cuentas aparecen enmascaradas (`****1234`).
 
 ## Estructura de módulos
 ```
-backend/
-  Tarjetas.Notificaciones.sln
-  src/Api/            Endpoints, DTOs, Program.cs
-  src/Application/    Casos de uso, INotificacionRepository
-  src/Domain/         Notificacion, Preferencia, enums
-  src/Infrastructure/ NpgsqlNotificacionRepository
-  db/migrations/      V001__init.sql, V002__seed.sql
-  tests/UnitTests/    xUnit + repositorio fake
-frontend/
-  package.json, angular.json
-  src/app/notificaciones/
-    atoms/      badge, icono-tipo, boton
-    molecules/  item-notificacion, toggle-preferencia
-    organisms/  lista-notificaciones, panel-preferencias
-    templates/  layout-notificaciones
-    pages/      notificaciones.page
-    data/       notificaciones.service (HttpClient), modelos
-  *.spec.ts junto a cada componente y al servicio
+backend/  pom.xml
+  src/main/java/com/example/cuentas/notificaciones/
+    api/ (NotificacionController, dto/, ManejadorErrores)
+    application/ (NotificacionService, PreferenciaService)
+    domain/ (Notificacion, Preferencia, TipoEvento, Canal)
+    port/ (NotificacionRepository, CanalNotificacionPort)
+    infrastructure/ (JdbcNotificacionRepository, CanalLogFake)
+  src/main/resources/ (application.yml con ${DB_URL}..., db/migration/)
+  src/test/java/... (ServiceTest con Mockito, ControllerTest con MockMvc standalone)
+frontend/  package.json, vite.config.ts
+  src/components/{atoms,molecules,organisms,templates}/
+  src/pages/NotificacionesPage.tsx
+  src/hooks/useNotificaciones.ts
+  src/services/notificacionesApi.ts   (VITE_API_BASE_URL)
+  src/types/
+  src/**/*.test.tsx
 README.md
 ```
 
 ## Hipótesis
-- **H1.** La capacidad muestra al cliente una bandeja de alertas de su tarjeta y le permite gestionar sus preferencias. El envío real por email, SMS o push queda fuera de alcance, porque la integración no está definida.
-- **H2.** El `cliente_id` se simula mediante el header `X-Cliente-Id`. La autenticación real corresponde al gateway de Banca por Internet.
-- **H3.** Versiones asumidas: .NET 8 LTS, Angular 17+ y pruebas con Jasmine/Karma.
-- **H4.** Los montos y la moneda son ficticios. La zona horaria se maneja en UTC y el front la convierte.
-- **H5.** Sin contexto SGC (fallback), los nombres y estándares no están validados contra la normativa corporativa.
+- **H1.** "Notificación" se interpreta como alertas de movimientos y saldo bajo de cuentas, con un centro de notificaciones y preferencias por canal.
+- **H2.** El `cuentaId` llega por la ruta. La autenticación y la autorización (token o sesión) quedan fuera de alcance.
+- **H3.** La generación de eventos se simula con datos semilla. No se consume ningún bus ni core bancario.
+- **H4.** Versiones asumidas: Java 17, Spring Boot 3.x y Node 20.
 
 ## Riesgos
 | Riesgo | Mitigación |
 |---|---|
-| El SGC no está disponible y el diseño puede desalinearse de estándares internos | Las decisiones quedan documentadas como revisables. |
-| Toolchain ausente (dotnet, node) | Lo no compilado se marca como no verificado en el handoff. |
-| El esquema PostgreSQL solo se revisa de forma estática | El SQL es estándar y los CHECK son explícitos. Las pruebas unitarias usan el repositorio fake. |
-| Exposición de datos de tarjeta | No se guarda el PAN, los logs van sin datos sensibles y la respuesta solo incluye los últimos 4 dígitos. |
-| Al no haber integración definida, la notificación nunca se dispara | La interfaz `INotificacionPublisher` queda como puerto, sin implementar. |
+| IDOR por `cuentaId` sin auth (H2) | Se documenta como pendiente. El servicio valida la pertenencia mediante un puerto `TitularidadPort` (stub). |
+| Toolchain ausente (Maven o npm) | Los artefactos sin compilar se marcan como **no verificados** en el handoff. |
+| SQL de PostgreSQL solo con revisión estática | Se usa SQL estándar y se evitan extensiones (`gen_random_uuid` es nativo desde la versión 13). |
+| Fuga de PII en logs o mensajes | Se enmascara la cuenta y no se registran montos junto a identificadores completos. |
+| Canal real indefinido | Basta con el adaptador fake. Integrar un canal real solo requiere un nuevo adaptador del puerto. |
 
-## Trazabilidad con la aceptación
-- **Sintaxis:** cubierta por T03.
-- **Pruebas:** casos de uso en xUnit y componentes y servicio en `.spec.ts` (T04).
-- **README:** incluye build, ejecución, variables de entorno y migraciones (T05).
-- **Commit de publicación:** lo realiza el orquestador. Este diseño no afirma que el código compile ni que esté listo para producción.
+## Trazabilidad
+- **T02:** D1, D4, D5 y D6.
+- **T04-tests:** las pruebas unitarias del backend y del front.
+- **T04-db:** D2, D3 y D7.
+- **T05:** el README documenta las variables de entorno, Flyway y el estado de la integración (sin definir).
+- **T06:** el resumen se entrega como candidate y no afirma compilación ni preparación para producción.
