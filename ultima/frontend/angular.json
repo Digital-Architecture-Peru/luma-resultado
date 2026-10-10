@@ -20,8 +20,14 @@
             "styles": ["src/styles.css"]
           },
           "configurations": {
-            "production": { "outputHashing": "all" },
-            "development": { "optimization": false, "extractLicenses": false, "sourceMap": true }
+            "production": {
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
           },
           "defaultConfiguration": "production"
         },

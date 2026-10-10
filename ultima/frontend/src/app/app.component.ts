@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NotificationsPageComponent } from './pages/notifications-page.component';
+import { NotificationsPageComponent } from './notifications/pages/notifications-page.component';
 
 @Component({
   selector: 'app-root',
