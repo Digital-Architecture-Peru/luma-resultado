@@ -1,44 +1,26 @@
-# Notificaciones de Cuentas — Banca por Internet (candidate)
+# Notificaciones
 
-Full Stack: **React + TypeScript** (Atomic Design) y **Java 17 + Spring Boot 3.2** con **PostgreSQL**. Datos ficticios; sin autenticación (pendiente).
+React + TypeScript/Vite y Java 17 + Quarkus; PostgreSQL mediante JDBC y Flyway.
 
-## Estructura
-- `backend/`: `api` → `application` → `domain`, puertos en `port`, adaptadores en `infrastructure` (JDBC con SQL parametrizado). Migraciones Flyway en `src/main/resources/db/migration`.
-- `frontend/`: `components/{atoms,molecules,organisms,templates}`, `pages`, `hooks`, `services`, `types`.
+## Build y pruebas
 
-## Variables de entorno
-| Variable | Uso |
-|---|---|
-| `DB_URL` | JDBC (por defecto `jdbc:postgresql://localhost:5432/notificaciones`) |
-| `DB_USER` | Usuario de BD |
-| `DB_PASSWORD` | Contraseña de BD (obligatoria, sin valor por defecto) |
-| `PORT`, `LOG_LEVEL` | Opcionales |
-| `VITE_API_BASE_URL` | Base de la API en el front (vacío = proxy de Vite a `localhost:8080`) |
-| `VITE_CUENTA_ID` | Cuenta de demo (por defecto `0011223344`) |
+```sh
+cd backend && mvn test
+cd backend && mvn package
+cd frontend && npm install && npm test && npm run build
+```
 
 ## Ejecutar
-```
-docker compose up -d db          # requiere DB_PASSWORD exportada
-cd backend && mvn spring-boot:run
+
+Prepare PostgreSQL `notifications`, configure `DB_URL`, `DB_USER`, `DB_PASSWORD`; Quarkus aplica las migraciones Flyway al iniciar:
+
+```sh
+cd backend && mvn quarkus:dev
 cd frontend && npm install && npm run dev
 ```
 
-## Pruebas y build
-```
-cd backend && mvn test           # JUnit 5 + Mockito + MockMvc standalone
-cd frontend && npm test && npm run build
-```
-
-## API `/api/v1`
-- `GET /cuentas/{cuentaId}/notificaciones?leida=&page=&size=`
-- `PATCH /notificaciones/{id}/lectura`
-- `GET|PUT /cuentas/{cuentaId}/preferencias-notificacion`
-Errores en formato `ProblemDetail` (RFC 7807).
+Frontend Vite: puerto 5173, proxy `/api` al backend 8080. Consulte `docs/ENVIRONMENT.md` para variables.
 
 ## Integración y persistencia
-- Integración de canales: **sin definir**. `CanalLogFake` solo registra (cuenta enmascarada, sin montos). Un canal real implementa `CanalNotificacionPort`.
-- `TitularidadStub` acepta cualquier cuenta con formato válido: **riesgo IDOR** hasta integrar autenticación.
-- PostgreSQL: tablas `notificacion` y `preferencia_notificacion` (V1) y datos ficticios (V2). Requiere PostgreSQL 13+ (`gen_random_uuid`).
 
-## Estado
-Candidate. No se ejecutó compilación ni pruebas al generar el código.
+API bajo `/api/v1`; el cliente envía `X-Customer-Id` simulado. Incluye listar notificaciones, marcarlas leídas y consultar/reemplazar preferencias. PostgreSQL persiste datos mediante repositorios JDBC; migraciones `V1` y `V2` crean esquema y seed ficticio. Solo está implementado el canal IN_APP; SMS/email/push no están integrados. No existe autenticación real. No se ejecutaron builds, pruebas ni migraciones durante esta tarea.
