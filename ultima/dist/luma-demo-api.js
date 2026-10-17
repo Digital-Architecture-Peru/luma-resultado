@@ -5,7 +5,7 @@
    (extraída del código del frontend). No sale nada a la red. */
 (function () {
   "use strict";
-  var DEMO = {"clave":"Transacción|Pagos|Full Stack|React + TypeScript|Java + Quarkus|PostgreSQL","slug":"transaccion-pagos-fullstack-react-quarkus","rutas":[{"m":"POST","ruta":"/api/v1/payments","esquema":{"t":"obj","nombre":"PaymentResponse","campos":{"id":{"t":"string"},"status":{"t":"enum","v":["PENDIENTE","CONFIRMADO","RECHAZADO"]},"beneficiary":{"t":"string"},"amount":{"t":"number"},"currency":{"t":"enum","v":["PEN","USD"]},"concept":{"t":"string"},"createdAt":{"t":"string"}}}}]};
+  var DEMO = {"clave":"Transacción|Pagos|Full Stack|React + TypeScript|.NET|PostgreSQL","slug":"transaccion-pagos-fullstack-react-dotnet","rutas":[{"m":"GET","ruta":"{}/api/accounts","esquema":{"t":"array","de":{"t":"obj","nombre":"Account","campos":{"id":{"t":"string"},"number":{"t":"string"},"holder":{"t":"string"},"currency":{"t":"string"},"balance":{"t":"number"}}}}},{"m":"POST","ruta":"{}/api/payments","esquema":{"t":"obj","nombre":"PaymentResult","campos":{"id":{"t":"string"},"status":{"t":"enum","v":["PENDING","COMPLETED","REJECTED"]},"amount":{"t":"number"},"currency":{"t":"string"},"beneficiaryAccount":{"t":"string"},"reference":{"t":"string"},"createdAt":{"t":"string"}}}}]};
   var NOMBRES = ["María Torres", "Carlos Quispe", "Lucía Fernández", "Jorge Ramírez", "Ana Vargas", "Diego Salazar"];
   var CONCEPTOS = ["Pago de servicios", "Transferencia a ahorros", "Compra en supermercado", "Abono de sueldo", "Pago de tarjeta", "Recarga de celular"];
   var ALIAS = ["Cuenta Sueldo", "Ahorro Vacaciones", "Cuenta Corriente", "Ahorro Meta", "Cuenta Dólares", "Fondo Emergencias"];
