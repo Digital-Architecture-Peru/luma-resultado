@@ -5,7 +5,7 @@
    (extraída del código del frontend). No sale nada a la red. */
 (function () {
   "use strict";
-  var DEMO = {"clave":"Notificación|Pagos|Full Stack|Angular|.NET|PostgreSQL","slug":"notificacion-pagos-fullstack-angular-dotnet","rutas":[{"m":"GET","ruta":"http://localhost:5080/api/v1/notifications","esquema":{"t":"array","de":{"t":"obj","nombre":"AppNotification","campos":{"id":{"t":"string"},"type":{"t":"enum","v":["PAYMENT_COMPLETED","PAYMENT_REJECTED","PAYMENT_SCHEDULED"]},"status":{"t":"enum","v":["UNREAD","READ"]},"title":{"t":"string"},"message":{"t":"string"},"amount":{"t":"number"},"currency":{"t":"string"},"maskedAccount":{"t":"string"},"createdAt":{"t":"string"},"readAt":{"t":"string"}}}}},{"m":"GET","ruta":"http://localhost:5080/api/v1/notifications/unread-count","esquema":{"t":"obj","nombre":"{ count: number; }","campos":{"count":{"t":"number"}}}},{"m":"PATCH","ruta":"http://localhost:5080/api/v1/notifications/{}/read","esquema":{"t":"obj","nombre":"AppNotification","campos":{"id":{"t":"string"},"type":{"t":"enum","v":["PAYMENT_COMPLETED","PAYMENT_REJECTED","PAYMENT_SCHEDULED"]},"status":{"t":"enum","v":["UNREAD","READ"]},"title":{"t":"string"},"message":{"t":"string"},"amount":{"t":"number"},"currency":{"t":"string"},"maskedAccount":{"t":"string"},"createdAt":{"t":"string"},"readAt":{"t":"string"}}}}]};
+  var DEMO = {"clave":"Consulta|Tarjetas|Full Stack|Angular|.NET|PostgreSQL","slug":"consulta-tarjetas-fullstack-angular-dotnet","rutas":[{"m":"GET","ruta":"/api/v1/cards","esquema":{"t":"array","de":{"t":"obj","nombre":"Card","campos":{"id":{"t":"string"},"maskedPan":{"t":"string"},"brand":{"t":"string"},"product":{"t":"string"},"status":{"t":"enum","v":["Active","Blocked","Expired"]},"creditLimit":{"t":"number"},"available":{"t":"number"},"currency":{"t":"string"},"expiry":{"t":"string"}}}}},{"m":"GET","ruta":"/api/v1/cards/{}","esquema":{"t":"obj","nombre":"Card","campos":{"id":{"t":"string"},"maskedPan":{"t":"string"},"brand":{"t":"string"},"product":{"t":"string"},"status":{"t":"enum","v":["Active","Blocked","Expired"]},"creditLimit":{"t":"number"},"available":{"t":"number"},"currency":{"t":"string"},"expiry":{"t":"string"}}}},{"m":"GET","ruta":"/api/v1/cards/{}/movements","esquema":{"t":"obj","nombre":"Page<Movement>","campos":{"items":{"t":"array","de":{"t":"obj","nombre":"Movement","campos":{"id":{"t":"string"},"postedAt":{"t":"string"},"description":{"t":"string"},"amount":{"t":"number"},"currency":{"t":"string"}}}},"page":{"t":"number"},"size":{"t":"number"},"total":{"t":"number"}}}},{"m":"GET","ruta":"{}","esquema":{"t":"null"}}]};
   var NOMBRES = ["María Torres", "Carlos Quispe", "Lucía Fernández", "Jorge Ramírez", "Ana Vargas", "Diego Salazar"];
   var CONCEPTOS = ["Pago de servicios", "Transferencia a ahorros", "Compra en supermercado", "Abono de sueldo", "Pago de tarjeta", "Recarga de celular"];
   var ALIAS = ["Cuenta Sueldo", "Ahorro Vacaciones", "Cuenta Corriente", "Ahorro Meta", "Cuenta Dólares", "Fondo Emergencias"];
@@ -122,9 +122,16 @@
     return mejor ? { ruta: mejor, ids: u.pathname.split("/").filter(function (x) { return /\d/.test(x); }) } : null;
   }
 
+  var LLAMADAS = [];   // registro para diagnóstico (window.__LUMA_DEMO_API__.llamadas)
+  function anotar(metodo, url, hit, status, datos) {
+    var p = url; try { p = new URL(url, location.href).pathname; } catch (e) {}
+    LLAMADAS.push({ m: metodo, url: p, ruta: hit.ruta.ruta || "(sin ruta conocida)", status: status,
+      devuelve: datos === null ? "null" : Array.isArray(datos) ? "lista de " + datos.length : typeof datos });
+    if (LLAMADAS.length > 60) LLAMADAS.shift();
+  }
   function responder(metodo, url, cuerpo) {
     var hit = buscar(metodo, url); if (!hit) return null;
-    if (metodo === "DELETE") return { status: 204, body: "" };
+    if (metodo === "DELETE") { anotar(metodo, url, hit, 204, null); return { status: 204, body: "" }; }
     var datos = hit.ruta.esquema ? generar(hit.ruta.esquema, "", hash(url) % 3, 0, metodo === "GET" ? hit.ids : null) : (metodo === "GET" ? [] : {});
     // Operaciones (POST/PUT/PATCH): la respuesta refleja lo enviado y queda «hecha»,
     // siempre dentro de los valores que admite la pantalla (su esquema).
@@ -141,6 +148,7 @@
         if (c.t === "boolean" && /leid|read|visto/i.test(k)) datos[k] = true;
       }
     }
+    anotar(metodo, url, hit, metodo === "POST" ? 201 : 200, datos);
     return { status: metodo === "POST" ? 201 : 200, body: JSON.stringify(datos) };
   }
 
@@ -191,5 +199,5 @@
     };
   }
   window.XMLHttpRequest = XHRDemo;
-  window.__LUMA_DEMO_API__ = { rutas: RUTAS.length, clave: DEMO.clave };
+  window.__LUMA_DEMO_API__ = { rutas: RUTAS.length, clave: DEMO.clave, llamadas: LLAMADAS };
 })();
