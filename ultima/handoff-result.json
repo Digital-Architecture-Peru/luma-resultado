@@ -1,21 +1,21 @@
 {
   "status": "candidate",
-  "generation": "a77ff1de-7178-4314-86a3-07dae2109435",
+  "generation": "463514c4-315e-4c51-bb6e-0bf5c80b6cc8",
   "planRevision": 1,
   "files": [
     {
       "path": "src/App.tsx",
-      "hash": "c4552dd112ff24d97f5090d6c0ec7a63eac859a81aa05111f377aa1b3df09682"
+      "hash": "e74319e78039b58810366f718ea433113bddd7d8b039aa4f43dcb91cb86810d3"
     },
     {
       "path": "src/styles.css",
-      "hash": "863ec6b61134a6164c470cd990a3b05d74ab5f41f19b908779930273f50a7635"
+      "hash": "27585af0b02dd39d91d299caaa75c4292da04fff881c9633000e6fff3704425b"
     }
   ],
   "validations": [
     {
       "kind": "build",
-      "elapsedMs": 5118.841699998826,
+      "elapsedMs": 4653.795900000259,
       "passed": true
     },
     {
@@ -23,7 +23,7 @@
       "kind": "browser-interaction",
       "check": {
         "buttonName": "Probar capacidad",
-        "expectedText": "Notificación de Cuentas"
+        "expectedText": "Notificación de Pagos"
       },
       "viewport": {
         "width": 1280,
@@ -31,11 +31,11 @@
       },
       "screenshot": {
         "path": "evidence/preview.png",
-        "hash": "ada56c19b327eaaa27430abb0f9b95c4baad5359b30d994d311c64ca1a7c8c15"
+        "hash": "2c91b898d88231d0d7b6ab9898e4025cffa82a5ae9123da75d9bf6c0df4f79c9"
       },
-      "elapsedMs": 639.4234999995679
+      "elapsedMs": 546.832499999553
     }
   ],
   "deviations": [],
-  "agentSessionId": "9c5c45ed-4b88-4a9b-a381-1a7411e926b0"
+  "agentSessionId": "d8da6c3d-4d6f-44ae-9058-c2e9a9073029"
 }
