@@ -1,0 +1,41 @@
+{
+  "status": "candidate",
+  "generation": "a77ff1de-7178-4314-86a3-07dae2109435",
+  "planRevision": 1,
+  "files": [
+    {
+      "path": "src/App.tsx",
+      "hash": "c4552dd112ff24d97f5090d6c0ec7a63eac859a81aa05111f377aa1b3df09682"
+    },
+    {
+      "path": "src/styles.css",
+      "hash": "863ec6b61134a6164c470cd990a3b05d74ab5f41f19b908779930273f50a7635"
+    }
+  ],
+  "validations": [
+    {
+      "kind": "build",
+      "elapsedMs": 5118.841699998826,
+      "passed": true
+    },
+    {
+      "passed": true,
+      "kind": "browser-interaction",
+      "check": {
+        "buttonName": "Probar capacidad",
+        "expectedText": "Notificación de Cuentas"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "screenshot": {
+        "path": "evidence/preview.png",
+        "hash": "ada56c19b327eaaa27430abb0f9b95c4baad5359b30d994d311c64ca1a7c8c15"
+      },
+      "elapsedMs": 639.4234999995679
+    }
+  ],
+  "deviations": [],
+  "agentSessionId": "9c5c45ed-4b88-4a9b-a381-1a7411e926b0"
+}

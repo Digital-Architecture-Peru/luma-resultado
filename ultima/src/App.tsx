@@ -1,299 +1,246 @@
 import { useMemo, useState } from 'react';
 
-type CanalNotificacion = 'Push' | 'SMS' | 'Email';
-type EstadoNotificacion = 'Pendiente' | 'Enviada' | 'Fallida';
+type Canal = 'Email' | 'SMS' | 'Push';
+type Estado = 'Pendiente' | 'Enviada' | 'Fallida';
 
-interface NotificacionTarjeta {
+interface Notificacion {
   id: string;
-  tarjeta: string;
+  cuenta: string;
   titular: string;
+  canal: Canal;
   mensaje: string;
-  canal: CanalNotificacion;
-  estado: EstadoNotificacion;
-  fecha: string;
+  estado: Estado;
+  creada: string;
 }
 
-let nextId = 5;
+interface FormState {
+  cuenta: string;
+  titular: string;
+  canal: Canal;
+  mensaje: string;
+}
 
-const DATOS_INICIALES: NotificacionTarjeta[] = [
+const CANALES: Canal[] = ['Email', 'SMS', 'Push'];
+
+function nuevoId(): string {
+  return `ntf-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function horaActual(): string {
+  return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
+
+const SEED: Notificacion[] = [
   {
-    id: 't1',
-    tarjeta: '**** 4821',
-    titular: 'María Fernández',
-    mensaje: 'Compra aprobada por $120.000 en Supermercado La Economía',
-    canal: 'Push',
-    estado: 'Enviada',
-    fecha: '2026-10-18 09:12',
-  },
-  {
-    id: 't2',
-    tarjeta: '**** 2290',
-    titular: 'Jorge Ramírez',
-    mensaje: 'Pago mínimo disponible, vence en 3 días',
-    canal: 'SMS',
-    estado: 'Pendiente',
-    fecha: '2026-10-18 14:40',
-  },
-  {
-    id: 't3',
-    tarjeta: '**** 7753',
-    titular: 'Lucía Gómez',
-    mensaje: 'Intento de compra rechazado por fondos insuficientes',
+    id: nuevoId(),
+    cuenta: 'CTA-10234',
+    titular: 'Marta Reyes',
     canal: 'Email',
-    estado: 'Fallida',
-    fecha: '2026-10-19 08:03',
+    mensaje: 'Tu saldo disponible bajó de 100.000.',
+    estado: 'Enviada',
+    creada: horaActual(),
   },
   {
-    id: 't4',
-    tarjeta: '**** 3014',
-    titular: 'Pedro Salazar',
-    mensaje: 'Tarjeta bloqueada temporalmente por seguridad',
+    id: nuevoId(),
+    cuenta: 'CTA-55821',
+    titular: 'Jorge Peña',
+    canal: 'SMS',
+    mensaje: 'Se registró un depósito de 250.000.',
+    estado: 'Pendiente',
+    creada: horaActual(),
+  },
+  {
+    id: nuevoId(),
+    cuenta: 'CTA-77410',
+    titular: 'Ana Lucero',
     canal: 'Push',
-    estado: 'Enviada',
-    fecha: '2026-10-19 10:55',
+    mensaje: 'Tu tarjeta asociada fue bloqueada temporalmente.',
+    estado: 'Fallida',
+    creada: horaActual(),
   },
 ];
 
-const CANALES: CanalNotificacion[] = ['Push', 'SMS', 'Email'];
-const ESTADOS: EstadoNotificacion[] = ['Pendiente', 'Enviada', 'Fallida'];
-
-function formatearFechaActual(): string {
-  const ahora = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(
-    ahora.getHours(),
-  )}:${pad(ahora.getMinutes())}`;
-}
-
-interface FormularioNotificacion {
-  tarjeta: string;
-  titular: string;
-  mensaje: string;
-  canal: CanalNotificacion;
-  estado: EstadoNotificacion;
-}
-
-const FORMULARIO_VACIO: FormularioNotificacion = {
-  tarjeta: '',
-  titular: '',
-  mensaje: '',
-  canal: 'Push',
-  estado: 'Pendiente',
-};
+const FORM_VACIO: FormState = { cuenta: '', titular: '', canal: 'Email', mensaje: '' };
 
 export default function App() {
-  const [notificaciones, setNotificaciones] = useState<NotificacionTarjeta[]>(DATOS_INICIALES);
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<EstadoNotificacion | 'Todos'>('Todos');
-  const [formulario, setFormulario] = useState<FormularioNotificacion>(FORMULARIO_VACIO);
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>(SEED);
+  const [form, setForm] = useState<FormState>(FORM_VACIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [pendienteBorrarId, setPendienteBorrarId] = useState<string | null>(null);
-  const [mensajeAccion, setMensajeAccion] = useState('');
-  const [errorFormulario, setErrorFormulario] = useState('');
-  const [resultadoCapacidad, setResultadoCapacidad] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [pendienteBorrar, setPendienteBorrar] = useState<string | null>(null);
+  const [mensajeEstado, setMensajeEstado] = useState('');
+  const [capacidadProbada, setCapacidadProbada] = useState('');
+  const [errorForm, setErrorForm] = useState('');
 
-  const listaFiltrada = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    return notificaciones.filter((n) => {
-      const coincideTermino =
-        termino.length === 0 ||
-        n.tarjeta.toLowerCase().includes(termino) ||
-        n.titular.toLowerCase().includes(termino) ||
-        n.mensaje.toLowerCase().includes(termino);
-      const coincideEstado = filtroEstado === 'Todos' || n.estado === filtroEstado;
-      return coincideTermino && coincideEstado;
-    });
-  }, [notificaciones, busqueda, filtroEstado]);
+  const filtradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return notificaciones;
+    return notificaciones.filter((n) =>
+      [n.cuenta, n.titular, n.canal, n.mensaje, n.estado].some((campo) =>
+        campo.toLowerCase().includes(q),
+      ),
+    );
+  }, [notificaciones, busqueda]);
 
-  function actualizarCampo<K extends keyof FormularioNotificacion>(
-    campo: K,
-    valor: FormularioNotificacion[K],
-  ) {
-    setFormulario((previo) => ({ ...previo, [campo]: valor }));
+  function anunciar(texto: string) {
+    setMensajeEstado(texto);
   }
 
   function limpiarFormulario() {
-    setFormulario(FORMULARIO_VACIO);
+    setForm(FORM_VACIO);
     setEditandoId(null);
-    setErrorFormulario('');
+    setErrorForm('');
   }
 
-  function manejarEnviarFormulario(evento: React.FormEvent) {
+  function manejarEnvioFormulario(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    const tarjeta = formulario.tarjeta.trim();
-    const titular = formulario.titular.trim();
-    const mensaje = formulario.mensaje.trim();
+    const cuenta = form.cuenta.trim();
+    const titular = form.titular.trim();
+    const mensaje = form.mensaje.trim();
 
-    if (!tarjeta || !titular || !mensaje) {
-      setErrorFormulario('Completa tarjeta, titular y mensaje antes de guardar.');
+    if (!cuenta || !titular || !mensaje) {
+      setErrorForm('Completa cuenta, titular y mensaje antes de guardar.');
       return;
     }
 
     if (editandoId) {
-      setNotificaciones((previo) =>
-        previo.map((n) =>
-          n.id === editandoId
-            ? { ...n, tarjeta, titular, mensaje, canal: formulario.canal, estado: formulario.estado }
-            : n,
+      setNotificaciones((previas) =>
+        previas.map((n) =>
+          n.id === editandoId ? { ...n, cuenta, titular, canal: form.canal, mensaje } : n,
         ),
       );
-      setMensajeAccion(`Notificación de ${titular} actualizada.`);
+      anunciar(`Notificación de la cuenta ${cuenta} actualizada.`);
     } else {
-      const nueva: NotificacionTarjeta = {
-        id: `t${nextId++}`,
-        tarjeta,
+      const creada: Notificacion = {
+        id: nuevoId(),
+        cuenta,
         titular,
+        canal: form.canal,
         mensaje,
-        canal: formulario.canal,
-        estado: formulario.estado,
-        fecha: formatearFechaActual(),
+        estado: 'Pendiente',
+        creada: horaActual(),
       };
-      setNotificaciones((previo) => [nueva, ...previo]);
-      setMensajeAccion(`Notificación creada para ${titular}.`);
+      setNotificaciones((previas) => [creada, ...previas]);
+      anunciar(`Notificación creada para la cuenta ${cuenta}.`);
     }
     limpiarFormulario();
   }
 
-  function iniciarEdicion(notificacion: NotificacionTarjeta) {
-    setEditandoId(notificacion.id);
-    setFormulario({
-      tarjeta: notificacion.tarjeta,
-      titular: notificacion.titular,
-      mensaje: notificacion.mensaje,
-      canal: notificacion.canal,
-      estado: notificacion.estado,
-    });
-    setErrorFormulario('');
-    setMensajeAccion('');
+  function editar(n: Notificacion) {
+    setForm({ cuenta: n.cuenta, titular: n.titular, canal: n.canal, mensaje: n.mensaje });
+    setEditandoId(n.id);
+    setErrorForm('');
   }
 
   function pedirConfirmacionBorrado(id: string) {
-    setPendienteBorrarId(id);
+    setPendienteBorrar(id);
   }
 
   function cancelarBorrado() {
-    setPendienteBorrarId(null);
+    setPendienteBorrar(null);
   }
 
-  function confirmarBorrado(id: string) {
-    const objetivo = notificaciones.find((n) => n.id === id);
-    setNotificaciones((previo) => previo.filter((n) => n.id !== id));
-    setPendienteBorrarId(null);
-    if (editandoId === id) {
-      limpiarFormulario();
-    }
-    setMensajeAccion(`Notificación de ${objetivo?.titular ?? 'la tarjeta'} eliminada.`);
+  function confirmarBorrado() {
+    if (!pendienteBorrar) return;
+    const objetivo = notificaciones.find((n) => n.id === pendienteBorrar);
+    setNotificaciones((previas) => previas.filter((n) => n.id !== pendienteBorrar));
+    if (editandoId === pendienteBorrar) limpiarFormulario();
+    setPendienteBorrar(null);
+    anunciar(`Notificación de la cuenta ${objetivo?.cuenta ?? ''} eliminada.`);
   }
 
-  function reenviarNotificacion(id: string) {
-    setNotificaciones((previo) =>
-      previo.map((n) =>
-        n.id === id ? { ...n, estado: 'Enviada', fecha: formatearFechaActual() } : n,
-      ),
+  function marcarEnviada(id: string) {
+    setNotificaciones((previas) =>
+      previas.map((n) => (n.id === id ? { ...n, estado: 'Enviada' as Estado } : n)),
     );
-    const objetivo = notificaciones.find((n) => n.id === id);
-    setMensajeAccion(`Notificación reenviada a ${objetivo?.titular ?? 'titular'}.`);
+    anunciar('Notificación marcada como enviada.');
   }
 
   function probarCapacidad() {
-    setResultadoCapacidad('Notificación de Tarjetas');
+    setCapacidadProbada('Notificación de Cuentas');
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div className="app-header__texto">
-          <p className="app-header__kicker">Banca por Internet · Tarjetas</p>
-          <h1>Notificación de Tarjetas</h1>
-          <p className="app-header__descripcion">
-            Gestiona, busca y confirma el envío de notificaciones ficticias asociadas a
-            movimientos de tarjetas. Datos de demostración en memoria, sin persistencia.
-          </p>
-        </div>
-        <div className="app-header__accion">
-          <button type="button" className="boton boton--primario" onClick={probarCapacidad}>
+        <p className="app-kicker">Banca por Internet · Cuentas</p>
+        <h1>Notificación de Cuentas</h1>
+        <p className="app-subtitle">
+          Administra en memoria las notificaciones enviadas a los titulares de cuenta: crea,
+          edita, busca, confirma el envío o elimina con confirmación explícita.
+        </p>
+        <div className="probar-capacidad">
+          <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
             Probar capacidad
           </button>
-          <p role="status" className="estado-capacidad" aria-live="polite">
-            {resultadoCapacidad}
-          </p>
+          <span role="status" aria-live="polite" className="capacidad-resultado">
+            {capacidadProbada}
+          </span>
         </div>
       </header>
 
-      <section className="panel" aria-labelledby="titulo-formulario">
-        <h2 id="titulo-formulario">{editandoId ? 'Editar notificación' : 'Nueva notificación'}</h2>
-        <form className="formulario" onSubmit={manejarEnviarFormulario} noValidate>
+      <section className="panel" aria-labelledby="form-titulo">
+        <h2 id="form-titulo">{editandoId ? 'Editar notificación' : 'Nueva notificación'}</h2>
+        <form onSubmit={manejarEnvioFormulario} className="formulario" noValidate>
           <div className="campo">
-            <label htmlFor="campo-tarjeta">Tarjeta</label>
+            <label htmlFor="cuenta">Número de cuenta</label>
             <input
-              id="campo-tarjeta"
+              id="cuenta"
+              name="cuenta"
               type="text"
-              placeholder="**** 1234"
-              value={formulario.tarjeta}
-              onChange={(e) => actualizarCampo('tarjeta', e.target.value)}
+              value={form.cuenta}
+              placeholder="CTA-00000"
+              onChange={(e) => setForm((f) => ({ ...f, cuenta: e.target.value }))}
             />
           </div>
           <div className="campo">
-            <label htmlFor="campo-titular">Titular</label>
+            <label htmlFor="titular">Titular</label>
             <input
-              id="campo-titular"
+              id="titular"
+              name="titular"
               type="text"
+              value={form.titular}
               placeholder="Nombre del titular"
-              value={formulario.titular}
-              onChange={(e) => actualizarCampo('titular', e.target.value)}
+              onChange={(e) => setForm((f) => ({ ...f, titular: e.target.value }))}
             />
           </div>
-          <div className="campo campo--ancho">
-            <label htmlFor="campo-mensaje">Mensaje</label>
+          <div className="campo">
+            <label htmlFor="canal">Canal</label>
+            <select
+              id="canal"
+              name="canal"
+              value={form.canal}
+              onChange={(e) => setForm((f) => ({ ...f, canal: e.target.value as Canal }))}
+            >
+              {CANALES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="campo campo-ancho">
+            <label htmlFor="mensaje">Mensaje</label>
             <textarea
-              id="campo-mensaje"
+              id="mensaje"
+              name="mensaje"
               rows={2}
-              placeholder="Detalle del evento a notificar"
-              value={formulario.mensaje}
-              onChange={(e) => actualizarCampo('mensaje', e.target.value)}
+              value={form.mensaje}
+              placeholder="Texto de la notificación"
+              onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
             />
           </div>
-          <div className="campo">
-            <label htmlFor="campo-canal">Canal</label>
-            <select
-              id="campo-canal"
-              value={formulario.canal}
-              onChange={(e) => actualizarCampo('canal', e.target.value as CanalNotificacion)}
-            >
-              {CANALES.map((canal) => (
-                <option key={canal} value={canal}>
-                  {canal}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="campo">
-            <label htmlFor="campo-estado">Estado</label>
-            <select
-              id="campo-estado"
-              value={formulario.estado}
-              onChange={(e) => actualizarCampo('estado', e.target.value as EstadoNotificacion)}
-            >
-              {ESTADOS.map((estado) => (
-                <option key={estado} value={estado}>
-                  {estado}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {errorFormulario && (
-            <p className="mensaje-error" role="alert">
-              {errorFormulario}
+          {errorForm && (
+            <p className="error-texto" role="alert">
+              {errorForm}
             </p>
           )}
-
-          <div className="formulario__acciones">
-            <button type="submit" className="boton boton--primario">
+          <div className="acciones-formulario">
+            <button type="submit" className="btn btn-primary">
               {editandoId ? 'Guardar cambios' : 'Crear notificación'}
             </button>
             {editandoId && (
-              <button type="button" className="boton boton--fantasma" onClick={limpiarFormulario}>
+              <button type="button" className="btn btn-fantasma" onClick={limpiarFormulario}>
                 Cancelar edición
               </button>
             )}
@@ -301,109 +248,96 @@ export default function App() {
         </form>
       </section>
 
-      <section className="panel" aria-labelledby="titulo-lista">
-        <div className="panel__encabezado">
-          <h2 id="titulo-lista">Notificaciones registradas</h2>
-          {mensajeAccion && (
-            <p role="status" className="mensaje-accion" aria-live="polite">
-              {mensajeAccion}
-            </p>
-          )}
-        </div>
-
-        <div className="controles-busqueda">
-          <div className="campo campo--buscar">
-            <label htmlFor="campo-busqueda">Buscar</label>
+      <section className="panel" aria-labelledby="lista-titulo">
+        <div className="lista-encabezado">
+          <h2 id="lista-titulo">Notificaciones registradas</h2>
+          <div className="campo campo-busqueda">
+            <label htmlFor="busqueda">Buscar</label>
             <input
-              id="campo-busqueda"
+              id="busqueda"
               type="search"
-              placeholder="Tarjeta, titular o mensaje"
               value={busqueda}
+              placeholder="Cuenta, titular, canal o estado"
               onChange={(e) => setBusqueda(e.target.value)}
             />
           </div>
-          <div className="campo">
-            <label htmlFor="campo-filtro-estado">Filtrar por estado</label>
-            <select
-              id="campo-filtro-estado"
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value as EstadoNotificacion | 'Todos')}
-            >
-              <option value="Todos">Todos</option>
-              {ESTADOS.map((estado) => (
-                <option key={estado} value={estado}>
-                  {estado}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
-        {listaFiltrada.length === 0 ? (
+        {filtradas.length === 0 ? (
           <p className="estado-vacio">No hay notificaciones que coincidan con la búsqueda.</p>
         ) : (
-          <ul className="lista-notificaciones">
-            {listaFiltrada.map((n) => (
-              <li key={n.id} className="tarjeta-notificacion">
-                <div className="tarjeta-notificacion__cabecera">
-                  <div>
-                    <p className="tarjeta-notificacion__titular">{n.titular}</p>
-                    <p className="tarjeta-notificacion__tarjeta">{n.tarjeta}</p>
-                  </div>
-                  <span className={`insignia insignia--${n.estado.toLowerCase()}`}>{n.estado}</span>
-                </div>
-                <p className="tarjeta-notificacion__mensaje">{n.mensaje}</p>
-                <p className="tarjeta-notificacion__meta">
-                  Canal: {n.canal} · {n.fecha}
-                </p>
-
-                {pendienteBorrarId === n.id ? (
-                  <div className="confirmacion-borrado">
-                    <p role="alert">¿Eliminar esta notificación de {n.titular}?</p>
-                    <div className="confirmacion-borrado__acciones">
-                      <button
-                        type="button"
-                        className="boton boton--peligro"
-                        onClick={() => confirmarBorrado(n.id)}
-                      >
-                        Sí, eliminar
+          <div className="tabla-envoltorio">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th scope="col">Cuenta</th>
+                  <th scope="col">Titular</th>
+                  <th scope="col">Canal</th>
+                  <th scope="col">Mensaje</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Hora</th>
+                  <th scope="col">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtradas.map((n) => (
+                  <tr key={n.id}>
+                    <td>{n.cuenta}</td>
+                    <td>{n.titular}</td>
+                    <td>{n.canal}</td>
+                    <td className="celda-mensaje">{n.mensaje}</td>
+                    <td>
+                      <span className={`badge badge-${n.estado.toLowerCase()}`}>{n.estado}</span>
+                    </td>
+                    <td className="celda-numerica">{n.creada}</td>
+                    <td className="celda-acciones">
+                      {n.estado !== 'Enviada' && (
+                        <button
+                          type="button"
+                          className="btn btn-secundario"
+                          onClick={() => marcarEnviada(n.id)}
+                        >
+                          Marcar enviada
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-fantasma" onClick={() => editar(n)}>
+                        Editar
                       </button>
-                      <button type="button" className="boton boton--fantasma" onClick={cancelarBorrado}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="tarjeta-notificacion__acciones">
-                    <button
-                      type="button"
-                      className="boton boton--secundario"
-                      onClick={() => reenviarNotificacion(n.id)}
-                      disabled={n.estado === 'Enviada'}
-                    >
-                      Reenviar
-                    </button>
-                    <button
-                      type="button"
-                      className="boton boton--secundario"
-                      onClick={() => iniciarEdicion(n)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="boton boton--peligro"
-                      onClick={() => pedirConfirmacionBorrado(n.id)}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                      {pendienteBorrar === n.id ? (
+                        <span className="confirmacion-inline">
+                          <span>¿Eliminar?</span>
+                          <button
+                            type="button"
+                            className="btn btn-peligro"
+                            onClick={confirmarBorrado}
+                          >
+                            Sí, eliminar
+                          </button>
+                          <button type="button" className="btn btn-fantasma" onClick={cancelarBorrado}>
+                            Cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-peligro"
+                          onClick={() => pedirConfirmacionBorrado(n.id)}
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
+
+      <p role="status" aria-live="polite" className="mensaje-estado">
+        {mensajeEstado}
+      </p>
     </main>
   );
 }
