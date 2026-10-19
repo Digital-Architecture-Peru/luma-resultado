@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-type EstadoPago = 'Pendiente' | 'Pagado' | 'Rechazado';
+type EstadoPago = 'Aplicado' | 'Pendiente' | 'Rechazado';
 
 interface Pago {
   id: string;
@@ -12,142 +12,163 @@ interface Pago {
 }
 
 const PAGOS_INICIALES: Pago[] = [
-  { id: 'PG-1001', beneficiario: 'Compañía de Luz S.A.', referencia: 'FAC-88231', monto: 125000.5, fecha: '2026-10-01', estado: 'Pagado' },
-  { id: 'PG-1002', beneficiario: 'Telecom Andina', referencia: 'FAC-77102', monto: 48200, fecha: '2026-10-05', estado: 'Pendiente' },
-  { id: 'PG-1003', beneficiario: 'Universidad Central', referencia: 'MAT-2026-02', monto: 980000, fecha: '2026-10-08', estado: 'Pagado' },
-  { id: 'PG-1004', beneficiario: 'Seguros Vida Plus', referencia: 'POL-55120', monto: 215300, fecha: '2026-10-11', estado: 'Rechazado' },
-  { id: 'PG-1005', beneficiario: 'Agua Metropolitana', referencia: 'FAC-90044', monto: 32750.25, fecha: '2026-10-14', estado: 'Pendiente' },
-  { id: 'PG-1006', beneficiario: 'Colegio San Marcos', referencia: 'PEN-2026-10', monto: 650000, fecha: '2026-10-16', estado: 'Pagado' },
+  { id: 'PG-1001', beneficiario: 'Compañía de Luz Nacional', referencia: 'REF-884201', monto: 128500, fecha: '2026-10-02', estado: 'Aplicado' },
+  { id: 'PG-1002', beneficiario: 'Telecom Andina', referencia: 'REF-884202', monto: 54200, fecha: '2026-10-05', estado: 'Aplicado' },
+  { id: 'PG-1003', beneficiario: 'Seguros del Valle', referencia: 'REF-884203', monto: 310000, fecha: '2026-10-08', estado: 'Pendiente' },
+  { id: 'PG-1004', beneficiario: 'Universidad Central', referencia: 'REF-884204', monto: 980000, fecha: '2026-10-10', estado: 'Aplicado' },
+  { id: 'PG-1005', beneficiario: 'Tarjeta de Crédito Plus', referencia: 'REF-884205', monto: 452300, fecha: '2026-10-12', estado: 'Rechazado' },
+  { id: 'PG-1006', beneficiario: 'Administración Conjunto Residencial', referencia: 'REF-884206', monto: 215000, fecha: '2026-10-14', estado: 'Pendiente' },
+  { id: 'PG-1007', beneficiario: 'Compañía de Luz Nacional', referencia: 'REF-884207', monto: 131200, fecha: '2026-10-16', estado: 'Aplicado' },
 ];
 
-const FORMATO_MONEDA = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
+const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
-function formatearFecha(fecha: string): string {
-  const d = new Date(fecha + 'T00:00:00');
-  return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: '2-digit' });
+function formatearFecha(fechaIso: string): string {
+  const fecha = new Date(fechaIso + 'T00:00:00');
+  return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }).format(fecha);
 }
 
-function claseEstado(estado: EstadoPago): string {
-  if (estado === 'Pagado') return 'badge badge--success';
-  if (estado === 'Rechazado') return 'badge badge--danger';
-  return 'badge badge--pending';
-}
+type FiltroEstado = 'Todos' | EstadoPago;
 
 export default function App() {
-  const [pagos] = useState<Pago[]>(PAGOS_INICIALES);
-  const [texto, setTexto] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<'Todos' | EstadoPago>('Todos');
-  const [seleccionado, setSeleccionado] = useState<Pago | null>(null);
-  const [mensajeDemo, setMensajeDemo] = useState('');
+  const [capacidadMensaje, setCapacidadMensaje] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('Todos');
+  const [pagoSeleccionadoId, setPagoSeleccionadoId] = useState<string | null>(null);
+  const [anuncio, setAnuncio] = useState('');
+
+  const pagos = PAGOS_INICIALES;
 
   const pagosFiltrados = useMemo(() => {
-    const q = texto.trim().toLowerCase();
-    return pagos.filter((p) => {
-      const coincideTexto =
-        q.length === 0 ||
-        p.beneficiario.toLowerCase().includes(q) ||
-        p.referencia.toLowerCase().includes(q) ||
-        p.id.toLowerCase().includes(q);
-      const coincideEstado = filtroEstado === 'Todos' || p.estado === filtroEstado;
-      return coincideTexto && coincideEstado;
+    const termino = busqueda.trim().toLowerCase();
+    return pagos.filter((pago) => {
+      const coincideEstado = filtroEstado === 'Todos' || pago.estado === filtroEstado;
+      if (!coincideEstado) return false;
+      if (!termino) return true;
+      return (
+        pago.beneficiario.toLowerCase().includes(termino) ||
+        pago.referencia.toLowerCase().includes(termino) ||
+        pago.id.toLowerCase().includes(termino)
+      );
     });
-  }, [pagos, texto, filtroEstado]);
+  }, [busqueda, filtroEstado, pagos]);
+
+  const pagoSeleccionado = useMemo(
+    () => pagos.find((pago) => pago.id === pagoSeleccionadoId) ?? null,
+    [pagoSeleccionadoId, pagos]
+  );
 
   const totalFiltrado = useMemo(
-    () => pagosFiltrados.reduce((acc, p) => acc + p.monto, 0),
+    () => pagosFiltrados.reduce((suma, pago) => suma + pago.monto, 0),
     [pagosFiltrados]
   );
 
   function manejarProbarCapacidad() {
-    setMensajeDemo('Consulta de Pagos');
+    setCapacidadMensaje('Consulta de Pagos');
   }
 
-  function verDetalle(pago: Pago) {
-    setSeleccionado(pago);
+  function seleccionarPago(id: string) {
+    setPagoSeleccionadoId(id);
+    const pago = pagos.find((p) => p.id === id);
+    if (pago) {
+      setAnuncio(`Detalle mostrado para el pago ${pago.id} de ${pago.beneficiario}.`);
+    }
   }
 
-  function cerrarDetalle() {
-    setSeleccionado(null);
+  function limpiarFiltros() {
+    setBusqueda('');
+    setFiltroEstado('Todos');
+    setAnuncio('Filtros de búsqueda limpiados.');
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">Banca por Internet</p>
-          <h1>Consulta de Pagos</h1>
-          <p className="subtitle">Revisa el historial de pagos registrados, filtra por estado y busca por beneficiario o referencia.</p>
+        <div className="app-header__titles">
+          <p className="app-header__eyebrow">Banca por Internet · Pagos</p>
+          <h1 className="app-header__title">Consulta de Pagos</h1>
+          <p className="app-header__subtitle">
+            Busca, filtra y revisa el detalle de los pagos realizados desde tu cuenta. Datos de demostración, sin conexión.
+          </p>
         </div>
-        <button type="button" className="btn btn--primary" onClick={manejarProbarCapacidad}>
-          Probar capacidad
-        </button>
+        <div className="app-header__action">
+          <button type="button" className="btn btn--primary" onClick={manejarProbarCapacidad}>
+            Probar capacidad
+          </button>
+          <p className="capacidad-resultado" role="status">
+            {capacidadMensaje}
+          </p>
+        </div>
       </header>
 
-      <p role="status" aria-live="polite" className="demo-status">
-        {mensajeDemo}
-      </p>
-
-      <section className="panel" aria-labelledby="filtros-titulo">
-        <h2 id="filtros-titulo" className="visually-hidden">Filtros de búsqueda</h2>
+      <section className="panel" aria-labelledby="buscar-titulo">
+        <h2 id="buscar-titulo" className="panel__titulo">Buscar pagos</h2>
         <div className="filtros">
           <div className="campo">
-            <label htmlFor="busqueda">Buscar por beneficiario, referencia o ID</label>
+            <label htmlFor="buscar-pago">Beneficiario, referencia o número de pago</label>
             <input
-              id="busqueda"
+              id="buscar-pago"
               type="search"
-              placeholder="Ej. Telecom Andina, FAC-77102, PG-1002"
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
+              placeholder="Ej. Telecom Andina, REF-884203, PG-1004"
+              value={busqueda}
+              onChange={(evento) => setBusqueda(evento.target.value)}
             />
           </div>
           <div className="campo">
-            <label htmlFor="estado">Estado</label>
+            <label htmlFor="filtro-estado">Estado</label>
             <select
-              id="estado"
+              id="filtro-estado"
               value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value as 'Todos' | EstadoPago)}
+              onChange={(evento) => setFiltroEstado(evento.target.value as FiltroEstado)}
             >
               <option value="Todos">Todos</option>
+              <option value="Aplicado">Aplicado</option>
               <option value="Pendiente">Pendiente</option>
-              <option value="Pagado">Pagado</option>
               <option value="Rechazado">Rechazado</option>
             </select>
           </div>
+          <div className="campo campo--accion">
+            <button type="button" className="btn btn--secundario" onClick={limpiarFiltros}>
+              Limpiar filtros
+            </button>
+          </div>
         </div>
-        <p className="resumen">
-          {pagosFiltrados.length} resultado(s) · Total: <strong>{FORMATO_MONEDA.format(totalFiltrado)}</strong>
+        <p className="resumen-filtro">
+          {pagosFiltrados.length} resultado{pagosFiltrados.length === 1 ? '' : 's'} · Total {formatoMoneda.format(totalFiltrado)}
         </p>
       </section>
 
-      <section className="panel" aria-labelledby="tabla-titulo">
-        <h2 id="tabla-titulo">Historial de pagos</h2>
+      <section className="panel" aria-labelledby="resultados-titulo">
+        <h2 id="resultados-titulo" className="panel__titulo">Resultados</h2>
         {pagosFiltrados.length === 0 ? (
-          <p className="estado-vacio">No se encontraron pagos con los criterios actuales.</p>
+          <p className="estado-vacio">No se encontraron pagos con esos criterios. Ajusta la búsqueda o el estado.</p>
         ) : (
-          <div className="tabla-scroll">
+          <div className="tabla-contenedor">
             <table className="tabla-pagos">
               <thead>
                 <tr>
-                  <th scope="col">ID</th>
+                  <th scope="col">Pago</th>
                   <th scope="col">Beneficiario</th>
                   <th scope="col">Referencia</th>
                   <th scope="col">Fecha</th>
-                  <th scope="col" className="num">Monto</th>
+                  <th scope="col" className="col-numerica">Monto</th>
                   <th scope="col">Estado</th>
-                  <th scope="col">Detalle</th>
+                  <th scope="col"><span className="sr-only">Acciones</span></th>
                 </tr>
               </thead>
               <tbody>
-                {pagosFiltrados.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.id}</td>
-                    <td>{p.beneficiario}</td>
-                    <td>{p.referencia}</td>
-                    <td>{formatearFecha(p.fecha)}</td>
-                    <td className="num">{FORMATO_MONEDA.format(p.monto)}</td>
-                    <td><span className={claseEstado(p.estado)}>{p.estado}</span></td>
+                {pagosFiltrados.map((pago) => (
+                  <tr key={pago.id} className={pago.id === pagoSeleccionadoId ? 'fila-activa' : undefined}>
+                    <td>{pago.id}</td>
+                    <td>{pago.beneficiario}</td>
+                    <td>{pago.referencia}</td>
+                    <td>{formatearFecha(pago.fecha)}</td>
+                    <td className="col-numerica">{formatoMoneda.format(pago.monto)}</td>
                     <td>
-                      <button type="button" className="btn btn--ghost" onClick={() => verDetalle(p)}>
+                      <span className={`badge badge--${pago.estado.toLowerCase()}`}>{pago.estado}</span>
+                    </td>
+                    <td>
+                      <button type="button" className="btn btn--enlace" onClick={() => seleccionarPago(pago.id)}>
                         Ver detalle
                       </button>
                     </td>
@@ -159,48 +180,39 @@ export default function App() {
         )}
       </section>
 
-      {seleccionado && (
-        <div className="overlay" role="presentation" onClick={cerrarDetalle}>
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="detalle-titulo"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="detalle-titulo">Detalle del pago {seleccionado.id}</h2>
-            <dl className="detalle-lista">
-              <div>
-                <dt>Beneficiario</dt>
-                <dd>{seleccionado.beneficiario}</dd>
-              </div>
-              <div>
-                <dt>Referencia</dt>
-                <dd>{seleccionado.referencia}</dd>
-              </div>
-              <div>
-                <dt>Fecha</dt>
-                <dd>{formatearFecha(seleccionado.fecha)}</dd>
-              </div>
-              <div>
-                <dt>Monto</dt>
-                <dd>{FORMATO_MONEDA.format(seleccionado.monto)}</dd>
-              </div>
-              <div>
-                <dt>Estado</dt>
-                <dd><span className={claseEstado(seleccionado.estado)}>{seleccionado.estado}</span></dd>
-              </div>
-            </dl>
-            <button type="button" className="btn btn--primary" onClick={cerrarDetalle}>
-              Cerrar
-            </button>
-          </section>
-        </div>
+      {pagoSeleccionado && (
+        <section className="panel panel--detalle" aria-labelledby="detalle-titulo">
+          <h2 id="detalle-titulo" className="panel__titulo">Detalle del pago {pagoSeleccionado.id}</h2>
+          <dl className="detalle-grid">
+            <div>
+              <dt>Beneficiario</dt>
+              <dd>{pagoSeleccionado.beneficiario}</dd>
+            </div>
+            <div>
+              <dt>Referencia</dt>
+              <dd>{pagoSeleccionado.referencia}</dd>
+            </div>
+            <div>
+              <dt>Fecha</dt>
+              <dd>{formatearFecha(pagoSeleccionado.fecha)}</dd>
+            </div>
+            <div>
+              <dt>Monto</dt>
+              <dd>{formatoMoneda.format(pagoSeleccionado.monto)}</dd>
+            </div>
+            <div>
+              <dt>Estado</dt>
+              <dd>
+                <span className={`badge badge--${pagoSeleccionado.estado.toLowerCase()}`}>{pagoSeleccionado.estado}</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
       )}
 
-      <footer className="app-footer">
-        <p>Datos ficticios en memoria, sin conexión a sistemas reales. Candidate — no es una versión de producción.</p>
-      </footer>
+      <p className="sr-only" role="status" aria-live="polite">
+        {anuncio}
+      </p>
     </main>
   );
 }
