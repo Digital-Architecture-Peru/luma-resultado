@@ -1,150 +1,154 @@
 import { useMemo, useState } from 'react';
 
-type Cuenta = {
-  id: string;
-  numero: string;
-  titular: string;
-  tipo: 'Ahorros' | 'Corriente';
-  moneda: 'USD' | 'EUR';
-  saldo: number;
-  estado: 'Activa' | 'Bloqueada';
-};
+type EstadoPago = 'Pendiente' | 'Pagado' | 'Rechazado';
 
-const CUENTAS_INICIALES: Cuenta[] = [
-  { id: 'c1', numero: '0001-2233-44', titular: 'María Fernanda López', tipo: 'Ahorros', moneda: 'USD', saldo: 4520.75, estado: 'Activa' },
-  { id: 'c2', numero: '0002-5566-77', titular: 'Jorge Andrés Pérez', tipo: 'Corriente', moneda: 'USD', saldo: 150.2, estado: 'Activa' },
-  { id: 'c3', numero: '0003-8899-00', titular: 'Lucía Valentina Ríos', tipo: 'Ahorros', moneda: 'EUR', saldo: 980.0, estado: 'Bloqueada' },
-  { id: 'c4', numero: '0004-1122-33', titular: 'Carlos Eduardo Gómez', tipo: 'Corriente', moneda: 'USD', saldo: 12750.4, estado: 'Activa' },
-  { id: 'c5', numero: '0005-4455-66', titular: 'Ana Sofía Torres', tipo: 'Ahorros', moneda: 'USD', saldo: 60.0, estado: 'Activa' },
+interface Pago {
+  id: string;
+  beneficiario: string;
+  referencia: string;
+  monto: number;
+  fecha: string;
+  estado: EstadoPago;
+}
+
+const PAGOS_INICIALES: Pago[] = [
+  { id: 'PG-1001', beneficiario: 'Compañía de Luz S.A.', referencia: 'FAC-88231', monto: 125000.5, fecha: '2026-10-01', estado: 'Pagado' },
+  { id: 'PG-1002', beneficiario: 'Telecom Andina', referencia: 'FAC-77102', monto: 48200, fecha: '2026-10-05', estado: 'Pendiente' },
+  { id: 'PG-1003', beneficiario: 'Universidad Central', referencia: 'MAT-2026-02', monto: 980000, fecha: '2026-10-08', estado: 'Pagado' },
+  { id: 'PG-1004', beneficiario: 'Seguros Vida Plus', referencia: 'POL-55120', monto: 215300, fecha: '2026-10-11', estado: 'Rechazado' },
+  { id: 'PG-1005', beneficiario: 'Agua Metropolitana', referencia: 'FAC-90044', monto: 32750.25, fecha: '2026-10-14', estado: 'Pendiente' },
+  { id: 'PG-1006', beneficiario: 'Colegio San Marcos', referencia: 'PEN-2026-10', monto: 650000, fecha: '2026-10-16', estado: 'Pagado' },
 ];
 
-function formatearMonto(saldo: number, moneda: Cuenta['moneda']): string {
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: moneda }).format(saldo);
+const FORMATO_MONEDA = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 2 });
+
+function formatearFecha(fecha: string): string {
+  const d = new Date(fecha + 'T00:00:00');
+  return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: '2-digit' });
+}
+
+function claseEstado(estado: EstadoPago): string {
+  if (estado === 'Pagado') return 'badge badge--success';
+  if (estado === 'Rechazado') return 'badge badge--danger';
+  return 'badge badge--pending';
 }
 
 export default function App() {
-  const [cuentas] = useState<Cuenta[]>(CUENTAS_INICIALES);
-  const [termino, setTermino] = useState('');
-  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
-  const [mensajeCapacidad, setMensajeCapacidad] = useState<string | null>(null);
-  const [confirmarId, setConfirmarId] = useState<string | null>(null);
-  const [anuncioAccion, setAnuncioAccion] = useState<string | null>(null);
+  const [pagos] = useState<Pago[]>(PAGOS_INICIALES);
+  const [texto, setTexto] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<'Todos' | EstadoPago>('Todos');
+  const [seleccionado, setSeleccionado] = useState<Pago | null>(null);
+  const [mensajeDemo, setMensajeDemo] = useState('');
 
-  const cuentasFiltradas = useMemo(() => {
-    const texto = termino.trim().toLowerCase();
-    if (!texto) return cuentas;
-    return cuentas.filter(
-      (c) =>
-        c.numero.toLowerCase().includes(texto) ||
-        c.titular.toLowerCase().includes(texto) ||
-        c.tipo.toLowerCase().includes(texto)
-    );
-  }, [cuentas, termino]);
+  const pagosFiltrados = useMemo(() => {
+    const q = texto.trim().toLowerCase();
+    return pagos.filter((p) => {
+      const coincideTexto =
+        q.length === 0 ||
+        p.beneficiario.toLowerCase().includes(q) ||
+        p.referencia.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q);
+      const coincideEstado = filtroEstado === 'Todos' || p.estado === filtroEstado;
+      return coincideTexto && coincideEstado;
+    });
+  }, [pagos, texto, filtroEstado]);
 
-  const cuentaSeleccionada = cuentas.find((c) => c.id === seleccionadaId) ?? null;
+  const totalFiltrado = useMemo(
+    () => pagosFiltrados.reduce((acc, p) => acc + p.monto, 0),
+    [pagosFiltrados]
+  );
 
   function manejarProbarCapacidad() {
-    const total = cuentas.length;
-    const activas = cuentas.filter((c) => c.estado === 'Activa').length;
-    setMensajeCapacidad(
-      `Consulta de Cuentas: capacidad simulada ejecutada sobre ${total} cuentas (${activas} activas).`
-    );
+    setMensajeDemo('Consulta de Pagos');
   }
 
-  function pedirConfirmacionSaldo(id: string) {
-    setConfirmarId(id);
-    setAnuncioAccion(null);
+  function verDetalle(pago: Pago) {
+    setSeleccionado(pago);
   }
 
-  function cancelarConfirmacion() {
-    setConfirmarId(null);
-  }
-
-  function confirmarConsultaSaldo(cuenta: Cuenta) {
-    setConfirmarId(null);
-    setAnuncioAccion(
-      `Saldo confirmado para la cuenta ${cuenta.numero}: ${formatearMonto(cuenta.saldo, cuenta.moneda)}.`
-    );
+  function cerrarDetalle() {
+    setSeleccionado(null);
   }
 
   return (
-    <main className="layout">
-      <header className="encabezado">
-        <h1>Consulta de Cuentas</h1>
-        <p className="subtitulo">Banca por Internet · Capacidad de consulta sobre cuentas (datos ficticios en memoria)</p>
-      </header>
-
-      <section className="panel" aria-labelledby="probar-heading">
-        <h2 id="probar-heading">Probar la capacidad</h2>
-        <p>Ejecuta una verificación simulada de la capacidad de consulta de cuentas.</p>
-        <button type="button" className="btn btn-primario" onClick={manejarProbarCapacidad}>
+    <main className="app-shell">
+      <header className="app-header">
+        <div>
+          <p className="eyebrow">Banca por Internet</p>
+          <h1>Consulta de Pagos</h1>
+          <p className="subtitle">Revisa el historial de pagos registrados, filtra por estado y busca por beneficiario o referencia.</p>
+        </div>
+        <button type="button" className="btn btn--primary" onClick={manejarProbarCapacidad}>
           Probar capacidad
         </button>
-        <p role="status" aria-live="polite" className="estado-resultado">
-          {mensajeCapacidad ?? ''}
+      </header>
+
+      <p role="status" aria-live="polite" className="demo-status">
+        {mensajeDemo}
+      </p>
+
+      <section className="panel" aria-labelledby="filtros-titulo">
+        <h2 id="filtros-titulo" className="visually-hidden">Filtros de búsqueda</h2>
+        <div className="filtros">
+          <div className="campo">
+            <label htmlFor="busqueda">Buscar por beneficiario, referencia o ID</label>
+            <input
+              id="busqueda"
+              type="search"
+              placeholder="Ej. Telecom Andina, FAC-77102, PG-1002"
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="estado">Estado</label>
+            <select
+              id="estado"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value as 'Todos' | EstadoPago)}
+            >
+              <option value="Todos">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Pagado">Pagado</option>
+              <option value="Rechazado">Rechazado</option>
+            </select>
+          </div>
+        </div>
+        <p className="resumen">
+          {pagosFiltrados.length} resultado(s) · Total: <strong>{FORMATO_MONEDA.format(totalFiltrado)}</strong>
         </p>
       </section>
 
-      <section className="panel" aria-labelledby="buscar-heading">
-        <h2 id="buscar-heading">Buscar cuentas</h2>
-        <label htmlFor="buscador" className="etiqueta">
-          Buscar por número, titular o tipo
-        </label>
-        <input
-          id="buscador"
-          type="search"
-          className="campo-texto"
-          placeholder="Ej. Ahorros, 0001, López"
-          value={termino}
-          onChange={(e) => setTermino(e.target.value)}
-        />
-        <p className="contador-resultados" aria-live="polite">
-          {cuentasFiltradas.length} cuenta(s) encontrada(s)
-        </p>
-      </section>
-
-      <section className="panel" aria-labelledby="listado-heading">
-        <h2 id="listado-heading">Cuentas</h2>
-        {cuentasFiltradas.length === 0 ? (
-          <p className="vacio">No se encontraron cuentas con ese criterio.</p>
+      <section className="panel" aria-labelledby="tabla-titulo">
+        <h2 id="tabla-titulo">Historial de pagos</h2>
+        {pagosFiltrados.length === 0 ? (
+          <p className="estado-vacio">No se encontraron pagos con los criterios actuales.</p>
         ) : (
-          <div className="tabla-contenedor">
-            <table className="tabla">
+          <div className="tabla-scroll">
+            <table className="tabla-pagos">
               <thead>
                 <tr>
-                  <th scope="col">Número</th>
-                  <th scope="col">Titular</th>
-                  <th scope="col">Tipo</th>
+                  <th scope="col">ID</th>
+                  <th scope="col">Beneficiario</th>
+                  <th scope="col">Referencia</th>
+                  <th scope="col">Fecha</th>
+                  <th scope="col" className="num">Monto</th>
                   <th scope="col">Estado</th>
-                  <th scope="col" className="col-numerica">
-                    Saldo
-                  </th>
-                  <th scope="col">Acciones</th>
+                  <th scope="col">Detalle</th>
                 </tr>
               </thead>
               <tbody>
-                {cuentasFiltradas.map((c) => (
-                  <tr key={c.id} className={c.id === seleccionadaId ? 'fila-activa' : ''}>
-                    <td>{c.numero}</td>
-                    <td>{c.titular}</td>
-                    <td>{c.tipo}</td>
+                {pagosFiltrados.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.id}</td>
+                    <td>{p.beneficiario}</td>
+                    <td>{p.referencia}</td>
+                    <td>{formatearFecha(p.fecha)}</td>
+                    <td className="num">{FORMATO_MONEDA.format(p.monto)}</td>
+                    <td><span className={claseEstado(p.estado)}>{p.estado}</span></td>
                     <td>
-                      <span className={`insignia ${c.estado === 'Activa' ? 'insignia-ok' : 'insignia-alerta'}`}>
-                        {c.estado}
-                      </span>
-                    </td>
-                    <td className="col-numerica">{formatearMonto(c.saldo, c.moneda)}</td>
-                    <td className="col-acciones">
-                      <button
-                        type="button"
-                        className="btn btn-secundario"
-                        onClick={() => setSeleccionadaId(c.id)}
-                        aria-pressed={c.id === seleccionadaId}
-                      >
+                      <button type="button" className="btn btn--ghost" onClick={() => verDetalle(p)}>
                         Ver detalle
-                      </button>
-                      <button type="button" className="btn btn-fantasma" onClick={() => pedirConfirmacionSaldo(c.id)}>
-                        Confirmar saldo
                       </button>
                     </td>
                   </tr>
@@ -155,63 +159,48 @@ export default function App() {
         )}
       </section>
 
-      {cuentaSeleccionada && (
-        <section className="panel" aria-labelledby="detalle-heading">
-          <h2 id="detalle-heading">Detalle de la cuenta</h2>
-          <dl className="detalle-lista">
-            <div>
-              <dt>Número</dt>
-              <dd>{cuentaSeleccionada.numero}</dd>
-            </div>
-            <div>
-              <dt>Titular</dt>
-              <dd>{cuentaSeleccionada.titular}</dd>
-            </div>
-            <div>
-              <dt>Tipo</dt>
-              <dd>{cuentaSeleccionada.tipo}</dd>
-            </div>
-            <div>
-              <dt>Moneda</dt>
-              <dd>{cuentaSeleccionada.moneda}</dd>
-            </div>
-            <div>
-              <dt>Saldo</dt>
-              <dd>{formatearMonto(cuentaSeleccionada.saldo, cuentaSeleccionada.moneda)}</dd>
-            </div>
-            <div>
-              <dt>Estado</dt>
-              <dd>{cuentaSeleccionada.estado}</dd>
-            </div>
-          </dl>
-        </section>
+      {seleccionado && (
+        <div className="overlay" role="presentation" onClick={cerrarDetalle}>
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detalle-titulo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="detalle-titulo">Detalle del pago {seleccionado.id}</h2>
+            <dl className="detalle-lista">
+              <div>
+                <dt>Beneficiario</dt>
+                <dd>{seleccionado.beneficiario}</dd>
+              </div>
+              <div>
+                <dt>Referencia</dt>
+                <dd>{seleccionado.referencia}</dd>
+              </div>
+              <div>
+                <dt>Fecha</dt>
+                <dd>{formatearFecha(seleccionado.fecha)}</dd>
+              </div>
+              <div>
+                <dt>Monto</dt>
+                <dd>{FORMATO_MONEDA.format(seleccionado.monto)}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd><span className={claseEstado(seleccionado.estado)}>{seleccionado.estado}</span></dd>
+              </div>
+            </dl>
+            <button type="button" className="btn btn--primary" onClick={cerrarDetalle}>
+              Cerrar
+            </button>
+          </section>
+        </div>
       )}
 
-      {confirmarId && (
-        <section className="panel panel-confirmacion" aria-labelledby="confirmar-heading">
-          <h2 id="confirmar-heading">Confirmar consulta de saldo</h2>
-          <p>¿Confirmas consultar el saldo de la cuenta seleccionada?</p>
-          <div className="acciones-confirmacion">
-            <button
-              type="button"
-              className="btn btn-primario"
-              onClick={() => {
-                const cuenta = cuentas.find((c) => c.id === confirmarId);
-                if (cuenta) confirmarConsultaSaldo(cuenta);
-              }}
-            >
-              Confirmar
-            </button>
-            <button type="button" className="btn btn-fantasma" onClick={cancelarConfirmacion}>
-              Cancelar
-            </button>
-          </div>
-        </section>
-      )}
-
-      <p role="status" aria-live="polite" className="anuncio-accion">
-        {anuncioAccion ?? ''}
-      </p>
+      <footer className="app-footer">
+        <p>Datos ficticios en memoria, sin conexión a sistemas reales. Candidate — no es una versión de producción.</p>
+      </footer>
     </main>
   );
 }
