@@ -1,29 +1,28 @@
 :root {
   color-scheme: light dark;
-  --bg: #f5f7fb;
+  --bg: #f4f6f8;
   --surface: #ffffff;
-  --text: #1c2430;
-  --muted: #5b6676;
-  --primary: #2458d6;
+  --text: #1b2430;
+  --muted: #5b6774;
+  --primary: #2f6fed;
   --primary-contrast: #ffffff;
-  --danger: #c4293a;
-  --success: #1b8a5a;
-  --border: #d9dee6;
+  --danger: #c0392b;
+  --success: #1e8e55;
+  --border: #d7dde4;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(20, 30, 50, 0.08);
-  --shadow-md: 0 6px 20px rgba(20, 30, 50, 0.12);
+  --shadow-sm: 0 1px 2px rgba(20, 30, 45, 0.08);
+  --shadow-md: 0 8px 24px rgba(20, 30, 45, 0.12);
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --text-sm: clamp(0.8rem, 0.78rem + 0.1vw, 0.875rem);
-  --text-base: clamp(0.95rem, 0.93rem + 0.1vw, 1rem);
+  --text-base: clamp(0.95rem, 0.92rem + 0.15vw, 1rem);
   --text-lg: clamp(1.1rem, 1.05rem + 0.3vw, 1.3rem);
-  --text-xl: clamp(1.4rem, 1.3rem + 0.6vw, 1.8rem);
+  --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -33,17 +32,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11151c;
-    --surface: #1a202b;
-    --text: #e8ecf2;
-    --muted: #a3adbd;
-    --primary: #6f9bff;
-    --primary-contrast: #0b1220;
-    --danger: #ff8a93;
+    --bg: #11161d;
+    --surface: #1a2029;
+    --text: #e7ecf2;
+    --muted: #9aa7b5;
+    --primary: #6fa0ff;
+    --primary-contrast: #0b1320;
+    --danger: #ff8a7a;
     --success: #6fe0ac;
-    --border: #2b3342;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
+    --border: #2b3542;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -73,36 +72,43 @@ body {
 .app-header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-.eyebrow {
+.app-kicker {
   margin: 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
+  color: var(--primary);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  font-size: var(--text-sm);
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: var(--text-xl);
-  text-wrap: balance;
+  font-size: var(--text-2xl);
   line-height: 1.2;
+  text-wrap: balance;
 }
 
-.descripcion {
+.app-subtitle {
   margin: 0;
   color: var(--muted);
   max-width: 60ch;
 }
 
-.capacidad-demo {
+.capacidad-bloque {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4);
+  flex-wrap: wrap;
   margin-top: var(--space-2);
+}
+
+.capacidad-status {
+  font-weight: 600;
+  color: var(--success);
+  min-height: 1.5em;
 }
 
 .panel {
@@ -121,36 +127,38 @@ body {
   font-size: var(--text-lg);
 }
 
-.grid-tarjetas {
+.grid-cuentas {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: var(--space-4);
 }
 
-.tarjeta-card {
+.tarjeta-cuenta {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   background: color-mix(in oklab, var(--surface) 92%, var(--primary) 8%);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
-.tarjeta-card h3 {
+.tarjeta-cuenta h3 {
   margin: 0;
   font-size: var(--text-base);
 }
 
-.tarjeta-card .numero {
+.numero-cuenta {
   margin: 0;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
 }
 
-.tarjeta-card .saldo {
+.saldo-cuenta {
   margin: 0;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  font-size: var(--text-lg);
 }
 
 .formulario {
@@ -171,113 +179,137 @@ body {
 
 label {
   font-size: var(--text-sm);
-  color: var(--muted);
   font-weight: 600;
+  color: var(--muted);
 }
 
 input,
 select {
-  min-height: 40px;
+  font: inherit;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: var(--text-base);
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  min-height: 40px;
 }
 
 input:focus-visible,
 select:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
 
 .acciones-formulario {
   grid-column: 1 / -1;
   display: flex;
-  justify-content: flex-start;
+  gap: var(--space-3);
 }
 
-.boton {
+.btn {
+  font: inherit;
+  font-weight: 600;
   min-height: 40px;
-  padding-inline: var(--space-5);
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
-  font-size: var(--text-base);
-  font-weight: 600;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
+    color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 
-.boton-primario {
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
   background: var(--primary);
   color: var(--primary-contrast);
 }
 
-.boton-primario:hover {
+.btn-primary:hover {
   background: color-mix(in oklab, var(--primary) 85%, black 15%);
 }
 
-.boton-secundario {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
+.btn-secondary {
+  background: color-mix(in oklab, var(--primary) 14%, var(--surface) 86%);
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--border) 60%);
 }
 
-.boton-secundario:hover {
-  background: color-mix(in oklab, var(--surface) 90%, var(--text) 10%);
+.btn-secondary:hover {
+  background: color-mix(in oklab, var(--primary) 24%, var(--surface) 76%);
 }
 
-.boton-fantasma {
+.btn-ghost {
   background: transparent;
-  border-color: transparent;
-  color: var(--muted);
+  color: var(--text);
+  border-color: var(--border);
 }
 
-.boton-fantasma:hover {
-  background: color-mix(in oklab, var(--surface) 92%, var(--text) 8%);
+.btn-ghost:hover {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
 }
 
-.boton-peligro {
-  background: var(--danger);
-  color: var(--primary-contrast);
-}
-
-.boton-peligro:hover {
-  background: color-mix(in oklab, var(--danger) 85%, black 15%);
-}
-
-.mensaje-estado,
-.mensaje-formulario {
-  min-height: 1.5em;
-  margin: 0;
+.btn-small {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
-  color: var(--success);
-  font-weight: 600;
 }
 
-.texto-error {
+.btn-danger {
   color: var(--danger);
 }
 
-.controles-busqueda {
+.mensaje-error {
+  grid-column: 1 / -1;
+  color: var(--danger);
+  font-weight: 600;
+  margin: 0;
+}
+
+.mensaje-operacion {
+  min-height: 1.5em;
+  color: var(--success);
+  font-weight: 600;
+  margin: 0;
+}
+
+.confirmacion {
+  border: 1px solid color-mix(in oklab, var(--primary) 40%, var(--border) 60%);
+  background: color-mix(in oklab, var(--primary) 8%, var(--surface) 92%);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.confirmacion h3 {
+  margin: 0;
+}
+
+.acciones-confirmacion {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.filtros {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-4);
 }
 
 .estado-vacio {
   color: var(--muted);
-  padding: var(--space-4);
   text-align: center;
+  padding: var(--space-6);
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
 }
 
-.tabla-contenedor {
+.tabla-wrapper {
   overflow-x: auto;
 }
 
@@ -287,70 +319,67 @@ button:focus-visible {
   font-size: var(--text-sm);
 }
 
-.tabla-transacciones th,
-.tabla-transacciones td {
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  vertical-align: middle;
-}
-
 .tabla-transacciones thead th {
   position: sticky;
   top: 0;
-  background: var(--surface);
+  text-align: left;
   color: var(--muted);
-  font-weight: 600;
+  border-bottom: 2px solid var(--border);
+  padding: var(--space-2) var(--space-3);
 }
 
 .tabla-transacciones tbody tr:nth-child(even) {
-  background: color-mix(in oklab, var(--surface) 96%, var(--text) 4%);
+  background: color-mix(in oklab, var(--text) 3%, transparent);
 }
 
-.columna-numerica {
+.tabla-transacciones td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.col-monto {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.insignia {
-  display: inline-block;
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  border: 1px solid var(--border);
-}
-
-.insignia-compra {
-  color: var(--primary);
-  border-color: color-mix(in oklab, var(--primary) 40%, var(--border) 60%);
-}
-
-.insignia-pago {
-  color: var(--success);
-  border-color: color-mix(in oklab, var(--success) 40%, var(--border) 60%);
-}
-
-.insignia-retiro {
-  color: var(--danger);
-  border-color: color-mix(in oklab, var(--danger) 40%, var(--border) 60%);
-}
-
-.confirmacion-inline {
+.col-acciones {
   display: flex;
-  align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.badge-pendiente {
+  background: color-mix(in oklab, orange 20%, var(--surface) 80%);
+  color: #a9640a;
+}
+
+.badge-confirmada {
+  background: color-mix(in oklab, var(--success) 20%, var(--surface) 80%);
+  color: var(--success);
+}
+
+.badge-anulada {
+  background: color-mix(in oklab, var(--danger) 20%, var(--surface) 80%);
+  color: var(--danger);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
+  .btn {
+    transition: none;
   }
 }
 
-@media (max-width: 480px) {
-  .panel {
-    padding: var(--space-4);
+@media (max-width: 420px) {
+  .app-shell {
+    padding-inline: var(--space-4);
   }
 }

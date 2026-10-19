@@ -1,21 +1,21 @@
 {
   "status": "candidate",
-  "generation": "ae469489-595f-4b80-bdb1-22fc47e79538",
+  "generation": "a70fb76f-46e5-4582-9f30-cc41e0485ab2",
   "planRevision": 1,
   "files": [
     {
       "path": "src/App.tsx",
-      "hash": "a57cdfd4931d078fa322679f83fa57fccf2ae5803931b4266d4e3709dc6551db"
+      "hash": "f0d271180c7908db694ac575fe0b36150e10f5fe3ff065786605cc670cc748de"
     },
     {
       "path": "src/styles.css",
-      "hash": "78dafb29e3a5c34d7763fe30cc2f5cd88c03870d18255dd8d8aadf04af2c5ba7"
+      "hash": "13c00819e38a365166f64de56360251ad6a8b222bde922912c22e30f2919de24"
     }
   ],
   "validations": [
     {
       "kind": "build",
-      "elapsedMs": 10784.52199999988,
+      "elapsedMs": 5407.4371000006795,
       "passed": true
     },
     {
@@ -23,7 +23,7 @@
       "kind": "browser-interaction",
       "check": {
         "buttonName": "Probar capacidad",
-        "expectedText": "Transacción de Tarjetas"
+        "expectedText": "Transacción de Cuentas"
       },
       "viewport": {
         "width": 1280,
@@ -31,11 +31,11 @@
       },
       "screenshot": {
         "path": "evidence/preview.png",
-        "hash": "199ee15f6d710f5daaa714234a5c8b1a443239a64c097160b880f08beb705487"
+        "hash": "744f2bc92dc2da3410f644d862312f4daeda55955e53fcd987c935e87f621468"
       },
-      "elapsedMs": 893.6274999994785
+      "elapsedMs": 773.0008000005037
     }
   ],
   "deviations": [],
-  "agentSessionId": "e74d5f16-d64d-45db-ab3a-bfc097134e0d"
+  "agentSessionId": "7bff6489-80af-46a5-ac59-00853d5199ab"
 }
