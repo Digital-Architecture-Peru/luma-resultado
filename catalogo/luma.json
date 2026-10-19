@@ -1,5 +1,5 @@
 {
-  "actualizado": "2026-10-19T19:46:24.822Z",
+  "actualizado": "2026-10-19T19:46:28.433Z",
   "entradas": {
     "Consulta|Tarjetas|Frontend||": {
       "clave": "Consulta|Tarjetas|Frontend||",
@@ -4673,7 +4673,7 @@
       "distTree": "1c2927bde2ef86dae0fc2c86ab011cc5218168c2",
       "distRuta": "ultima/dist",
       "fecha": "2026-10-19T19:45:52Z",
-      "duracion_s": 153,
+      "duracion_s": null,
       "etapas": [
         {
           "etapa": "Preflight",
