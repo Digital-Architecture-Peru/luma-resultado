@@ -1,24 +1,24 @@
 :root {
   color-scheme: light dark;
-  --bg: #f5f7fa;
+  --bg: #f5f7fb;
   --surface: #ffffff;
   --text: #1b2430;
   --muted: #5b6676;
-  --primary: #1458c9;
+  --primary: #2458d6;
   --primary-contrast: #ffffff;
-  --danger: #b3261e;
-  --success: #1b7a3d;
-  --border: #d7dde6;
+  --danger: #c8392a;
+  --success: #1b7a4a;
+  --border: #dbe1ea;
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --shadow-sm: 0 1px 2px rgba(20, 30, 50, 0.08);
   --shadow-md: 0 8px 24px rgba(20, 30, 50, 0.12);
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --text-sm: clamp(0.8rem, 0.78rem + 0.1vw, 0.875rem);
-  --text-base: clamp(0.95rem, 0.92rem + 0.15vw, 1rem);
-  --text-lg: clamp(1.1rem, 1.05rem + 0.3vw, 1.25rem);
-  --text-xl: clamp(1.4rem, 1.3rem + 0.6vw, 1.75rem);
+  --text-base: clamp(0.95rem, 0.9rem + 0.2vw, 1rem);
+  --text-lg: clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
+  --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -34,16 +34,16 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #11151c;
-    --surface: #1a212b;
-    --text: #e7edf5;
-    --muted: #9aa6b6;
-    --primary: #5b9bff;
-    --primary-contrast: #0b1320;
-    --danger: #ff8a80;
-    --success: #6fd39a;
-    --border: #2b3340;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --surface: #181e27;
+    --text: #e8ecf2;
+    --muted: #9aa5b5;
+    --primary: #5c8bf0;
+    --primary-contrast: #0b1220;
+    --danger: #e26a5c;
+    --success: #4fbf85;
+    --border: #2a3342;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -60,7 +60,16 @@ body {
   line-height: 1.5;
 }
 
-.layout {
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.app-shell {
   max-width: 72rem;
   margin-inline: auto;
   padding-inline: clamp(1rem, 4vw, 2rem);
@@ -70,16 +79,78 @@ body {
   gap: var(--space-6);
 }
 
-.encabezado h1 {
-  font-size: var(--text-xl);
-  line-height: 1.2;
-  text-wrap: balance;
-  margin: 0 0 var(--space-1);
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
 }
 
-.subtitulo {
-  color: var(--muted);
+.eyebrow {
   margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.app-header h1 {
+  margin: var(--space-1) 0;
+  font-size: var(--text-2xl);
+  text-wrap: balance;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  max-width: 48ch;
+}
+
+.demo-status {
+  min-height: 1.5em;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0;
+}
+
+.btn {
+  min-height: 40px;
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.btn:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary) 60%, white 0%);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+
+.btn--primary:hover {
+  background: color-mix(in oklab, var(--primary) 88%, black 8%);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+  min-height: 36px;
+  padding-inline: var(--space-3);
+  font-weight: 500;
+}
+
+.btn--ghost:hover {
+  background: color-mix(in oklab, var(--surface) 70%, var(--border) 30%);
 }
 
 .panel {
@@ -87,178 +158,168 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: var(--space-5);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .panel h2 {
-  font-size: var(--text-lg);
   margin: 0;
+  font-size: var(--text-lg);
 }
 
-.etiqueta {
-  font-weight: 600;
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.campo label {
   font-size: var(--text-sm);
+  color: var(--muted);
+  font-weight: 600;
 }
 
-.campo-texto {
-  width: 100%;
+.campo input,
+.campo select {
   min-height: 40px;
-  padding: var(--space-2) var(--space-3);
+  padding-inline: var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   font-size: var(--text-base);
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
-.campo-texto:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--primary) 60%, transparent);
-  outline-offset: 2px;
-  border-color: var(--primary);
+.campo input:focus-visible,
+.campo select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
 }
 
-.contador-resultados {
+.resumen {
+  margin: 0;
   color: var(--muted);
-  font-size: var(--text-sm);
+}
+
+.estado-vacio {
+  color: var(--muted);
   margin: 0;
 }
 
-.btn {
-  min-height: 40px;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  font-size: var(--text-base);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
-  align-self: flex-start;
-}
-
-.btn:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--primary) 60%, transparent);
-  outline-offset: 2px;
-}
-
-.btn-primario {
-  background: var(--primary);
-  color: var(--primary-contrast);
-}
-
-.btn-primario:hover {
-  background: color-mix(in oklab, var(--primary) 85%, black 15%);
-}
-
-.btn-secundario {
-  background: var(--bg);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.btn-secundario:hover {
-  background: color-mix(in oklab, var(--bg) 80%, var(--primary) 20%);
-}
-
-.btn-fantasma {
-  background: transparent;
-  color: var(--primary);
-  border-color: transparent;
-}
-
-.btn-fantasma:hover {
-  background: color-mix(in oklab, var(--primary) 12%, transparent);
-}
-
-.estado-resultado,
-.anuncio-accion {
-  min-height: 1.5em;
-  font-weight: 600;
-  color: var(--success);
-  margin: 0;
-}
-
-.tabla-contenedor {
+.tabla-scroll {
   overflow-x: auto;
 }
 
-.tabla {
+.tabla-pagos {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--text-sm);
+  min-width: 42rem;
 }
 
-.tabla thead th {
+.tabla-pagos thead th {
   position: sticky;
   top: 0;
-  background: var(--bg);
   text-align: left;
-  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--muted);
   border-bottom: 2px solid var(--border);
+  padding: var(--space-2) var(--space-3);
 }
 
-.tabla tbody td {
+.tabla-pagos td {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
 }
 
-.tabla tbody tr:nth-child(even) {
-  background: color-mix(in oklab, var(--surface) 92%, var(--text) 3%);
+.tabla-pagos tbody tr:nth-child(even) {
+  background: color-mix(in oklab, var(--surface) 94%, var(--border) 6%);
 }
 
-.fila-activa {
-  background: color-mix(in oklab, var(--primary) 10%, transparent) !important;
-}
-
-.col-numerica {
+.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.col-acciones {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.insignia {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
+.badge {
+  display: inline-block;
   padding: 2px var(--space-2);
   border-radius: 999px;
   font-size: var(--text-sm);
   font-weight: 600;
+  border: 1px solid transparent;
 }
 
-.insignia-ok {
-  background: color-mix(in oklab, var(--success) 18%, transparent);
+.badge--success {
+  background: color-mix(in oklab, var(--success) 18%, var(--surface) 82%);
   color: var(--success);
+  border-color: color-mix(in oklab, var(--success) 40%, var(--surface) 60%);
 }
 
-.insignia-alerta {
-  background: color-mix(in oklab, var(--danger) 18%, transparent);
+.badge--danger {
+  background: color-mix(in oklab, var(--danger) 18%, var(--surface) 82%);
   color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 40%, var(--surface) 60%);
 }
 
-.vacio {
+.badge--pending {
+  background: color-mix(in oklab, var(--muted) 18%, var(--surface) 82%);
   color: var(--muted);
+  border-color: color-mix(in oklab, var(--muted) 40%, var(--surface) 60%);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 20, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 10;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-6);
+  max-width: 28rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: var(--text-lg);
 }
 
 .detalle-lista {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--space-3) var(--space-5);
+  gap: var(--space-2);
   margin: 0;
 }
 
+.detalle-lista div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px dashed var(--border);
+  padding-block: var(--space-1);
+}
+
 .detalle-lista dt {
-  font-size: var(--text-sm);
   color: var(--muted);
+  font-size: var(--text-sm);
 }
 
 .detalle-lista dd {
@@ -266,25 +327,21 @@ body {
   font-weight: 600;
 }
 
-.panel-confirmacion {
-  border-color: color-mix(in oklab, var(--primary) 40%, var(--border));
-}
-
-.acciones-confirmacion {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+.app-footer {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding-top: var(--space-4);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn,
-  .campo-texto {
+  .btn {
     transition: none;
   }
 }
 
-@media (max-width: 480px) {
-  .col-acciones {
-    flex-direction: column;
+@media (max-width: 360px) {
+  .app-shell {
+    padding-inline: var(--space-3);
   }
 }
