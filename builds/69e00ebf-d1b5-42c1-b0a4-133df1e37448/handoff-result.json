@@ -1,0 +1,41 @@
+{
+  "status": "candidate",
+  "generation": "c6e321a9-09b8-45c9-9eb0-49058bd5f943",
+  "planRevision": 1,
+  "files": [
+    {
+      "path": "src/App.tsx",
+      "hash": "6084d2b5710d723ba05d7efc37829bba54745dc734adbfc0797be6ad27b39cc8"
+    },
+    {
+      "path": "src/styles.css",
+      "hash": "7005cc7519492778fd202f11c6aa8dd760703b220c729fa04714a5f004a091c5"
+    }
+  ],
+  "validations": [
+    {
+      "kind": "build",
+      "elapsedMs": 5080.9657000005245,
+      "passed": true
+    },
+    {
+      "passed": true,
+      "kind": "browser-interaction",
+      "check": {
+        "buttonName": "Probar capacidad",
+        "expectedText": "Notificación de Tarjetas"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "screenshot": {
+        "path": "evidence/preview.png",
+        "hash": "17e1dfbbcfd2b714b50facf463556ff42e33bea946c21eb3fe6502c10b4201ee"
+      },
+      "elapsedMs": 651.4833000004292
+    }
+  ],
+  "deviations": [],
+  "agentSessionId": "5432c13d-8542-4762-94db-ac73401e0edc"
+}

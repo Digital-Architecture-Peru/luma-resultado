@@ -1,7 +1,7 @@
 {
   "answers": {
-    "type": "Transacción",
-    "domain": "Pagos",
+    "type": "Notificación",
+    "domain": "Tarjetas",
     "layer": "Frontend",
     "stack": "React + TypeScript",
     "backendStack": "",

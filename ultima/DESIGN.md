@@ -2,8 +2,8 @@
 
 ## Hechos (respuestas del guion)
 - ¿Dónde necesitas incorporar la nueva capacidad? Banca por Internet
-- ¿Qué tipo de capacidad? Transacción
-- ¿Sobre qué dominio? Pagos
+- ¿Qué tipo de capacidad? Notificación
+- ¿Sobre qué dominio? Tarjetas
 - ¿Qué necesitas construir? Frontend
 - ¿Qué stack? React + TypeScript
 - ¿Persistencia? No requiere
@@ -12,7 +12,7 @@
 Estado: fallback (SGC no configurado)
 
 ## Solución
-- Microapp React/TypeScript para "Transacción" sobre Pagos en Banca por Internet, capa Frontend.
+- Microapp React/TypeScript para "Notificación" sobre Tarjetas en Banca por Internet, capa Frontend.
 - Datos ficticios en memoria; sin red, BD ni dependencias nuevas.
 - Pantalla principal con el botón "Probar capacidad" visible al cargar; al pulsarlo muestra "Capacidad simulada" en un elemento role=status.
 - Accesible (etiquetas, foco, contraste) y responsive.

@@ -1,255 +1,409 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
 
-type EstadoPago = 'pendiente' | 'completado' | 'rechazado';
+type CanalNotificacion = 'Push' | 'SMS' | 'Email';
+type EstadoNotificacion = 'Pendiente' | 'Enviada' | 'Fallida';
 
-interface Transaccion {
+interface NotificacionTarjeta {
   id: string;
-  beneficiario: string;
-  cuentaDestino: string;
-  monto: number;
+  tarjeta: string;
+  titular: string;
+  mensaje: string;
+  canal: CanalNotificacion;
+  estado: EstadoNotificacion;
   fecha: string;
-  estado: EstadoPago;
 }
 
-let nextId = 4;
+let nextId = 5;
 
-const datosIniciales: Transaccion[] = [
-  { id: 't1', beneficiario: 'Ana Torres', cuentaDestino: '001-2233445-6', monto: 125000, fecha: '2026-10-01', estado: 'completado' },
-  { id: 't2', beneficiario: 'Luis Gomez', cuentaDestino: '002-9988776-1', monto: 45000, fecha: '2026-10-10', estado: 'pendiente' },
-  { id: 't3', beneficiario: 'Constructora Delta', cuentaDestino: '003-1122334-9', monto: 980000, fecha: '2026-10-15', estado: 'rechazado' },
+const DATOS_INICIALES: NotificacionTarjeta[] = [
+  {
+    id: 't1',
+    tarjeta: '**** 4821',
+    titular: 'María Fernández',
+    mensaje: 'Compra aprobada por $120.000 en Supermercado La Economía',
+    canal: 'Push',
+    estado: 'Enviada',
+    fecha: '2026-10-18 09:12',
+  },
+  {
+    id: 't2',
+    tarjeta: '**** 2290',
+    titular: 'Jorge Ramírez',
+    mensaje: 'Pago mínimo disponible, vence en 3 días',
+    canal: 'SMS',
+    estado: 'Pendiente',
+    fecha: '2026-10-18 14:40',
+  },
+  {
+    id: 't3',
+    tarjeta: '**** 7753',
+    titular: 'Lucía Gómez',
+    mensaje: 'Intento de compra rechazado por fondos insuficientes',
+    canal: 'Email',
+    estado: 'Fallida',
+    fecha: '2026-10-19 08:03',
+  },
+  {
+    id: 't4',
+    tarjeta: '**** 3014',
+    titular: 'Pedro Salazar',
+    mensaje: 'Tarjeta bloqueada temporalmente por seguridad',
+    canal: 'Push',
+    estado: 'Enviada',
+    fecha: '2026-10-19 10:55',
+  },
 ];
 
-const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const CANALES: CanalNotificacion[] = ['Push', 'SMS', 'Email'];
+const ESTADOS: EstadoNotificacion[] = ['Pendiente', 'Enviada', 'Fallida'];
 
-function esMontoValido(valor: string): boolean {
-  const n = Number(valor);
-  return valor.trim() !== '' && Number.isFinite(n) && n > 0;
+function formatearFechaActual(): string {
+  const ahora = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(
+    ahora.getHours(),
+  )}:${pad(ahora.getMinutes())}`;
 }
 
+interface FormularioNotificacion {
+  tarjeta: string;
+  titular: string;
+  mensaje: string;
+  canal: CanalNotificacion;
+  estado: EstadoNotificacion;
+}
+
+const FORMULARIO_VACIO: FormularioNotificacion = {
+  tarjeta: '',
+  titular: '',
+  mensaje: '',
+  canal: 'Push',
+  estado: 'Pendiente',
+};
+
 export default function App() {
-  const [transacciones, setTransacciones] = useState<Transaccion[]>(datosIniciales);
+  const [notificaciones, setNotificaciones] = useState<NotificacionTarjeta[]>(DATOS_INICIALES);
   const [busqueda, setBusqueda] = useState('');
-  const [beneficiario, setBeneficiario] = useState('');
-  const [cuentaDestino, setCuentaDestino] = useState('');
-  const [monto, setMonto] = useState('');
-  const [errores, setErrores] = useState<string[]>([]);
-  const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
-  const [mensajeFormulario, setMensajeFormulario] = useState('');
-  const [mensajeCapacidad, setMensajeCapacidad] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<EstadoNotificacion | 'Todos'>('Todos');
+  const [formulario, setFormulario] = useState<FormularioNotificacion>(FORMULARIO_VACIO);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [pendienteBorrarId, setPendienteBorrarId] = useState<string | null>(null);
+  const [mensajeAccion, setMensajeAccion] = useState('');
+  const [errorFormulario, setErrorFormulario] = useState('');
+  const [resultadoCapacidad, setResultadoCapacidad] = useState('');
 
-  const transaccionesFiltradas = useMemo(() => {
+  const listaFiltrada = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
-    if (!termino) return transacciones;
-    return transacciones.filter(
-      (t) =>
-        t.beneficiario.toLowerCase().includes(termino) ||
-        t.cuentaDestino.toLowerCase().includes(termino) ||
-        t.estado.toLowerCase().includes(termino)
-    );
-  }, [transacciones, busqueda]);
+    return notificaciones.filter((n) => {
+      const coincideTermino =
+        termino.length === 0 ||
+        n.tarjeta.toLowerCase().includes(termino) ||
+        n.titular.toLowerCase().includes(termino) ||
+        n.mensaje.toLowerCase().includes(termino);
+      const coincideEstado = filtroEstado === 'Todos' || n.estado === filtroEstado;
+      return coincideTermino && coincideEstado;
+    });
+  }, [notificaciones, busqueda, filtroEstado]);
 
-  function validarFormulario(): string[] {
-    const nuevosErrores: string[] = [];
-    if (beneficiario.trim().length < 3) nuevosErrores.push('El beneficiario debe tener al menos 3 caracteres.');
-    if (!/^\d{3}-\d{7}-\d$/.test(cuentaDestino.trim())) nuevosErrores.push('La cuenta destino debe tener el formato 000-0000000-0.');
-    if (!esMontoValido(monto)) nuevosErrores.push('El monto debe ser un numero mayor a cero.');
-    return nuevosErrores;
+  function actualizarCampo<K extends keyof FormularioNotificacion>(
+    campo: K,
+    valor: FormularioNotificacion[K],
+  ) {
+    setFormulario((previo) => ({ ...previo, [campo]: valor }));
   }
 
-  function registrarTransaccion(evento: FormEvent) {
+  function limpiarFormulario() {
+    setFormulario(FORMULARIO_VACIO);
+    setEditandoId(null);
+    setErrorFormulario('');
+  }
+
+  function manejarEnviarFormulario(evento: React.FormEvent) {
     evento.preventDefault();
-    const nuevosErrores = validarFormulario();
-    setErrores(nuevosErrores);
-    if (nuevosErrores.length > 0) {
-      setMensajeFormulario('');
+    const tarjeta = formulario.tarjeta.trim();
+    const titular = formulario.titular.trim();
+    const mensaje = formulario.mensaje.trim();
+
+    if (!tarjeta || !titular || !mensaje) {
+      setErrorFormulario('Completa tarjeta, titular y mensaje antes de guardar.');
       return;
     }
-    const nueva: Transaccion = {
-      id: 't' + nextId++,
-      beneficiario: beneficiario.trim(),
-      cuentaDestino: cuentaDestino.trim(),
-      monto: Number(monto),
-      fecha: new Date().toISOString().slice(0, 10),
-      estado: 'pendiente',
-    };
-    setTransacciones((prev) => [nueva, ...prev]);
-    setBeneficiario('');
-    setCuentaDestino('');
-    setMonto('');
-    setMensajeFormulario('Transaccion registrada para ' + nueva.beneficiario + ' por ' + formatoMoneda.format(nueva.monto) + '.');
-  }
 
-  function pedirConfirmacionEliminar(id: string) {
-    setIdAEliminar(id);
-    setMensajeFormulario('');
-  }
-
-  function confirmarEliminacion() {
-    if (!idAEliminar) return;
-    const eliminada = transacciones.find((t) => t.id === idAEliminar);
-    setTransacciones((prev) => prev.filter((t) => t.id !== idAEliminar));
-    setIdAEliminar(null);
-    if (eliminada) {
-      setMensajeFormulario('Transaccion de ' + eliminada.beneficiario + ' eliminada.');
+    if (editandoId) {
+      setNotificaciones((previo) =>
+        previo.map((n) =>
+          n.id === editandoId
+            ? { ...n, tarjeta, titular, mensaje, canal: formulario.canal, estado: formulario.estado }
+            : n,
+        ),
+      );
+      setMensajeAccion(`Notificación de ${titular} actualizada.`);
+    } else {
+      const nueva: NotificacionTarjeta = {
+        id: `t${nextId++}`,
+        tarjeta,
+        titular,
+        mensaje,
+        canal: formulario.canal,
+        estado: formulario.estado,
+        fecha: formatearFechaActual(),
+      };
+      setNotificaciones((previo) => [nueva, ...previo]);
+      setMensajeAccion(`Notificación creada para ${titular}.`);
     }
+    limpiarFormulario();
   }
 
-  function cancelarEliminacion() {
-    setIdAEliminar(null);
+  function iniciarEdicion(notificacion: NotificacionTarjeta) {
+    setEditandoId(notificacion.id);
+    setFormulario({
+      tarjeta: notificacion.tarjeta,
+      titular: notificacion.titular,
+      mensaje: notificacion.mensaje,
+      canal: notificacion.canal,
+      estado: notificacion.estado,
+    });
+    setErrorFormulario('');
+    setMensajeAccion('');
+  }
+
+  function pedirConfirmacionBorrado(id: string) {
+    setPendienteBorrarId(id);
+  }
+
+  function cancelarBorrado() {
+    setPendienteBorrarId(null);
+  }
+
+  function confirmarBorrado(id: string) {
+    const objetivo = notificaciones.find((n) => n.id === id);
+    setNotificaciones((previo) => previo.filter((n) => n.id !== id));
+    setPendienteBorrarId(null);
+    if (editandoId === id) {
+      limpiarFormulario();
+    }
+    setMensajeAccion(`Notificación de ${objetivo?.titular ?? 'la tarjeta'} eliminada.`);
+  }
+
+  function reenviarNotificacion(id: string) {
+    setNotificaciones((previo) =>
+      previo.map((n) =>
+        n.id === id ? { ...n, estado: 'Enviada', fecha: formatearFechaActual() } : n,
+      ),
+    );
+    const objetivo = notificaciones.find((n) => n.id === id);
+    setMensajeAccion(`Notificación reenviada a ${objetivo?.titular ?? 'titular'}.`);
   }
 
   function probarCapacidad() {
-    setMensajeCapacidad('Transacción de Pagos');
+    setResultadoCapacidad('Notificación de Tarjetas');
   }
 
-  const transaccionAEliminar = transacciones.find((t) => t.id === idAEliminar) || null;
-
   return (
-    <main className="app">
+    <main className="app-shell">
       <header className="app-header">
-        <h1>Transaccion de Pagos - Banca por Internet</h1>
-        <p className="app-subtitle">Simulacion en memoria para registrar, consultar y eliminar transacciones de pago.</p>
+        <div className="app-header__texto">
+          <p className="app-header__kicker">Banca por Internet · Tarjetas</p>
+          <h1>Notificación de Tarjetas</h1>
+          <p className="app-header__descripcion">
+            Gestiona, busca y confirma el envío de notificaciones ficticias asociadas a
+            movimientos de tarjetas. Datos de demostración en memoria, sin persistencia.
+          </p>
+        </div>
+        <div className="app-header__accion">
+          <button type="button" className="boton boton--primario" onClick={probarCapacidad}>
+            Probar capacidad
+          </button>
+          <p role="status" className="estado-capacidad" aria-live="polite">
+            {resultadoCapacidad}
+          </p>
+        </div>
       </header>
 
-      <section className="panel" aria-labelledby="capacidad-titulo">
-        <h2 id="capacidad-titulo">Probar la capacidad</h2>
-        <p>Valida rapidamente que la capacidad de Transaccion de Pagos esta disponible.</p>
-        <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
-          Probar capacidad
-        </button>
-        <p role="status" className="status-text">
-          {mensajeCapacidad}
-        </p>
-      </section>
-
-      <section className="panel" aria-labelledby="form-titulo">
-        <h2 id="form-titulo">Registrar nueva transaccion</h2>
-        <form onSubmit={registrarTransaccion} noValidate>
+      <section className="panel" aria-labelledby="titulo-formulario">
+        <h2 id="titulo-formulario">{editandoId ? 'Editar notificación' : 'Nueva notificación'}</h2>
+        <form className="formulario" onSubmit={manejarEnviarFormulario} noValidate>
           <div className="campo">
-            <label htmlFor="beneficiario">Beneficiario</label>
+            <label htmlFor="campo-tarjeta">Tarjeta</label>
             <input
-              id="beneficiario"
-              name="beneficiario"
+              id="campo-tarjeta"
               type="text"
-              value={beneficiario}
-              onChange={(e) => setBeneficiario(e.target.value)}
-              placeholder="Nombre completo"
-              autoComplete="off"
+              placeholder="**** 1234"
+              value={formulario.tarjeta}
+              onChange={(e) => actualizarCampo('tarjeta', e.target.value)}
             />
           </div>
           <div className="campo">
-            <label htmlFor="cuentaDestino">Cuenta destino</label>
+            <label htmlFor="campo-titular">Titular</label>
             <input
-              id="cuentaDestino"
-              name="cuentaDestino"
+              id="campo-titular"
               type="text"
-              value={cuentaDestino}
-              onChange={(e) => setCuentaDestino(e.target.value)}
-              placeholder="000-0000000-0"
-              autoComplete="off"
+              placeholder="Nombre del titular"
+              value={formulario.titular}
+              onChange={(e) => actualizarCampo('titular', e.target.value)}
+            />
+          </div>
+          <div className="campo campo--ancho">
+            <label htmlFor="campo-mensaje">Mensaje</label>
+            <textarea
+              id="campo-mensaje"
+              rows={2}
+              placeholder="Detalle del evento a notificar"
+              value={formulario.mensaje}
+              onChange={(e) => actualizarCampo('mensaje', e.target.value)}
             />
           </div>
           <div className="campo">
-            <label htmlFor="monto">Monto (COP)</label>
-            <input
-              id="monto"
-              name="monto"
-              type="number"
-              min="1"
-              step="1"
-              value={monto}
-              onChange={(e) => setMonto(e.target.value)}
-              placeholder="100000"
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Registrar transaccion
-          </button>
-          {errores.length > 0 && (
-            <ul className="lista-errores" role="alert">
-              {errores.map((err) => (
-                <li key={err}>{err}</li>
+            <label htmlFor="campo-canal">Canal</label>
+            <select
+              id="campo-canal"
+              value={formulario.canal}
+              onChange={(e) => actualizarCampo('canal', e.target.value as CanalNotificacion)}
+            >
+              {CANALES.map((canal) => (
+                <option key={canal} value={canal}>
+                  {canal}
+                </option>
               ))}
-            </ul>
+            </select>
+          </div>
+          <div className="campo">
+            <label htmlFor="campo-estado">Estado</label>
+            <select
+              id="campo-estado"
+              value={formulario.estado}
+              onChange={(e) => actualizarCampo('estado', e.target.value as EstadoNotificacion)}
+            >
+              {ESTADOS.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {errorFormulario && (
+            <p className="mensaje-error" role="alert">
+              {errorFormulario}
+            </p>
           )}
-          <p role="status" className="status-text">
-            {mensajeFormulario}
-          </p>
+
+          <div className="formulario__acciones">
+            <button type="submit" className="boton boton--primario">
+              {editandoId ? 'Guardar cambios' : 'Crear notificación'}
+            </button>
+            {editandoId && (
+              <button type="button" className="boton boton--fantasma" onClick={limpiarFormulario}>
+                Cancelar edición
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
-      <section className="panel" aria-labelledby="lista-titulo">
-        <div className="lista-encabezado">
-          <h2 id="lista-titulo">Transacciones registradas</h2>
-          <div className="campo campo-busqueda">
-            <label htmlFor="busqueda">Buscar por beneficiario, cuenta o estado</label>
+      <section className="panel" aria-labelledby="titulo-lista">
+        <div className="panel__encabezado">
+          <h2 id="titulo-lista">Notificaciones registradas</h2>
+          {mensajeAccion && (
+            <p role="status" className="mensaje-accion" aria-live="polite">
+              {mensajeAccion}
+            </p>
+          )}
+        </div>
+
+        <div className="controles-busqueda">
+          <div className="campo campo--buscar">
+            <label htmlFor="campo-busqueda">Buscar</label>
             <input
-              id="busqueda"
-              name="busqueda"
+              id="campo-busqueda"
               type="search"
+              placeholder="Tarjeta, titular o mensaje"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Ej. Ana, pendiente, 001"
             />
           </div>
+          <div className="campo">
+            <label htmlFor="campo-filtro-estado">Filtrar por estado</label>
+            <select
+              id="campo-filtro-estado"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value as EstadoNotificacion | 'Todos')}
+            >
+              <option value="Todos">Todos</option>
+              {ESTADOS.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {transaccionesFiltradas.length === 0 ? (
-          <p className="estado-vacio">No hay transacciones que coincidan con la busqueda.</p>
+        {listaFiltrada.length === 0 ? (
+          <p className="estado-vacio">No hay notificaciones que coincidan con la búsqueda.</p>
         ) : (
-          <div className="tabla-contenedor">
-            <table>
-              <caption className="visually-hidden">Lista de transacciones de pago</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Beneficiario</th>
-                  <th scope="col">Cuenta destino</th>
-                  <th scope="col">Monto</th>
-                  <th scope="col">Fecha</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transaccionesFiltradas.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.beneficiario}</td>
-                    <td>{t.cuentaDestino}</td>
-                    <td className="numero">{formatoMoneda.format(t.monto)}</td>
-                    <td>{t.fecha}</td>
-                    <td>
-                      <span className={'badge badge-' + t.estado}>{t.estado}</span>
-                    </td>
-                    <td>
-                      <button type="button" className="btn btn-danger" onClick={() => pedirConfirmacionEliminar(t.id)}>
-                        Eliminar
-                        <span className="visually-hidden"> transaccion de {t.beneficiario}</span>
+          <ul className="lista-notificaciones">
+            {listaFiltrada.map((n) => (
+              <li key={n.id} className="tarjeta-notificacion">
+                <div className="tarjeta-notificacion__cabecera">
+                  <div>
+                    <p className="tarjeta-notificacion__titular">{n.titular}</p>
+                    <p className="tarjeta-notificacion__tarjeta">{n.tarjeta}</p>
+                  </div>
+                  <span className={`insignia insignia--${n.estado.toLowerCase()}`}>{n.estado}</span>
+                </div>
+                <p className="tarjeta-notificacion__mensaje">{n.mensaje}</p>
+                <p className="tarjeta-notificacion__meta">
+                  Canal: {n.canal} · {n.fecha}
+                </p>
+
+                {pendienteBorrarId === n.id ? (
+                  <div className="confirmacion-borrado">
+                    <p role="alert">¿Eliminar esta notificación de {n.titular}?</p>
+                    <div className="confirmacion-borrado__acciones">
+                      <button
+                        type="button"
+                        className="boton boton--peligro"
+                        onClick={() => confirmarBorrado(n.id)}
+                      >
+                        Sí, eliminar
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <button type="button" className="boton boton--fantasma" onClick={cancelarBorrado}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="tarjeta-notificacion__acciones">
+                    <button
+                      type="button"
+                      className="boton boton--secundario"
+                      onClick={() => reenviarNotificacion(n.id)}
+                      disabled={n.estado === 'Enviada'}
+                    >
+                      Reenviar
+                    </button>
+                    <button
+                      type="button"
+                      className="boton boton--secundario"
+                      onClick={() => iniciarEdicion(n)}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="boton boton--peligro"
+                      onClick={() => pedirConfirmacionBorrado(n.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
-
-      {transaccionAEliminar && (
-        <div className="overlay-confirmacion" role="alertdialog" aria-labelledby="confirmar-titulo" aria-modal="true">
-          <div className="dialogo-confirmacion">
-            <h2 id="confirmar-titulo">Confirmar eliminacion</h2>
-            <p>Seguro que deseas eliminar la transaccion de {transaccionAEliminar.beneficiario}? Esta accion no se puede deshacer.</p>
-            <div className="dialogo-acciones">
-              <button type="button" className="btn btn-secundario" onClick={cancelarEliminacion}>
-                Cancelar
-              </button>
-              <button type="button" className="btn btn-danger" onClick={confirmarEliminacion}>
-                Confirmar eliminacion
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
