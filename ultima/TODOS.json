@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-ui",
-    "title": "Implementar la interfaz de Banca por Internet para \"Notificación\" sobre Pagos en src/App.tsx y src/styles.css",
+    "title": "Implementar la interfaz de Banca por Internet para \"Transacción\" sobre Cuentas en src/App.tsx y src/styles.css",
     "dependsOn": [
       "T01-read-context"
     ],
@@ -51,7 +51,7 @@
   },
   {
     "id": "T05-tests",
-    "title": "Plan de pruebas (sin definir) documentado en TODOS.json y evidencias del handoff",
+    "title": "Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff",
     "dependsOn": [
       "T03-interaction",
       "T04-build"
@@ -65,7 +65,7 @@
   },
   {
     "id": "T06-docs",
-    "title": "Documentar decisiones: capa Frontend, patrón sin definir, stack React + TypeScript, integración sin definir, persistencia No requiere",
+    "title": "Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia No requiere",
     "dependsOn": [
       "T05-tests"
     ],
