@@ -1,7 +1,7 @@
 {
   "answers": {
-    "type": "Consulta",
-    "domain": "Pagos",
+    "type": "Transacción",
+    "domain": "Tarjetas",
     "layer": "Frontend",
     "stack": "React + TypeScript",
     "backendStack": "",
