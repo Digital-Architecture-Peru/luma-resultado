@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "type": "Consulta",
+    "domain": "Pagos",
+    "layer": "Full Stack",
+    "stack": "React + TypeScript + .NET",
+    "backendStack": ".NET",
+    "persistence": "PostgreSQL",
+    "where": "Banca por Internet"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

@@ -12,7 +12,7 @@
   },
   {
     "id": "T02-source",
-    "title": "Implementar la capa Full Stack en Angular + .NET para \"Notificación\" sobre Pagos con patrón Component-based (Atomic Design)",
+    "title": "Implementar la capa Full Stack en React + TypeScript + .NET para \"Consulta\" sobre Pagos con patrón sin definir",
     "dependsOn": [
       "T01-read-context"
     ],
@@ -38,7 +38,7 @@
   },
   {
     "id": "T04-tests",
-    "title": "Incluir pruebas (Unitarias) del stack",
+    "title": "Incluir pruebas (sin definir) del stack",
     "dependsOn": [
       "T02-source"
     ],
