@@ -1,316 +1,188 @@
 import { useMemo, useState } from 'react';
 
-type CanalNotificacion = 'Push' | 'SMS' | 'Email';
-type EstadoNotificacion = 'Pendiente' | 'Enviada' | 'Fallida';
-
-interface NotificacionPago {
+type Cuenta = {
   id: string;
-  cliente: string;
-  monto: number;
-  canal: CanalNotificacion;
-  estado: EstadoNotificacion;
+  alias: string;
+  titular: string;
+  tipo: 'Ahorros' | 'Corriente';
+  saldo: number;
+};
+
+type Transaccion = {
+  id: string;
   fecha: string;
-}
+  origenId: string;
+  destinoId: string;
+  monto: number;
+  nota: string;
+};
 
-let nextId = 5;
-
-const DATOS_INICIALES: NotificacionPago[] = [
-  { id: 'n1', cliente: 'Mario Rojas', monto: 125000, canal: 'Push', estado: 'Enviada', fecha: '2026-10-15' },
-  { id: 'n2', cliente: 'Laura Gómez', monto: 48500, canal: 'SMS', estado: 'Pendiente', fecha: '2026-10-17' },
-  { id: 'n3', cliente: 'Carlos Pena', monto: 302000, canal: 'Email', estado: 'Fallida', fecha: '2026-10-18' },
-  { id: 'n4', cliente: 'Ana Duarte', monto: 15000, canal: 'Push', estado: 'Enviada', fecha: '2026-10-19' },
+const CUENTAS_INICIALES: Cuenta[] = [
+  { id: 'CTA-1001', alias: 'Cuenta principal', titular: 'Ana Pérez', tipo: 'Ahorros', saldo: 2_450_000 },
+  { id: 'CTA-1002', alias: 'Gastos del hogar', titular: 'Ana Pérez', tipo: 'Corriente', saldo: 980_500 },
+  { id: 'CTA-1003', alias: 'Fondo de viaje', titular: 'Ana Pérez', tipo: 'Ahorros', saldo: 3_120_750 },
 ];
 
-const formateadorMoneda = new Intl.NumberFormat('es-CO', {
+const formatoCOP = new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
   maximumFractionDigits: 0,
 });
 
-interface FormularioNotificacion {
-  cliente: string;
-  monto: string;
-  canal: CanalNotificacion;
-  estado: EstadoNotificacion;
+function generarIdTransaccion(existentes: Transaccion[]): string {
+  const siguiente = existentes.length + 1;
+  return `TXN-${String(siguiente).padStart(4, '0')}`;
 }
 
-const FORMULARIO_VACIO: FormularioNotificacion = {
-  cliente: '',
-  monto: '',
-  canal: 'Push',
-  estado: 'Pendiente',
-};
-
 export default function App() {
-  const [notificaciones, setNotificaciones] = useState<NotificacionPago[]>(DATOS_INICIALES);
+  const [cuentas, setCuentas] = useState<Cuenta[]>(CUENTAS_INICIALES);
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<'Todos' | EstadoNotificacion>('Todos');
-  const [formulario, setFormulario] = useState<FormularioNotificacion>(FORMULARIO_VACIO);
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [errorFormulario, setErrorFormulario] = useState('');
-  const [idPorConfirmar, setIdPorConfirmar] = useState<string | null>(null);
-  const [mensajeAccion, setMensajeAccion] = useState('');
+
+  const [origenId, setOrigenId] = useState(CUENTAS_INICIALES[0].id);
+  const [destinoId, setDestinoId] = useState(CUENTAS_INICIALES[1].id);
+  const [monto, setMonto] = useState('');
+  const [nota, setNota] = useState('');
+
+  const [mensajeTransferencia, setMensajeTransferencia] = useState('Completa el formulario y confirma para registrar una transacción.');
+  const [errorTransferencia, setErrorTransferencia] = useState('');
+  const [pendienteConfirmar, setPendienteConfirmar] = useState(false);
+
   const [mensajeCapacidad, setMensajeCapacidad] = useState('');
 
-  const listaFiltrada = useMemo(() => {
+  const cuentasFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
-    return notificaciones.filter((n) => {
-      const coincideTexto = termino === '' || n.cliente.toLowerCase().includes(termino);
-      const coincideEstado = filtroEstado === 'Todos' || n.estado === filtroEstado;
-      return coincideTexto && coincideEstado;
-    });
-  }, [notificaciones, busqueda, filtroEstado]);
+    if (!termino) return cuentas;
+    return cuentas.filter(
+      (c) =>
+        c.alias.toLowerCase().includes(termino) ||
+        c.id.toLowerCase().includes(termino) ||
+        c.tipo.toLowerCase().includes(termino)
+    );
+  }, [cuentas, busqueda]);
 
-  function manejarCambioFormulario(campo: keyof FormularioNotificacion, valor: string) {
-    setFormulario((previo) => ({ ...previo, [campo]: valor }));
-  }
+  const cuentaOrigen = cuentas.find((c) => c.id === origenId);
+  const cuentaDestino = cuentas.find((c) => c.id === destinoId);
 
-  function validar(form: FormularioNotificacion): string {
-    if (form.cliente.trim().length < 2) return 'El nombre del cliente debe tener al menos 2 caracteres.';
-    const montoNumerico = Number(form.monto);
-    if (!form.monto || Number.isNaN(montoNumerico) || montoNumerico <= 0) {
-      return 'El monto debe ser un número mayor que cero.';
-    }
+  function validarTransferencia(): string {
+    const montoNumero = Number(monto);
+    if (!origenId || !destinoId) return 'Selecciona cuenta origen y destino.';
+    if (origenId === destinoId) return 'La cuenta origen y destino deben ser distintas.';
+    if (!monto || Number.isNaN(montoNumero) || montoNumero <= 0) return 'Ingresa un monto válido mayor a cero.';
+    if (cuentaOrigen && montoNumero > cuentaOrigen.saldo) return 'Saldo insuficiente en la cuenta origen.';
     return '';
   }
 
-  function manejarEnviar(evento: React.FormEvent) {
-    evento.preventDefault();
-    const error = validar(formulario);
+  function solicitarConfirmacion() {
+    const error = validarTransferencia();
     if (error) {
-      setErrorFormulario(error);
-      setMensajeAccion('');
+      setErrorTransferencia(error);
+      setPendienteConfirmar(false);
+      setMensajeTransferencia('');
       return;
     }
-    setErrorFormulario('');
-    const montoNumerico = Number(formulario.monto);
-    const hoy = new Date().toISOString().slice(0, 10);
+    setErrorTransferencia('');
+    setPendienteConfirmar(true);
+    setMensajeTransferencia(
+      `Confirma: transferir ${formatoCOP.format(Number(monto))} de ${cuentaOrigen?.alias} a ${cuentaDestino?.alias}.`
+    );
+  }
 
-    if (editandoId) {
-      setNotificaciones((previas) =>
-        previas.map((n) =>
-          n.id === editandoId
-            ? { ...n, cliente: formulario.cliente.trim(), monto: montoNumerico, canal: formulario.canal, estado: formulario.estado }
-            : n
-        )
-      );
-      setMensajeAccion(`Notificación de ${formulario.cliente.trim()} actualizada.`);
-      setEditandoId(null);
-    } else {
-      const nueva: NotificacionPago = {
-        id: `n${nextId++}`,
-        cliente: formulario.cliente.trim(),
-        monto: montoNumerico,
-        canal: formulario.canal,
-        estado: formulario.estado,
-        fecha: hoy,
-      };
-      setNotificaciones((previas) => [nueva, ...previas]);
-      setMensajeAccion(`Notificación de ${nueva.cliente} creada.`);
+  function confirmarTransferencia() {
+    const error = validarTransferencia();
+    if (error) {
+      setErrorTransferencia(error);
+      setPendienteConfirmar(false);
+      return;
     }
-    setFormulario(FORMULARIO_VACIO);
+    const montoNumero = Number(monto);
+    setCuentas((prev) =>
+      prev.map((c) => {
+        if (c.id === origenId) return { ...c, saldo: c.saldo - montoNumero };
+        if (c.id === destinoId) return { ...c, saldo: c.saldo + montoNumero };
+        return c;
+      })
+    );
+    const nueva: Transaccion = {
+      id: generarIdTransaccion(transacciones),
+      fecha: new Date().toLocaleString('es-CO'),
+      origenId,
+      destinoId,
+      monto: montoNumero,
+      nota: nota.trim() || 'Sin nota',
+    };
+    setTransacciones((prev) => [nueva, ...prev]);
+    setMensajeTransferencia(
+      `Transacción ${nueva.id} registrada: ${formatoCOP.format(montoNumero)} de ${cuentaOrigen?.alias} a ${cuentaDestino?.alias}.`
+    );
+    setErrorTransferencia('');
+    setPendienteConfirmar(false);
+    setMonto('');
+    setNota('');
   }
 
-  function iniciarEdicion(notificacion: NotificacionPago) {
-    setEditandoId(notificacion.id);
-    setFormulario({
-      cliente: notificacion.cliente,
-      monto: String(notificacion.monto),
-      canal: notificacion.canal,
-      estado: notificacion.estado,
-    });
-    setErrorFormulario('');
-    setMensajeAccion('');
-  }
-
-  function cancelarEdicion() {
-    setEditandoId(null);
-    setFormulario(FORMULARIO_VACIO);
-    setErrorFormulario('');
-  }
-
-  function pedirConfirmacionEliminar(id: string) {
-    setIdPorConfirmar(id);
-  }
-
-  function confirmarEliminar() {
-    if (!idPorConfirmar) return;
-    const objetivo = notificaciones.find((n) => n.id === idPorConfirmar);
-    setNotificaciones((previas) => previas.filter((n) => n.id !== idPorConfirmar));
-    setMensajeAccion(objetivo ? `Notificación de ${objetivo.cliente} eliminada.` : 'Notificación eliminada.');
-    setIdPorConfirmar(null);
-    if (editandoId === idPorConfirmar) cancelarEdicion();
-  }
-
-  function cancelarEliminar() {
-    setIdPorConfirmar(null);
+  function cancelarConfirmacion() {
+    setPendienteConfirmar(false);
+    setMensajeTransferencia('Transacción cancelada. Completa el formulario para intentar de nuevo.');
   }
 
   function probarCapacidad() {
-    setMensajeCapacidad('Notificación de Pagos');
+    setMensajeCapacidad('Transacción de Cuentas: capacidad simulada correctamente con datos en memoria.');
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div>
-          <p className="app-kicker">Banca por Internet · Pagos</p>
-          <h1>Notificación de Pagos</h1>
-          <p className="app-subtitle">
-            Gestiona de forma simulada las notificaciones enviadas a clientes por movimientos de pago.
-          </p>
-        </div>
-        <div className="app-header-actions">
+        <h1>Transacción de Cuentas</h1>
+        <p className="app-subtitle">Banca por Internet · Frontend React + TypeScript · datos ficticios en memoria</p>
+        <div className="capacidad-bloque">
           <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
             Probar capacidad
           </button>
-          <p role="status" aria-live="polite" className="status-pill">
+          <p role="status" aria-live="polite" className="status-text">
             {mensajeCapacidad}
           </p>
         </div>
       </header>
 
-      <section className="panel" aria-labelledby="titulo-formulario">
-        <h2 id="titulo-formulario">{editandoId ? 'Editar notificación' : 'Nueva notificación'}</h2>
-        <form className="form-grid" onSubmit={manejarEnviar} noValidate>
-          <div className="field">
-            <label htmlFor="campo-cliente">Cliente</label>
+      <section className="panel" aria-labelledby="titulo-cuentas">
+        <div className="panel-head">
+          <h2 id="titulo-cuentas">Cuentas</h2>
+          <div className="campo-busqueda">
+            <label htmlFor="busqueda-cuentas">Buscar cuenta</label>
             <input
-              id="campo-cliente"
-              type="text"
-              value={formulario.cliente}
-              onChange={(e) => manejarCambioFormulario('cliente', e.target.value)}
-              placeholder="Nombre del cliente"
-              autoComplete="off"
+              id="busqueda-cuentas"
+              type="search"
+              placeholder="Alias, número o tipo"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
             />
-          </div>
-          <div className="field">
-            <label htmlFor="campo-monto">Monto (COP)</label>
-            <input
-              id="campo-monto"
-              type="number"
-              min="1"
-              value={formulario.monto}
-              onChange={(e) => manejarCambioFormulario('monto', e.target.value)}
-              placeholder="0"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="campo-canal">Canal</label>
-            <select
-              id="campo-canal"
-              value={formulario.canal}
-              onChange={(e) => manejarCambioFormulario('canal', e.target.value as CanalNotificacion)}
-            >
-              <option value="Push">Push</option>
-              <option value="SMS">SMS</option>
-              <option value="Email">Email</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="campo-estado">Estado</label>
-            <select
-              id="campo-estado"
-              value={formulario.estado}
-              onChange={(e) => manejarCambioFormulario('estado', e.target.value as EstadoNotificacion)}
-            >
-              <option value="Pendiente">Pendiente</option>
-              <option value="Enviada">Enviada</option>
-              <option value="Fallida">Fallida</option>
-            </select>
-          </div>
-
-          {errorFormulario && (
-            <p className="field-error" role="alert">
-              {errorFormulario}
-            </p>
-          )}
-
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">
-              {editandoId ? 'Guardar cambios' : 'Crear notificación'}
-            </button>
-            {editandoId && (
-              <button type="button" className="btn btn-ghost" onClick={cancelarEdicion}>
-                Cancelar edición
-              </button>
-            )}
-          </div>
-        </form>
-        {mensajeAccion && (
-          <p role="status" aria-live="polite" className="form-feedback">
-            {mensajeAccion}
-          </p>
-        )}
-      </section>
-
-      <section className="panel" aria-labelledby="titulo-lista">
-        <div className="panel-header">
-          <h2 id="titulo-lista">Notificaciones registradas</h2>
-          <div className="filters">
-            <div className="field field-search">
-              <label htmlFor="campo-busqueda">Buscar por cliente</label>
-              <input
-                id="campo-busqueda"
-                type="search"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Ej. Laura"
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="campo-filtro-estado">Estado</label>
-              <select
-                id="campo-filtro-estado"
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value as 'Todos' | EstadoNotificacion)}
-              >
-                <option value="Todos">Todos</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="Enviada">Enviada</option>
-                <option value="Fallida">Fallida</option>
-              </select>
-            </div>
           </div>
         </div>
 
-        {listaFiltrada.length === 0 ? (
-          <p className="empty-state">No hay notificaciones que coincidan con la búsqueda o el filtro.</p>
+        {cuentasFiltradas.length === 0 ? (
+          <p className="estado-vacio">No se encontraron cuentas para "{busqueda}".</p>
         ) : (
-          <div className="table-wrapper">
-            <table>
+          <div className="tabla-scroll">
+            <table className="tabla-cuentas">
+              <caption className="sr-only">Listado de cuentas con alias, titular, tipo y saldo</caption>
               <thead>
                 <tr>
-                  <th scope="col">Cliente</th>
-                  <th scope="col" className="num">Monto</th>
-                  <th scope="col">Canal</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Fecha</th>
-                  <th scope="col">Acciones</th>
+                  <th scope="col">Número</th>
+                  <th scope="col">Alias</th>
+                  <th scope="col">Titular</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col" className="num">Saldo</th>
                 </tr>
               </thead>
               <tbody>
-                {listaFiltrada.map((n) => (
-                  <tr key={n.id}>
-                    <td>{n.cliente}</td>
-                    <td className="num">{formateadorMoneda.format(n.monto)}</td>
-                    <td>{n.canal}</td>
-                    <td>
-                      <span className={`badge badge-${n.estado.toLowerCase()}`}>{n.estado}</span>
-                    </td>
-                    <td>{n.fecha}</td>
-                    <td className="actions-cell">
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => iniciarEdicion(n)}>
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-danger btn-sm"
-                        onClick={() => pedirConfirmacionEliminar(n.id)}
-                      >
-                        Eliminar
-                      </button>
-                    </td>
+                {cuentasFiltradas.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.id}</td>
+                    <td>{c.alias}</td>
+                    <td>{c.titular}</td>
+                    <td>{c.tipo}</td>
+                    <td className="num">{formatoCOP.format(c.saldo)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -319,22 +191,132 @@ export default function App() {
         )}
       </section>
 
-      {idPorConfirmar && (
-        <div className="confirm-overlay" role="presentation">
-          <div className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="titulo-confirmar">
-            <h2 id="titulo-confirmar">Confirmar eliminación</h2>
-            <p>¿Deseas eliminar esta notificación? Esta acción no se puede deshacer.</p>
-            <div className="form-actions">
-              <button type="button" className="btn btn-danger" onClick={confirmarEliminar}>
-                Sí, eliminar
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={cancelarEliminar}>
-                Cancelar
-              </button>
-            </div>
+      <section className="panel" aria-labelledby="titulo-transferencia">
+        <h2 id="titulo-transferencia">Nueva transacción entre cuentas</h2>
+        <form
+          className="formulario"
+          onSubmit={(e) => {
+            e.preventDefault();
+            solicitarConfirmacion();
+          }}
+        >
+          <div className="campo">
+            <label htmlFor="cuenta-origen">Cuenta origen</label>
+            <select
+              id="cuenta-origen"
+              value={origenId}
+              onChange={(e) => {
+                setOrigenId(e.target.value);
+                setPendienteConfirmar(false);
+              }}
+            >
+              {cuentas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.alias} ({c.id}) · {formatoCOP.format(c.saldo)}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div className="campo">
+            <label htmlFor="cuenta-destino">Cuenta destino</label>
+            <select
+              id="cuenta-destino"
+              value={destinoId}
+              onChange={(e) => {
+                setDestinoId(e.target.value);
+                setPendienteConfirmar(false);
+              }}
+            >
+              {cuentas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.alias} ({c.id})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="campo">
+            <label htmlFor="monto">Monto a transferir</label>
+            <input
+              id="monto"
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={monto}
+              onChange={(e) => {
+                setMonto(e.target.value);
+                setPendienteConfirmar(false);
+              }}
+              placeholder="Ej: 150000"
+            />
+          </div>
+
+          <div className="campo">
+            <label htmlFor="nota">Nota (opcional)</label>
+            <input
+              id="nota"
+              type="text"
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+              placeholder="Ej: Pago de arriendo"
+              maxLength={80}
+            />
+          </div>
+
+          <div className="acciones-formulario">
+            {!pendienteConfirmar ? (
+              <button type="submit" className="btn btn-primary">
+                Revisar transacción
+              </button>
+            ) : (
+              <>
+                <button type="button" className="btn btn-primary" onClick={confirmarTransferencia}>
+                  Confirmar transacción
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={cancelarConfirmacion}>
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+        </form>
+
+        {errorTransferencia && (
+          <p role="alert" className="mensaje-error">
+            {errorTransferencia}
+          </p>
+        )}
+        <p role="status" aria-live="polite" className="status-text">
+          {mensajeTransferencia}
+        </p>
+      </section>
+
+      <section className="panel" aria-labelledby="titulo-historial">
+        <h2 id="titulo-historial">Historial de transacciones</h2>
+        {transacciones.length === 0 ? (
+          <p className="estado-vacio">Aún no se registran transacciones en esta sesión.</p>
+        ) : (
+          <ul className="lista-historial">
+            {transacciones.map((t) => {
+              const origen = cuentas.find((c) => c.id === t.origenId);
+              const destino = cuentas.find((c) => c.id === t.destinoId);
+              return (
+                <li key={t.id} className="item-historial">
+                  <span className="historial-id">{t.id}</span>
+                  <span>{t.fecha}</span>
+                  <span>
+                    {origen?.alias ?? t.origenId} → {destino?.alias ?? t.destinoId}
+                  </span>
+                  <span className="num">{formatoCOP.format(t.monto)}</span>
+                  <span className="historial-nota">{t.nota}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }

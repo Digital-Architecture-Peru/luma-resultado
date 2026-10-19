@@ -1,0 +1,92 @@
+[
+  {
+    "id": "T01-read-context",
+    "title": "Leer context-package.json, SGC-CONTEXT.json y los requisitos",
+    "dependsOn": [],
+    "acceptance": "Requisitos y restricciones citados en el resumen final",
+    "evidence": {
+      "kind": "manual",
+      "ref": "handoff"
+    },
+    "status": "unverified"
+  },
+  {
+    "id": "T02-ui",
+    "title": "Implementar la interfaz de Banca por Internet para \"Transacción\" sobre Cuentas en src/App.tsx y src/styles.css",
+    "dependsOn": [
+      "T01-read-context"
+    ],
+    "acceptance": "src/App.tsx y src/styles.css modificados",
+    "evidence": {
+      "kind": "file",
+      "ref": "src/App.tsx"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T03-interaction",
+    "title": "Implementar el botón y texto esperado del criterio de aceptación",
+    "dependsOn": [
+      "T02-ui"
+    ],
+    "acceptance": "Interacción real validada en navegador",
+    "evidence": {
+      "kind": "validation",
+      "ref": "browser-interaction"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T04-build",
+    "title": "Compilar sin errores de tipos ni de build",
+    "dependsOn": [
+      "T02-ui"
+    ],
+    "acceptance": "tsc y vite build correctos",
+    "evidence": {
+      "kind": "validation",
+      "ref": "build"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T05-tests",
+    "title": "Plan de pruebas (Unitarias) documentado en TODOS.json y evidencias del handoff",
+    "dependsOn": [
+      "T03-interaction",
+      "T04-build"
+    ],
+    "acceptance": "handoff-result.json con validaciones",
+    "evidence": {
+      "kind": "file",
+      "ref": "handoff-result.json"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T06-docs",
+    "title": "Documentar decisiones: capa Frontend, patrón Component-based (Atomic Design), stack React + TypeScript, integración sin definir, persistencia No requiere",
+    "dependsOn": [
+      "T05-tests"
+    ],
+    "acceptance": "README del resultado publicado",
+    "evidence": {
+      "kind": "file",
+      "ref": "README.md"
+    },
+    "status": "done"
+  },
+  {
+    "id": "T07-handoff",
+    "title": "Cerrar con resumen candidate sin afirmar producción",
+    "dependsOn": [
+      "T05-tests"
+    ],
+    "acceptance": "handoff-result.json válido",
+    "evidence": {
+      "kind": "file",
+      "ref": "handoff-result.json"
+    },
+    "status": "done"
+  }
+]

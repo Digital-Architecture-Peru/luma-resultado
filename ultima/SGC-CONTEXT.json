@@ -1,12 +1,13 @@
 {
   "answers": {
-    "type": "Notificación",
-    "domain": "Pagos",
+    "where": "Banca por Internet",
+    "type": "Transacción",
+    "domain": "Cuentas",
     "layer": "Frontend",
+    "pattern": "Component-based (Atomic Design)",
     "stack": "React + TypeScript",
-    "backendStack": "",
     "persistence": "No requiere",
-    "where": "Banca por Internet"
+    "tests": "Unitarias"
   },
   "sgc": {
     "status": "fallback",
