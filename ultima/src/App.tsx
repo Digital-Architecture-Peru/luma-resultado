@@ -1,370 +1,211 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 
-type TipoTransaccion = 'Transferencia' | 'Depósito' | 'Retiro';
-type EstadoTransaccion = 'Pendiente' | 'Confirmada' | 'Anulada';
-
-interface Cuenta {
-  id: string;
-  alias: string;
-  numero: string;
-  saldo: number;
-}
+type EstadoPago = 'pendiente' | 'completado' | 'rechazado';
 
 interface Transaccion {
   id: string;
-  tipo: TipoTransaccion;
-  cuentaOrigenId: string;
-  cuentaDestinoId: string | null;
+  beneficiario: string;
+  cuentaDestino: string;
   monto: number;
-  descripcion: string;
-  estado: EstadoTransaccion;
   fecha: string;
+  estado: EstadoPago;
 }
 
-const CUENTAS_INICIALES: Cuenta[] = [
-  { id: 'c1', alias: 'Cuenta Corriente', numero: '001-2233-44', saldo: 4_500_000 },
-  { id: 'c2', alias: 'Cuenta Ahorros', numero: '002-9981-10', saldo: 1_250_000 },
-  { id: 'c3', alias: 'Cuenta Nómina', numero: '003-5567-72', saldo: 320_000 },
+let nextId = 4;
+
+const datosIniciales: Transaccion[] = [
+  { id: 't1', beneficiario: 'Ana Torres', cuentaDestino: '001-2233445-6', monto: 125000, fecha: '2026-10-01', estado: 'completado' },
+  { id: 't2', beneficiario: 'Luis Gomez', cuentaDestino: '002-9988776-1', monto: 45000, fecha: '2026-10-10', estado: 'pendiente' },
+  { id: 't3', beneficiario: 'Constructora Delta', cuentaDestino: '003-1122334-9', monto: 980000, fecha: '2026-10-15', estado: 'rechazado' },
 ];
 
-let correlativo = 1000;
-function siguienteId(prefijo: string): string {
-  correlativo += 1;
-  return `${prefijo}-${correlativo}`;
-}
+const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
-function formatoMoneda(valor: number): string {
-  return valor.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
-}
-
-function formatoFecha(iso: string): string {
-  return new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+function esMontoValido(valor: string): boolean {
+  const n = Number(valor);
+  return valor.trim() !== '' && Number.isFinite(n) && n > 0;
 }
 
 export default function App() {
-  const [cuentas, setCuentas] = useState<Cuenta[]>(CUENTAS_INICIALES);
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
-
-  const [tipo, setTipo] = useState<TipoTransaccion>('Transferencia');
-  const [cuentaOrigenId, setCuentaOrigenId] = useState<string>(CUENTAS_INICIALES[0].id);
-  const [cuentaDestinoId, setCuentaDestinoId] = useState<string>(CUENTAS_INICIALES[1].id);
-  const [monto, setMonto] = useState<string>('');
-  const [descripcion, setDescripcion] = useState<string>('');
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const [pendiente, setPendiente] = useState<Transaccion | null>(null);
-  const [mensajeOperacion, setMensajeOperacion] = useState<string>('');
-
-  const [busqueda, setBusqueda] = useState<string>('');
-  const [filtroEstado, setFiltroEstado] = useState<'Todas' | EstadoTransaccion>('Todas');
-
-  const [capacidadMensaje, setCapacidadMensaje] = useState<string>('');
-
-  const cuentaPorId = useMemo(() => {
-    const mapa = new Map<string, Cuenta>();
-    cuentas.forEach((c) => mapa.set(c.id, c));
-    return mapa;
-  }, [cuentas]);
+  const [transacciones, setTransacciones] = useState<Transaccion[]>(datosIniciales);
+  const [busqueda, setBusqueda] = useState('');
+  const [beneficiario, setBeneficiario] = useState('');
+  const [cuentaDestino, setCuentaDestino] = useState('');
+  const [monto, setMonto] = useState('');
+  const [errores, setErrores] = useState<string[]>([]);
+  const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
+  const [mensajeFormulario, setMensajeFormulario] = useState('');
+  const [mensajeCapacidad, setMensajeCapacidad] = useState('');
 
   const transaccionesFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
-    return transacciones
-      .filter((t) => (filtroEstado === 'Todas' ? true : t.estado === filtroEstado))
-      .filter((t) => {
-        if (!termino) return true;
-        const origen = cuentaPorId.get(t.cuentaOrigenId)?.alias ?? '';
-        const destino = t.cuentaDestinoId ? cuentaPorId.get(t.cuentaDestinoId)?.alias ?? '' : '';
-        return (
-          t.descripcion.toLowerCase().includes(termino) ||
-          origen.toLowerCase().includes(termino) ||
-          destino.toLowerCase().includes(termino) ||
-          t.tipo.toLowerCase().includes(termino)
-        );
-      })
-      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
-  }, [transacciones, busqueda, filtroEstado, cuentaPorId]);
+    if (!termino) return transacciones;
+    return transacciones.filter(
+      (t) =>
+        t.beneficiario.toLowerCase().includes(termino) ||
+        t.cuentaDestino.toLowerCase().includes(termino) ||
+        t.estado.toLowerCase().includes(termino)
+    );
+  }, [transacciones, busqueda]);
 
-  function validarFormulario(): string | null {
-    const valor = Number(monto);
-    if (!monto || Number.isNaN(valor) || valor <= 0) {
-      return 'Ingresa un monto válido mayor a cero.';
-    }
-    if (tipo === 'Transferencia') {
-      if (cuentaOrigenId === cuentaDestinoId) {
-        return 'La cuenta origen y destino deben ser distintas.';
-      }
-      const origen = cuentaPorId.get(cuentaOrigenId);
-      if (origen && valor > origen.saldo) {
-        return 'Saldo insuficiente en la cuenta origen.';
-      }
-    }
-    if (tipo === 'Retiro') {
-      const origen = cuentaPorId.get(cuentaOrigenId);
-      if (origen && valor > origen.saldo) {
-        return 'Saldo insuficiente para el retiro.';
-      }
-    }
-    if (!descripcion.trim()) {
-      return 'Describe brevemente la transacción.';
-    }
-    return null;
+  function validarFormulario(): string[] {
+    const nuevosErrores: string[] = [];
+    if (beneficiario.trim().length < 3) nuevosErrores.push('El beneficiario debe tener al menos 3 caracteres.');
+    if (!/^\d{3}-\d{7}-\d$/.test(cuentaDestino.trim())) nuevosErrores.push('La cuenta destino debe tener el formato 000-0000000-0.');
+    if (!esMontoValido(monto)) nuevosErrores.push('El monto debe ser un numero mayor a cero.');
+    return nuevosErrores;
   }
 
-  function solicitarTransaccion(evento: React.FormEvent) {
+  function registrarTransaccion(evento: FormEvent) {
     evento.preventDefault();
-    const error = validarFormulario();
-    if (error) {
-      setFormError(error);
-      setMensajeOperacion('');
+    const nuevosErrores = validarFormulario();
+    setErrores(nuevosErrores);
+    if (nuevosErrores.length > 0) {
+      setMensajeFormulario('');
       return;
     }
-    setFormError(null);
     const nueva: Transaccion = {
-      id: siguienteId('tx'),
-      tipo,
-      cuentaOrigenId,
-      cuentaDestinoId: tipo === 'Transferencia' ? cuentaDestinoId : null,
+      id: 't' + nextId++,
+      beneficiario: beneficiario.trim(),
+      cuentaDestino: cuentaDestino.trim(),
       monto: Number(monto),
-      descripcion: descripcion.trim(),
-      estado: 'Pendiente',
-      fecha: new Date().toISOString(),
+      fecha: new Date().toISOString().slice(0, 10),
+      estado: 'pendiente',
     };
-    setPendiente(nueva);
-    setMensajeOperacion('Revisa los datos y confirma la transacción.');
-  }
-
-  function confirmarTransaccion() {
-    if (!pendiente) return;
-    setCuentas((previas) =>
-      previas.map((c) => {
-        if (c.id === pendiente.cuentaOrigenId) {
-          return { ...c, saldo: c.saldo - pendiente.monto };
-        }
-        if (pendiente.cuentaDestinoId && c.id === pendiente.cuentaDestinoId) {
-          return { ...c, saldo: c.saldo + pendiente.monto };
-        }
-        return c;
-      })
-    );
-    const confirmada: Transaccion = { ...pendiente, estado: 'Confirmada' };
-    setTransacciones((previas) => [confirmada, ...previas]);
-    setPendiente(null);
-    setMensajeOperacion(`Transacción confirmada: ${confirmada.tipo} por ${formatoMoneda(confirmada.monto)}.`);
+    setTransacciones((prev) => [nueva, ...prev]);
+    setBeneficiario('');
+    setCuentaDestino('');
     setMonto('');
-    setDescripcion('');
+    setMensajeFormulario('Transaccion registrada para ' + nueva.beneficiario + ' por ' + formatoMoneda.format(nueva.monto) + '.');
   }
 
-  function cancelarPendiente() {
-    setPendiente(null);
-    setMensajeOperacion('Transacción cancelada, no se afectaron saldos.');
+  function pedirConfirmacionEliminar(id: string) {
+    setIdAEliminar(id);
+    setMensajeFormulario('');
   }
 
-  function anularTransaccion(id: string) {
-    setTransacciones((previas) =>
-      previas.map((t) => {
-        if (t.id !== id || t.estado !== 'Confirmada') return t;
-        setCuentas((cs) =>
-          cs.map((c) => {
-            if (c.id === t.cuentaOrigenId) return { ...c, saldo: c.saldo + t.monto };
-            if (t.cuentaDestinoId && c.id === t.cuentaDestinoId) return { ...c, saldo: c.saldo - t.monto };
-            return c;
-          })
-        );
-        return { ...t, estado: 'Anulada' };
-      })
-    );
-    setMensajeOperacion('Transacción anulada; saldos revertidos.');
+  function confirmarEliminacion() {
+    if (!idAEliminar) return;
+    const eliminada = transacciones.find((t) => t.id === idAEliminar);
+    setTransacciones((prev) => prev.filter((t) => t.id !== idAEliminar));
+    setIdAEliminar(null);
+    if (eliminada) {
+      setMensajeFormulario('Transaccion de ' + eliminada.beneficiario + ' eliminada.');
+    }
   }
 
-  function eliminarTransaccion(id: string) {
-    setTransacciones((previas) => previas.filter((t) => t.id !== id));
-    setMensajeOperacion('Transacción eliminada del historial.');
+  function cancelarEliminacion() {
+    setIdAEliminar(null);
   }
 
   function probarCapacidad() {
-    setCapacidadMensaje('Transacción de Cuentas');
+    setMensajeCapacidad('Transacción de Pagos');
   }
 
+  const transaccionAEliminar = transacciones.find((t) => t.id === idAEliminar) || null;
+
   return (
-    <main className="app-shell">
+    <main className="app">
       <header className="app-header">
-        <p className="app-kicker">Banca por Internet · Cuentas</p>
-        <h1>Transacción de Cuentas</h1>
-        <p className="app-subtitle">
-          Simula transferencias, depósitos y retiros entre cuentas ficticias, con confirmación explícita antes de
-          afectar saldos.
-        </p>
-        <div className="capacidad-bloque">
-          <button type="button" className="btn btn-secondary" onClick={probarCapacidad}>
-            Probar capacidad
-          </button>
-          <span role="status" className="capacidad-status">
-            {capacidadMensaje}
-          </span>
-        </div>
+        <h1>Transaccion de Pagos - Banca por Internet</h1>
+        <p className="app-subtitle">Simulacion en memoria para registrar, consultar y eliminar transacciones de pago.</p>
       </header>
 
-      <section className="panel" aria-labelledby="titulo-cuentas">
-        <h2 id="titulo-cuentas">Cuentas</h2>
-        <div className="grid-cuentas">
-          {cuentas.map((cuenta) => (
-            <article key={cuenta.id} className="tarjeta-cuenta">
-              <h3>{cuenta.alias}</h3>
-              <p className="numero-cuenta">{cuenta.numero}</p>
-              <p className="saldo-cuenta">{formatoMoneda(cuenta.saldo)}</p>
-            </article>
-          ))}
-        </div>
+      <section className="panel" aria-labelledby="capacidad-titulo">
+        <h2 id="capacidad-titulo">Probar la capacidad</h2>
+        <p>Valida rapidamente que la capacidad de Transaccion de Pagos esta disponible.</p>
+        <button type="button" className="btn btn-primary" onClick={probarCapacidad}>
+          Probar capacidad
+        </button>
+        <p role="status" className="status-text">
+          {mensajeCapacidad}
+        </p>
       </section>
 
-      <section className="panel" aria-labelledby="titulo-form">
-        <h2 id="titulo-form">Nueva transacción</h2>
-        <form className="formulario" onSubmit={solicitarTransaccion} noValidate>
+      <section className="panel" aria-labelledby="form-titulo">
+        <h2 id="form-titulo">Registrar nueva transaccion</h2>
+        <form onSubmit={registrarTransaccion} noValidate>
           <div className="campo">
-            <label htmlFor="tipo-transaccion">Tipo</label>
-            <select
-              id="tipo-transaccion"
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value as TipoTransaccion)}
-            >
-              <option value="Transferencia">Transferencia</option>
-              <option value="Depósito">Depósito</option>
-              <option value="Retiro">Retiro</option>
-            </select>
+            <label htmlFor="beneficiario">Beneficiario</label>
+            <input
+              id="beneficiario"
+              name="beneficiario"
+              type="text"
+              value={beneficiario}
+              onChange={(e) => setBeneficiario(e.target.value)}
+              placeholder="Nombre completo"
+              autoComplete="off"
+            />
           </div>
-
           <div className="campo">
-            <label htmlFor="cuenta-origen">Cuenta origen</label>
-            <select id="cuenta-origen" value={cuentaOrigenId} onChange={(e) => setCuentaOrigenId(e.target.value)}>
-              {cuentas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.alias} ({c.numero})
-                </option>
-              ))}
-            </select>
+            <label htmlFor="cuentaDestino">Cuenta destino</label>
+            <input
+              id="cuentaDestino"
+              name="cuentaDestino"
+              type="text"
+              value={cuentaDestino}
+              onChange={(e) => setCuentaDestino(e.target.value)}
+              placeholder="000-0000000-0"
+              autoComplete="off"
+            />
           </div>
-
-          {tipo === 'Transferencia' && (
-            <div className="campo">
-              <label htmlFor="cuenta-destino">Cuenta destino</label>
-              <select id="cuenta-destino" value={cuentaDestinoId} onChange={(e) => setCuentaDestinoId(e.target.value)}>
-                {cuentas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.alias} ({c.numero})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <div className="campo">
-            <label htmlFor="monto">Monto</label>
+            <label htmlFor="monto">Monto (COP)</label>
             <input
               id="monto"
+              name="monto"
               type="number"
               min="1"
               step="1"
-              inputMode="numeric"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
               placeholder="100000"
             />
           </div>
-
-          <div className="campo campo-ancho">
-            <label htmlFor="descripcion">Descripción</label>
-            <input
-              id="descripcion"
-              type="text"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Motivo de la transacción"
-            />
-          </div>
-
-          <div className="acciones-formulario">
-            <button type="submit" className="btn btn-primary">
-              Solicitar transacción
-            </button>
-          </div>
-
-          {formError && (
-            <p role="alert" className="mensaje-error">
-              {formError}
-            </p>
+          <button type="submit" className="btn btn-primary">
+            Registrar transaccion
+          </button>
+          {errores.length > 0 && (
+            <ul className="lista-errores" role="alert">
+              {errores.map((err) => (
+                <li key={err}>{err}</li>
+              ))}
+            </ul>
           )}
+          <p role="status" className="status-text">
+            {mensajeFormulario}
+          </p>
         </form>
-
-        {pendiente && (
-          <div className="confirmacion" role="region" aria-labelledby="titulo-confirmacion">
-            <h3 id="titulo-confirmacion">Confirmar transacción</h3>
-            <p>
-              {pendiente.tipo} de {formatoMoneda(pendiente.monto)} desde{' '}
-              <strong>{cuentaPorId.get(pendiente.cuentaOrigenId)?.alias}</strong>
-              {pendiente.cuentaDestinoId && (
-                <>
-                  {' '}
-                  hacia <strong>{cuentaPorId.get(pendiente.cuentaDestinoId)?.alias}</strong>
-                </>
-              )}
-              . {pendiente.descripcion}
-            </p>
-            <div className="acciones-confirmacion">
-              <button type="button" className="btn btn-primary" onClick={confirmarTransaccion}>
-                Confirmar
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={cancelarPendiente}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-
-        <p role="status" className="mensaje-operacion">
-          {mensajeOperacion}
-        </p>
       </section>
 
-      <section className="panel" aria-labelledby="titulo-historial">
-        <h2 id="titulo-historial">Historial de transacciones</h2>
-        <div className="filtros">
-          <div className="campo">
-            <label htmlFor="busqueda">Buscar</label>
+      <section className="panel" aria-labelledby="lista-titulo">
+        <div className="lista-encabezado">
+          <h2 id="lista-titulo">Transacciones registradas</h2>
+          <div className="campo campo-busqueda">
+            <label htmlFor="busqueda">Buscar por beneficiario, cuenta o estado</label>
             <input
               id="busqueda"
+              name="busqueda"
               type="search"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Descripción, cuenta o tipo"
+              placeholder="Ej. Ana, pendiente, 001"
             />
-          </div>
-          <div className="campo">
-            <label htmlFor="filtro-estado">Estado</label>
-            <select
-              id="filtro-estado"
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value as 'Todas' | EstadoTransaccion)}
-            >
-              <option value="Todas">Todas</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="Confirmada">Confirmada</option>
-              <option value="Anulada">Anulada</option>
-            </select>
           </div>
         </div>
 
         {transaccionesFiltradas.length === 0 ? (
-          <p className="estado-vacio">No hay transacciones que coincidan con la búsqueda.</p>
+          <p className="estado-vacio">No hay transacciones que coincidan con la busqueda.</p>
         ) : (
-          <div className="tabla-wrapper">
-            <table className="tabla-transacciones">
+          <div className="tabla-contenedor">
+            <table>
+              <caption className="visually-hidden">Lista de transacciones de pago</caption>
               <thead>
                 <tr>
-                  <th scope="col">Fecha</th>
-                  <th scope="col">Tipo</th>
-                  <th scope="col">Origen</th>
-                  <th scope="col">Destino</th>
+                  <th scope="col">Beneficiario</th>
+                  <th scope="col">Cuenta destino</th>
                   <th scope="col">Monto</th>
+                  <th scope="col">Fecha</th>
                   <th scope="col">Estado</th>
                   <th scope="col">Acciones</th>
                 </tr>
@@ -372,26 +213,17 @@ export default function App() {
               <tbody>
                 {transaccionesFiltradas.map((t) => (
                   <tr key={t.id}>
-                    <td>{formatoFecha(t.fecha)}</td>
-                    <td>{t.tipo}</td>
-                    <td>{cuentaPorId.get(t.cuentaOrigenId)?.alias ?? '—'}</td>
-                    <td>{t.cuentaDestinoId ? cuentaPorId.get(t.cuentaDestinoId)?.alias ?? '—' : '—'}</td>
-                    <td className="col-monto">{formatoMoneda(t.monto)}</td>
+                    <td>{t.beneficiario}</td>
+                    <td>{t.cuentaDestino}</td>
+                    <td className="numero">{formatoMoneda.format(t.monto)}</td>
+                    <td>{t.fecha}</td>
                     <td>
-                      <span className={`badge badge-${t.estado.toLowerCase()}`}>{t.estado}</span>
+                      <span className={'badge badge-' + t.estado}>{t.estado}</span>
                     </td>
-                    <td className="col-acciones">
-                      {t.estado === 'Confirmada' && (
-                        <button type="button" className="btn btn-ghost btn-small" onClick={() => anularTransaccion(t.id)}>
-                          Anular
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-small btn-danger"
-                        onClick={() => eliminarTransaccion(t.id)}
-                      >
+                    <td>
+                      <button type="button" className="btn btn-danger" onClick={() => pedirConfirmacionEliminar(t.id)}>
                         Eliminar
+                        <span className="visually-hidden"> transaccion de {t.beneficiario}</span>
                       </button>
                     </td>
                   </tr>
@@ -401,6 +233,23 @@ export default function App() {
           </div>
         )}
       </section>
+
+      {transaccionAEliminar && (
+        <div className="overlay-confirmacion" role="alertdialog" aria-labelledby="confirmar-titulo" aria-modal="true">
+          <div className="dialogo-confirmacion">
+            <h2 id="confirmar-titulo">Confirmar eliminacion</h2>
+            <p>Seguro que deseas eliminar la transaccion de {transaccionAEliminar.beneficiario}? Esta accion no se puede deshacer.</p>
+            <div className="dialogo-acciones">
+              <button type="button" className="btn btn-secundario" onClick={cancelarEliminacion}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-danger" onClick={confirmarEliminacion}>
+                Confirmar eliminacion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
