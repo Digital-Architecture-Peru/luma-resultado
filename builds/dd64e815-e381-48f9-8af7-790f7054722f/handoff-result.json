@@ -1,0 +1,41 @@
+{
+  "status": "candidate",
+  "generation": "5edffb36-dc9d-4515-abae-6b3bb530d576",
+  "planRevision": 1,
+  "files": [
+    {
+      "path": "src/App.tsx",
+      "hash": "f67351b57035bd7bfde1206388e02fbebd58aeecd061058546bcd2308a192091"
+    },
+    {
+      "path": "src/styles.css",
+      "hash": "ebae617b27b0358d41be29fc3fbc66e001a059e7cc3ac1521d2b3d62bc0d5f1f"
+    }
+  ],
+  "validations": [
+    {
+      "kind": "build",
+      "elapsedMs": 4497.672299999744,
+      "passed": true
+    },
+    {
+      "passed": true,
+      "kind": "browser-interaction",
+      "check": {
+        "buttonName": "Probar capacidad",
+        "expectedText": "Transacción de Pagos"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "screenshot": {
+        "path": "evidence/preview.png",
+        "hash": "cd8bd15a22cd8bedd2be9f58e2a79c91f261af669d31914e7307c855ecd193f2"
+      },
+      "elapsedMs": 559.7982999999076
+    }
+  ],
+  "deviations": [],
+  "agentSessionId": "922e962d-9d92-4b84-80b0-e2aa8e9437be"
+}
