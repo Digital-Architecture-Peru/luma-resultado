@@ -1,11 +1,11 @@
 {
   "answers": {
     "type": "Consulta",
-    "domain": "Pagos",
-    "layer": "Full Stack",
-    "stack": "React + TypeScript + .NET",
-    "backendStack": ".NET",
-    "persistence": "PostgreSQL",
+    "domain": "Cuentas",
+    "layer": "Frontend",
+    "stack": "React + TypeScript",
+    "backendStack": "",
+    "persistence": "No requiere",
     "where": "Banca por Internet"
   },
   "sgc": {
