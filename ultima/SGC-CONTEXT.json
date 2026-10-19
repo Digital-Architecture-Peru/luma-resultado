@@ -1,14 +1,12 @@
 {
   "answers": {
-    "where": "Banca por Internet",
-    "pattern": "Component-based (Atomic Design)",
-    "tests": "Unitarias",
-    "type": "Notificación",
+    "type": "Consulta",
     "domain": "Pagos",
     "layer": "Full Stack",
-    "stack": "Angular + .NET",
+    "stack": "React + TypeScript + .NET",
     "backendStack": ".NET",
-    "persistence": "PostgreSQL"
+    "persistence": "PostgreSQL",
+    "where": "Banca por Internet"
   },
   "sgc": {
     "status": "fallback",

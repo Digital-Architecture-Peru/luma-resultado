@@ -1,70 +1,107 @@
-# Notificaciones de pagos · Banca por Internet
+# Consulta de Pagos
 
-Aplicación de muestra full stack: Angular 17, ASP.NET Core / .NET 8 y PostgreSQL. El cliente presenta notificaciones de pagos; la API expone consulta, conteo de no leídas, marcado como leída e ingreso de eventos ficticios. No hay proveedor externo de pagos ni autenticación implementados.
+Aplicación de consulta de pagos de solo lectura con React + TypeScript (Vite), ASP.NET Core .NET 8 Web API y PostgreSQL. Los datos de ejemplo son ficticios.
+
+## Estructura
+
+- `frontend/`: interfaz web y pruebas Vitest.
+- `backend/`: solución .NET (`Pagos.sln`), capas Domain, Application, Infrastructure, Api y pruebas xUnit.
+- `db/migrations/`: SQL versionado inicial y datos de demostración. No existe un ejecutor automático de migraciones en la aplicación.
 
 ## Requisitos
 
-- .NET SDK 8
-- Node.js/npm compatibles con Angular CLI 17
-- PostgreSQL accesible desde la máquina donde corre la API
-- `psql` para aplicar el esquema y los datos de desarrollo
+.NET SDK 8, Node.js/npm y PostgreSQL compatible. Los comandos asumen que se ejecutan desde la raíz del repositorio. Para configurar PostgreSQL, use un usuario/base de datos locales con permisos para crear tablas e insertar los datos; no incluya credenciales reales en el repositorio.
 
-## Persistencia y base de datos
+## Base de datos y persistencia
 
-La API conecta mediante Npgsql y el repositorio usa Dapper con consultas parametrizadas. `backend/db/migrations/V001__init.sql` crea la tabla, restricciones e índice; `V002__seed.sql` agrega tres registros ficticios para `CUST-0001` y tolera repetición por la clave de evento.
-
-Cree previamente una base de datos PostgreSQL vacía y configure la conexión (no se incluye `.env.example`):
+La API lee pagos de PostgreSQL mediante Npgsql y Dapper. El repositorio implementa `IPagosRepository`; la aplicación no ofrece endpoints de escritura. La persistencia requiere aplicar los scripts una sola vez y en orden sobre una base vacía:
 
 ```sh
-export ConnectionStrings__Notifications='Host=localhost;Port=5432;Database=notifications;Username=postgres;Password=CAMBIAR'
-psql "$ConnectionStrings__Notifications" -f backend/db/migrations/V001__init.sql
-psql "$ConnectionStrings__Notifications" -f backend/db/migrations/V002__seed.sql
+psql "$PAGOS_DB_CONNECTION" -v ON_ERROR_STOP=1 -f db/migrations/V001__init.sql
+psql "$PAGOS_DB_CONNECTION" -v ON_ERROR_STOP=1 -f db/migrations/V002__seed.sql
 ```
 
-En PowerShell, defina la variable con `$env:ConnectionStrings__Notifications='Host=...;Database=...;Username=...;Password=...'`. Use credenciales locales/de desarrollo apropiadas; no las incorpore al repositorio. Las migraciones se aplican manualmente y no existe un runner de migraciones ni una configuración de Docker.
+`V001` crea la tabla `pagos`, restricciones e índices; `V002` inserta registros ficticios para `CLI-0001` y `CLI-0002`. No re-ejecute el seed: los identificadores y referencias son únicos. Para reiniciar el entorno local, elimine la tabla/base de datos de prueba y vuelva a aplicar ambos scripts. La aplicación no migra ni siembra automáticamente.
 
-## Ejecutar backend
+## Configuración
 
-Desde la raíz del repositorio:
+La API requiere `PAGOS_DB_CONNECTION` (cadena de conexión Npgsql). También acepta:
+
+- `PAGOS_CORS_ORIGIN`: origen permitido del navegador; predeterminado `http://localhost:5173`.
+- `PAGOS_CLIENTE_ID`: cliente asociado a las consultas; predeterminado `CLI-0001`.
+- `VITE_API_BASE_URL`: URL base de API para el frontend; en desarrollo local puede dejarse vacía si Vite proxifica solicitudes.
+
+Ejemplo local, usando una cadena ficticia y solo para entorno de desarrollo:
+
+```sh
+export PAGOS_DB_CONNECTION='Host=localhost;Port=5432;Database=pagos;Username=pagos_dev;Password=CAMBIAR_LOCALMENTE'
+export PAGOS_CORS_ORIGIN='http://localhost:5173'
+export PAGOS_CLIENTE_ID='CLI-0001'
+```
+
+Guarde secretos únicamente en configuración local segura o en variables de entorno; no los agregue a Git. Vite está configurado para desarrollo en el puerto 5173. Revise `frontend/vite.config.ts` y `frontend/src/api/pagosClient.ts` al configurar la URL de la API: no se debe asumir un proxy que no esté definido allí. Para despliegues donde frontend y API tengan orígenes distintos, defina `VITE_API_BASE_URL` antes de iniciar/compilar el frontend y permita ese origen con `PAGOS_CORS_ORIGIN`.
+
+## Compilar y ejecutar
+
+### 1. Backend
 
 ```sh
 cd backend
-dotnet restore Notifications.sln
-dotnet build Notifications.sln
-dotnet test Notifications.sln
-dotnet run --project src/Notifications.Api
+dotnet restore Pagos.sln
+dotnet build Pagos.sln
+dotnet run --project src/Pagos.Api/Pagos.Api.csproj --urls http://localhost:5080
 ```
 
-La API escucha en `http://localhost:5080` según `appsettings.json`. `GET /health` es una comprobación de disponibilidad. CORS permite por defecto el origen `http://localhost:4200`; personalice `Cors:AllowedOrigins` con configuración de ASP.NET Core para otros orígenes.
+Defina `PAGOS_DB_CONNECTION` en el entorno del proceso antes de `dotnet run`; la API falla al arrancar si falta. Compruebe disponibilidad en `http://localhost:5080/health`.
 
-## Ejecutar frontend
+### 2. Frontend
 
 En otra terminal, desde la raíz:
 
 ```sh
 cd frontend
 npm install
-npm test
-npm run build
-npm start
+npm run dev
 ```
 
-Abra `http://localhost:4200`. La URL de API, el cliente ficticio y el intervalo de actualización se encuentran en `frontend/src/environments/environment.ts`. Las pruebas Jest se ejecutan en modo CI, sin modo interactivo. Para modificar la dirección de la API durante desarrollo, actualice `apiBaseUrl` en ese archivo.
+Abra la URL que informa Vite (normalmente `http://localhost:5173`). Para producción, configure `VITE_API_BASE_URL` con la URL pública de la API antes de `npm run build`; sirva luego el contenido de `frontend/dist/` desde un servidor web.
 
-## API e integración
+## Pruebas
 
-Todas las rutas de aplicación requieren `X-Customer-Id`; el frontend envía `CUST-0001`.
+Las pruebas unitarias del servicio .NET usan un repositorio simulado y no requieren PostgreSQL:
 
-- `GET /api/v1/notifications?status=UNREAD|READ&page=1&size=20`: lista paginada; `status` es opcional.
-- `GET /api/v1/notifications/unread-count`: devuelve `{ "count": n }`.
-- `PATCH /api/v1/notifications/{id}/read`: marca como leída; responde 404 si no existe para ese cliente.
-- `POST /api/v1/payment-events`: recibe `paymentEventId`, `type`, `amount`, `currency` y `account`; tipos admitidos: `PAYMENT_COMPLETED`, `PAYMENT_REJECTED`, `PAYMENT_SCHEDULED`.
-- Errores de dominio: `application/problem+json` con 422; falta la cabecera de cliente: 400. `GET /health` no requiere esa cabecera.
+```sh
+cd backend
+dotnet test Pagos.sln
+```
 
-El flujo de ingreso usa la abstracción `INotificationChannel`; hoy solo se registra `InAppChannel`, que persiste en PostgreSQL a través de `INotificationRepository`. La restricción única `(customer_id, payment_event_id)` brinda idempotencia en base de datos: conflicto significa evento ya insertado, no una segunda notificación. No se integra con un sistema real de pagos ni con email, SMS o push. El código HTTP del POST depende de si el canal reporta una inserción nueva (201) o duplicada (200).
+Pruebas del cliente HTTP y de la página React:
 
-## Pruebas y límites
+```sh
+cd frontend
+npm install
+npm test
+```
 
-Las pruebas .NET de `Notifications.UnitTests` ejercitan el servicio con dependencias falsas; no requieren PostgreSQL. Las pruebas Angular están junto a sus componentes/servicio. Las pruebas unitarias no sustituyen una comprobación de integración API–PostgreSQL.
+Verificación TypeScript y bundle de producción:
 
-`X-Customer-Id` es un marcador de desarrollo y no una identidad segura: la API confía en esa cabecera. Antes de producción debe reemplazarse por identidad autenticada y autorización basada en claims. Los datos del seed son inventados. Migraciones, build y pruebas no se verificaron al redactar este documento; use los comandos indicados para comprobarlos en el entorno local.
+```sh
+cd frontend
+npm run build
+```
+
+Las pruebas de integración real con PostgreSQL no están incluidas: los scripts SQL, conexión y consulta del repositorio deben validarse en un entorno PostgreSQL local de prueba.
+
+## API
+
+Prefijo: `/api/v1/pagos`.
+
+- `GET /api/v1/pagos?desde=<ISO-8601>&hasta=<ISO-8601>&estado=<estado>&page=<n>&pageSize=<n>`: listado paginado `{ items, total, page, pageSize }`. La ventana por defecto son los últimos 30 días; tamaño predeterminado 20, máximo 50 y rango máximo 366 días. Estados válidos: `PENDIENTE`, `APLICADO`, `RECHAZADO`.
+- `GET /api/v1/pagos/{id}`: detalle por UUID; devuelve 404 si no existe para el cliente actual.
+- `GET /health`: comprobación de disponibilidad de la aplicación.
+
+Las consultas siempre filtran por `cliente_id`; errores de validación usan Problem Details y se devuelve el monto como texto decimal para preservar precisión. La cuenta de destino se expone en forma enmascarada.
+
+## Límites conocidos
+
+`PAGOS_CLIENTE_ID` es un stub de desarrollo, no autenticación ni autorización de producción. Antes de desplegar, intégrense identidad/autorización reales y gestión segura de secretos. Los scripts son PostgreSQL específico; no se ha indicado ni verificado ejecución contra una instancia real.
