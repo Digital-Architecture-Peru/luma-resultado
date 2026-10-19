@@ -1,0 +1,16 @@
+{
+  "answers": {
+    "type": "Transacción",
+    "domain": "Tarjetas",
+    "layer": "Frontend",
+    "stack": "React + TypeScript",
+    "backendStack": "",
+    "persistence": "No requiere",
+    "where": "Banca por Internet"
+  },
+  "sgc": {
+    "status": "fallback",
+    "reason": "SGC no configurado"
+  },
+  "note": "Opciones SGC o fallback; sin tokens"
+}

@@ -1,218 +1,326 @@
 import { useMemo, useState } from 'react';
 
-type EstadoPago = 'Aplicado' | 'Pendiente' | 'Rechazado';
-
-interface Pago {
+type Tarjeta = {
   id: string;
-  beneficiario: string;
-  referencia: string;
-  monto: number;
-  fecha: string;
-  estado: EstadoPago;
-}
+  alias: string;
+  numeroEnmascarado: string;
+  saldoDisponible: number;
+};
 
-const PAGOS_INICIALES: Pago[] = [
-  { id: 'PG-1001', beneficiario: 'Compañía de Luz Nacional', referencia: 'REF-884201', monto: 128500, fecha: '2026-10-02', estado: 'Aplicado' },
-  { id: 'PG-1002', beneficiario: 'Telecom Andina', referencia: 'REF-884202', monto: 54200, fecha: '2026-10-05', estado: 'Aplicado' },
-  { id: 'PG-1003', beneficiario: 'Seguros del Valle', referencia: 'REF-884203', monto: 310000, fecha: '2026-10-08', estado: 'Pendiente' },
-  { id: 'PG-1004', beneficiario: 'Universidad Central', referencia: 'REF-884204', monto: 980000, fecha: '2026-10-10', estado: 'Aplicado' },
-  { id: 'PG-1005', beneficiario: 'Tarjeta de Crédito Plus', referencia: 'REF-884205', monto: 452300, fecha: '2026-10-12', estado: 'Rechazado' },
-  { id: 'PG-1006', beneficiario: 'Administración Conjunto Residencial', referencia: 'REF-884206', monto: 215000, fecha: '2026-10-14', estado: 'Pendiente' },
-  { id: 'PG-1007', beneficiario: 'Compañía de Luz Nacional', referencia: 'REF-884207', monto: 131200, fecha: '2026-10-16', estado: 'Aplicado' },
+type TipoTransaccion = 'Compra' | 'Pago' | 'Retiro';
+
+type Transaccion = {
+  id: string;
+  tarjetaId: string;
+  tipo: TipoTransaccion;
+  monto: number;
+  descripcion: string;
+  fecha: string;
+};
+
+const TARJETAS_INICIALES: Tarjeta[] = [
+  { id: 't1', alias: 'Clásica', numeroEnmascarado: '**** 4821', saldoDisponible: 3_250_000 },
+  { id: 't2', alias: 'Gold', numeroEnmascarado: '**** 1190', saldoDisponible: 7_800_000 },
+  { id: 't3', alias: 'Empresarial', numeroEnmascarado: '**** 6654', saldoDisponible: 1_420_000 },
 ];
 
-const formatoMoneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const TRANSACCIONES_INICIALES: Transaccion[] = [
+  { id: 'x1', tarjetaId: 't1', tipo: 'Compra', monto: 85000, descripcion: 'Supermercado La 14', fecha: '2026-10-15' },
+  { id: 'x2', tarjetaId: 't2', tipo: 'Pago', monto: 500000, descripcion: 'Pago mínimo', fecha: '2026-10-12' },
+];
 
-function formatearFecha(fechaIso: string): string {
-  const fecha = new Date(fechaIso + 'T00:00:00');
-  return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }).format(fecha);
+const formatoCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+
+function generarId(prefijo: string): string {
+  return `${prefijo}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
 
-type FiltroEstado = 'Todos' | EstadoPago;
-
 export default function App() {
-  const [capacidadMensaje, setCapacidadMensaje] = useState('');
+  const [tarjetas] = useState<Tarjeta[]>(TARJETAS_INICIALES);
+  const [transacciones, setTransacciones] = useState<Transaccion[]>(TRANSACCIONES_INICIALES);
+
+  const [tarjetaId, setTarjetaId] = useState(TARJETAS_INICIALES[0].id);
+  const [tipo, setTipo] = useState<TipoTransaccion>('Compra');
+  const [monto, setMonto] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
+  const [mensajeCreacion, setMensajeCreacion] = useState<string | null>(null);
+
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('Todos');
-  const [pagoSeleccionadoId, setPagoSeleccionadoId] = useState<string | null>(null);
-  const [anuncio, setAnuncio] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState<'Todas' | TipoTransaccion>('Todas');
 
-  const pagos = PAGOS_INICIALES;
+  const [idPorEliminar, setIdPorEliminar] = useState<string | null>(null);
+  const [mensajeEliminacion, setMensajeEliminacion] = useState<string | null>(null);
 
-  const pagosFiltrados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    return pagos.filter((pago) => {
-      const coincideEstado = filtroEstado === 'Todos' || pago.estado === filtroEstado;
-      if (!coincideEstado) return false;
-      if (!termino) return true;
-      return (
-        pago.beneficiario.toLowerCase().includes(termino) ||
-        pago.referencia.toLowerCase().includes(termino) ||
-        pago.id.toLowerCase().includes(termino)
-      );
-    });
-  }, [busqueda, filtroEstado, pagos]);
+  const [mensajeCapacidad, setMensajeCapacidad] = useState<string | null>(null);
 
-  const pagoSeleccionado = useMemo(
-    () => pagos.find((pago) => pago.id === pagoSeleccionadoId) ?? null,
-    [pagoSeleccionadoId, pagos]
-  );
+  const tarjetasPorId = useMemo(() => {
+    const mapa = new Map<string, Tarjeta>();
+    for (const t of tarjetas) mapa.set(t.id, t);
+    return mapa;
+  }, [tarjetas]);
 
-  const totalFiltrado = useMemo(
-    () => pagosFiltrados.reduce((suma, pago) => suma + pago.monto, 0),
-    [pagosFiltrados]
-  );
+  const transaccionesFiltradas = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return transacciones
+      .filter((tx) => (filtroTipo === 'Todas' ? true : tx.tipo === filtroTipo))
+      .filter((tx) => {
+        if (!texto) return true;
+        const tarjeta = tarjetasPorId.get(tx.tarjetaId);
+        return (
+          tx.descripcion.toLowerCase().includes(texto) ||
+          tarjeta?.alias.toLowerCase().includes(texto) ||
+          tarjeta?.numeroEnmascarado.toLowerCase().includes(texto)
+        );
+      })
+      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  }, [transacciones, busqueda, filtroTipo, tarjetasPorId]);
 
-  function manejarProbarCapacidad() {
-    setCapacidadMensaje('Consulta de Pagos');
-  }
+  function manejarCreacion(evento: React.FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const montoNumerico = Number(monto);
 
-  function seleccionarPago(id: string) {
-    setPagoSeleccionadoId(id);
-    const pago = pagos.find((p) => p.id === id);
-    if (pago) {
-      setAnuncio(`Detalle mostrado para el pago ${pago.id} de ${pago.beneficiario}.`);
+    if (!tarjetaId) {
+      setErrorFormulario('Selecciona una tarjeta.');
+      setMensajeCreacion(null);
+      return;
     }
+    if (!monto || Number.isNaN(montoNumerico) || montoNumerico <= 0) {
+      setErrorFormulario('Ingresa un monto válido mayor a cero.');
+      setMensajeCreacion(null);
+      return;
+    }
+    if (!descripcion.trim()) {
+      setErrorFormulario('Ingresa una descripción.');
+      setMensajeCreacion(null);
+      return;
+    }
+
+    const tarjeta = tarjetasPorId.get(tarjetaId);
+    if (tipo !== 'Pago' && tarjeta && montoNumerico > tarjeta.saldoDisponible) {
+      setErrorFormulario('El monto supera el saldo disponible de la tarjeta.');
+      setMensajeCreacion(null);
+      return;
+    }
+
+    const nuevaTransaccion: Transaccion = {
+      id: generarId('tx'),
+      tarjetaId,
+      tipo,
+      monto: montoNumerico,
+      descripcion: descripcion.trim(),
+      fecha: new Date().toISOString().slice(0, 10),
+    };
+
+    setTransacciones((actuales) => [nuevaTransaccion, ...actuales]);
+    setErrorFormulario(null);
+    setMensajeCreacion(`Transacción de ${tipo.toLowerCase()} registrada por ${formatoCOP.format(montoNumerico)}.`);
+    setMonto('');
+    setDescripcion('');
   }
 
-  function limpiarFiltros() {
-    setBusqueda('');
-    setFiltroEstado('Todos');
-    setAnuncio('Filtros de búsqueda limpiados.');
+  function solicitarEliminacion(id: string) {
+    setIdPorEliminar(id);
+    setMensajeEliminacion(null);
+  }
+
+  function cancelarEliminacion() {
+    setIdPorEliminar(null);
+  }
+
+  function confirmarEliminacion() {
+    if (!idPorEliminar) return;
+    setTransacciones((actuales) => actuales.filter((tx) => tx.id !== idPorEliminar));
+    setMensajeEliminacion('Transacción eliminada correctamente.');
+    setIdPorEliminar(null);
+  }
+
+  function probarCapacidad() {
+    setMensajeCapacidad('Transacción de Tarjetas');
   }
 
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div className="app-header__titles">
-          <p className="app-header__eyebrow">Banca por Internet · Pagos</p>
-          <h1 className="app-header__title">Consulta de Pagos</h1>
-          <p className="app-header__subtitle">
-            Busca, filtra y revisa el detalle de los pagos realizados desde tu cuenta. Datos de demostración, sin conexión.
-          </p>
-        </div>
-        <div className="app-header__action">
-          <button type="button" className="btn btn--primary" onClick={manejarProbarCapacidad}>
+        <p className="eyebrow">Banca por Internet · Tarjetas</p>
+        <h1>Transacción de Tarjetas</h1>
+        <p className="descripcion">
+          Registra, busca y elimina transacciones ficticias sobre tus tarjetas, con saldo validado en memoria.
+        </p>
+        <div className="capacidad-demo">
+          <button type="button" className="boton boton-primario" onClick={probarCapacidad}>
             Probar capacidad
           </button>
-          <p className="capacidad-resultado" role="status">
-            {capacidadMensaje}
+          <p role="status" className="mensaje-estado" aria-live="polite">
+            {mensajeCapacidad}
           </p>
         </div>
       </header>
 
-      <section className="panel" aria-labelledby="buscar-titulo">
-        <h2 id="buscar-titulo" className="panel__titulo">Buscar pagos</h2>
-        <div className="filtros">
+      <section className="panel" aria-labelledby="titulo-tarjetas">
+        <h2 id="titulo-tarjetas">Tarjetas</h2>
+        <div className="grid-tarjetas">
+          {tarjetas.map((t) => (
+            <article key={t.id} className="tarjeta-card">
+              <h3>{t.alias}</h3>
+              <p className="numero">{t.numeroEnmascarado}</p>
+              <p className="saldo">
+                Saldo disponible <strong>{formatoCOP.format(t.saldoDisponible)}</strong>
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel" aria-labelledby="titulo-nueva">
+        <h2 id="titulo-nueva">Nueva transacción</h2>
+        <form className="formulario" onSubmit={manejarCreacion} noValidate>
           <div className="campo">
-            <label htmlFor="buscar-pago">Beneficiario, referencia o número de pago</label>
+            <label htmlFor="campo-tarjeta">Tarjeta</label>
+            <select id="campo-tarjeta" value={tarjetaId} onChange={(e) => setTarjetaId(e.target.value)}>
+              {tarjetas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.alias} · {t.numeroEnmascarado}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="campo">
+            <label htmlFor="campo-tipo">Tipo</label>
+            <select id="campo-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoTransaccion)}>
+              <option value="Compra">Compra</option>
+              <option value="Pago">Pago</option>
+              <option value="Retiro">Retiro</option>
+            </select>
+          </div>
+
+          <div className="campo">
+            <label htmlFor="campo-monto">Monto (COP)</label>
             <input
-              id="buscar-pago"
+              id="campo-monto"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1000}
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              placeholder="Ej. 150000"
+            />
+          </div>
+
+          <div className="campo campo-ancho">
+            <label htmlFor="campo-descripcion">Descripción</label>
+            <input
+              id="campo-descripcion"
+              type="text"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Ej. Pago de servicios"
+            />
+          </div>
+
+          <div className="acciones-formulario">
+            <button type="submit" className="boton boton-primario">
+              Registrar transacción
+            </button>
+          </div>
+
+          <p role="status" aria-live="polite" className="mensaje-formulario">
+            {errorFormulario ? <span className="texto-error">{errorFormulario}</span> : mensajeCreacion}
+          </p>
+        </form>
+      </section>
+
+      <section className="panel" aria-labelledby="titulo-historial">
+        <h2 id="titulo-historial">Historial de transacciones</h2>
+
+        <div className="controles-busqueda">
+          <div className="campo">
+            <label htmlFor="campo-busqueda">Buscar</label>
+            <input
+              id="campo-busqueda"
               type="search"
-              placeholder="Ej. Telecom Andina, REF-884203, PG-1004"
               value={busqueda}
-              onChange={(evento) => setBusqueda(evento.target.value)}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Descripción, alias o número de tarjeta"
             />
           </div>
           <div className="campo">
-            <label htmlFor="filtro-estado">Estado</label>
+            <label htmlFor="campo-filtro-tipo">Filtrar por tipo</label>
             <select
-              id="filtro-estado"
-              value={filtroEstado}
-              onChange={(evento) => setFiltroEstado(evento.target.value as FiltroEstado)}
+              id="campo-filtro-tipo"
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value as 'Todas' | TipoTransaccion)}
             >
-              <option value="Todos">Todos</option>
-              <option value="Aplicado">Aplicado</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="Rechazado">Rechazado</option>
+              <option value="Todas">Todas</option>
+              <option value="Compra">Compra</option>
+              <option value="Pago">Pago</option>
+              <option value="Retiro">Retiro</option>
             </select>
           </div>
-          <div className="campo campo--accion">
-            <button type="button" className="btn btn--secundario" onClick={limpiarFiltros}>
-              Limpiar filtros
-            </button>
-          </div>
         </div>
-        <p className="resumen-filtro">
-          {pagosFiltrados.length} resultado{pagosFiltrados.length === 1 ? '' : 's'} · Total {formatoMoneda.format(totalFiltrado)}
-        </p>
-      </section>
 
-      <section className="panel" aria-labelledby="resultados-titulo">
-        <h2 id="resultados-titulo" className="panel__titulo">Resultados</h2>
-        {pagosFiltrados.length === 0 ? (
-          <p className="estado-vacio">No se encontraron pagos con esos criterios. Ajusta la búsqueda o el estado.</p>
+        <p role="status" aria-live="polite" className="mensaje-formulario">
+          {mensajeEliminacion}
+        </p>
+
+        {transaccionesFiltradas.length === 0 ? (
+          <p className="estado-vacio">No hay transacciones que coincidan con la búsqueda.</p>
         ) : (
           <div className="tabla-contenedor">
-            <table className="tabla-pagos">
+            <table className="tabla-transacciones">
               <thead>
                 <tr>
-                  <th scope="col">Pago</th>
-                  <th scope="col">Beneficiario</th>
-                  <th scope="col">Referencia</th>
                   <th scope="col">Fecha</th>
-                  <th scope="col" className="col-numerica">Monto</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col"><span className="sr-only">Acciones</span></th>
+                  <th scope="col">Tarjeta</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col" className="columna-numerica">Monto</th>
+                  <th scope="col">Descripción</th>
+                  <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {pagosFiltrados.map((pago) => (
-                  <tr key={pago.id} className={pago.id === pagoSeleccionadoId ? 'fila-activa' : undefined}>
-                    <td>{pago.id}</td>
-                    <td>{pago.beneficiario}</td>
-                    <td>{pago.referencia}</td>
-                    <td>{formatearFecha(pago.fecha)}</td>
-                    <td className="col-numerica">{formatoMoneda.format(pago.monto)}</td>
-                    <td>
-                      <span className={`badge badge--${pago.estado.toLowerCase()}`}>{pago.estado}</span>
-                    </td>
-                    <td>
-                      <button type="button" className="btn btn--enlace" onClick={() => seleccionarPago(pago.id)}>
-                        Ver detalle
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {transaccionesFiltradas.map((tx) => {
+                  const tarjeta = tarjetasPorId.get(tx.tarjetaId);
+                  return (
+                    <tr key={tx.id}>
+                      <td>{tx.fecha}</td>
+                      <td>{tarjeta ? `${tarjeta.alias} · ${tarjeta.numeroEnmascarado}` : 'N/D'}</td>
+                      <td>
+                        <span className={`insignia insignia-${tx.tipo.toLowerCase()}`}>{tx.tipo}</span>
+                      </td>
+                      <td className="columna-numerica">{formatoCOP.format(tx.monto)}</td>
+                      <td>{tx.descripcion}</td>
+                      <td>
+                        {idPorEliminar === tx.id ? (
+                          <div className="confirmacion-inline">
+                            <span>¿Eliminar?</span>
+                            <button type="button" className="boton boton-peligro" onClick={confirmarEliminacion}>
+                              Confirmar
+                            </button>
+                            <button type="button" className="boton boton-fantasma" onClick={cancelarEliminacion}>
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="boton boton-secundario"
+                            onClick={() => solicitarEliminacion(tx.id)}
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
-
-      {pagoSeleccionado && (
-        <section className="panel panel--detalle" aria-labelledby="detalle-titulo">
-          <h2 id="detalle-titulo" className="panel__titulo">Detalle del pago {pagoSeleccionado.id}</h2>
-          <dl className="detalle-grid">
-            <div>
-              <dt>Beneficiario</dt>
-              <dd>{pagoSeleccionado.beneficiario}</dd>
-            </div>
-            <div>
-              <dt>Referencia</dt>
-              <dd>{pagoSeleccionado.referencia}</dd>
-            </div>
-            <div>
-              <dt>Fecha</dt>
-              <dd>{formatearFecha(pagoSeleccionado.fecha)}</dd>
-            </div>
-            <div>
-              <dt>Monto</dt>
-              <dd>{formatoMoneda.format(pagoSeleccionado.monto)}</dd>
-            </div>
-            <div>
-              <dt>Estado</dt>
-              <dd>
-                <span className={`badge badge--${pagoSeleccionado.estado.toLowerCase()}`}>{pagoSeleccionado.estado}</span>
-              </dd>
-            </div>
-          </dl>
-        </section>
-      )}
-
-      <p className="sr-only" role="status" aria-live="polite">
-        {anuncio}
-      </p>
     </main>
   );
 }
