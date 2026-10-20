@@ -5,7 +5,7 @@
    (extraída del código del frontend). No sale nada a la red. */
 (function () {
   "use strict";
-  var DEMO = {"clave":"Consulta|Pagos|Full Stack|Angular|.NET|PostgreSQL","slug":"consulta-pagos-fullstack-angular-dotnet","rutas":[{"m":"GET","ruta":"http://localhost:5080/api/v1/pagos","esquema":{"t":"obj","nombre":"PaginaPagos","campos":{"items":{"t":"array","de":{"t":"obj","nombre":"Pago","campos":{"id":{"t":"string"},"cuentaEnmascarada":{"t":"string"},"referencia":{"t":"string"},"beneficiario":{"t":"string"},"monto":{"t":"number"},"moneda":{"t":"string"},"estado":{"t":"enum","v":["PENDIENTE","PROCESADO","RECHAZADO","ANULADO"]},"fechaPago":{"t":"string"},"canal":{"t":"string"}}}},"page":{"t":"number"},"size":{"t":"number"},"total":{"t":"number"}}}}]};
+  var DEMO = {"clave":"Transacción|Pagos|Full Stack|React + TypeScript|Java + Quarkus|PostgreSQL","slug":"transaccion-pagos-fullstack-react-quarkus","rutas":[{"m":"POST","ruta":"/api/v1/payments","esquema":{"t":"obj","nombre":"PaymentResponse","campos":{"id":{"t":"string"},"status":{"t":"enum","v":["PENDIENTE","CONFIRMADO","RECHAZADO"]},"beneficiary":{"t":"string"},"amount":{"t":"number"},"currency":{"t":"enum","v":["PEN","USD"]},"concept":{"t":"string"},"createdAt":{"t":"string"}}}}]};
   var NOMBRES = ["María Torres", "Carlos Quispe", "Lucía Fernández", "Jorge Ramírez", "Ana Vargas", "Diego Salazar"];
   var CONCEPTOS = ["Pago de servicios", "Transferencia a ahorros", "Compra en supermercado", "Abono de sueldo", "Pago de tarjeta", "Recarga de celular"];
   var ALIAS = ["Cuenta Sueldo", "Ahorro Vacaciones", "Cuenta Corriente", "Ahorro Meta", "Cuenta Dólares", "Fondo Emergencias"];
